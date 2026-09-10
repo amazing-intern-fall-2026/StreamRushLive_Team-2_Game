@@ -111,9 +111,18 @@ StreamRushLive_Team-2_Game.slnx
 # Visual Studio config & JetBrains Rider IDE configs
 .vsconfig
 .idea/
-# Unity-MCP plugin binaries (DLL cong cu AI cua tung nguoi, khong phai code game) - moi nguoi tu cai qua Package Manager
+# Unity-MCP plugin binaries & CoplayDev unity-mcp bridge (AI tools local)
 /Assets/Plugins/
 /Assets/Plugins.meta
+/Assets/MCPForUnity/
+/Assets/MCPForUnity.meta
+/Packages/com.coplaydev.unity-mcp*
+/Packages/com.coplaydev.unity-mcp*.meta
+.unity-mcp/
+unity-mcp/
+unity-mcp*.json
+mcp-server-unity*.json
+
 # ===== MinhHuy local-only docs (khong push) =====
 /README.md
 /AGENTS.md
@@ -121,4 +130,6 @@ StreamRushLive_Team-2_Game.slnx
 /.gitmessage.txt
 /.github/
 /.cursor/
-/docs/
+/[Dd]ocs/
+
+
