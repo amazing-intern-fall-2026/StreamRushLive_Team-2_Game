@@ -13,7 +13,11 @@ namespace SteamRush.Features.UI.Views
         {
             if (fillBar != null)
             {
-                fillBar.fillAmount = Mathf.Clamp01(currentEnergy);
+                // Resize theo chiều rộng thay vì dùng fillAmount, vì Image kiểu Filled
+                // không hỗ trợ 9-slice (2 đầu bo tròn sẽ bị kéo méo).
+                var fillRect = fillBar.rectTransform;
+                float fullWidth = ((RectTransform)fillRect.parent).rect.width;
+                fillRect.sizeDelta = new Vector2(fullWidth * Mathf.Clamp01(currentEnergy), fillRect.sizeDelta.y);
             }
         }
     }
