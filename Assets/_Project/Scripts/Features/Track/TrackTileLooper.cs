@@ -11,8 +11,13 @@ namespace SteamRush.Track
         [SerializeField, Tooltip("Phải khớp với kích thước thật của tile mesh, nếu đổi mesh thì nhớ đổi cả số này")]
         private float _tileLengthInWorldUnits = 10f;
 
-        [SerializeField, Tooltip("Tốc độ world di chuyển lùi (đơn vị/giây). Có thể đổi runtime qua property WorldSpeed.")]
-        private float _worldSpeed = 5f;
+        [SerializeField] private WorldSpeedManager _speedManager;
+
+        public float WorldSpeed
+        {
+            get => _speedManager != null ? _speedManager.CurrentSpeed : 0f;
+            set { if (_speedManager != null) _speedManager.CurrentSpeed = value; }
+        }
 
         [SerializeField, Tooltip("Vị trí X mà khi tile lùi qua ngưỡng này sẽ được recycle ra phía trước.")]
         private float _recycleXThreshold = -15f;
@@ -20,11 +25,6 @@ namespace SteamRush.Track
         [SerializeField, Tooltip("Optional: nếu gán, mỗi frame sẽ tự báo quãng đường world đã lùi vào đây.")]
         private TrackProgressTracker _progressTracker;
 
-        public float WorldSpeed
-        {
-            get => _worldSpeed;
-            set => _worldSpeed = Mathf.Max(0f, value);
-        }
 
         private void Awake()
         {
@@ -52,7 +52,7 @@ namespace SteamRush.Track
                 return;
             }
 
-            float step = _worldSpeed * Time.deltaTime;
+           float step = WorldSpeed * Time.deltaTime;
             Vector3 delta = Vector3.left * step;
 
             for (int i = 0; i < _tiles.Length; i++)
