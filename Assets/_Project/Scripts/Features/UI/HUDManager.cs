@@ -12,6 +12,8 @@ namespace SteamRush.Features.UI
         [SerializeField] private ProgressBarController progressBar;
         [SerializeField] private EnergyBarController energyBar;
         [SerializeField] private RunnerNameplateController runnerNameplate;
+        [SerializeField] private StatusPopupSpawner statusPopupSpawner;
+        [SerializeField] private GiftToastQueue giftToastQueue;
 
         // currentKm: quãng đường đã chạy, đơn vị km (GDD: TOTAL_DISTANCE = 100_000m = 100km).
         public void UpdateProgress(float currentKm)
@@ -61,6 +63,32 @@ namespace SteamRush.Features.UI
             }
 
             runnerNameplate.SetTarget(runner);
+        }
+
+        // Hiện thông báo buff/debuff nổi lên trên đầu runner rồi tự mờ dần.
+        // isBuff quyết định màu chữ (xanh = buff, đỏ = debuff). icon: null = ẩn ô icon (vd. debuff chưa có icon riêng).
+        public void ShowStatusPopup(string message, bool isBuff, Sprite icon = null, Color? iconColor = null)
+        {
+            if (statusPopupSpawner == null)
+            {
+                Debug.LogWarning("[HUDManager] Chưa gán StatusPopupSpawner trong Inspector - bỏ qua ShowStatusPopup.");
+                return;
+            }
+
+            statusPopupSpawner.Spawn(message, isBuff, icon, iconColor);
+        }
+
+        // Hiện toast góc trên-phải khi viewer tặng quà: tên viewer + icon quà + tên vật thể tương ứng trong game (GDD).
+        // iconColor: tint cho icon quà (icon nguồn là hình trắng/nền trong suốt) - null = giữ màu mặc định.
+        public void ShowGiftToast(string viewerName, string itemName, Sprite giftIcon, Color? iconColor = null)
+        {
+            if (giftToastQueue == null)
+            {
+                Debug.LogWarning("[HUDManager] Chưa gán GiftToastQueue trong Inspector - bỏ qua ShowGiftToast.");
+                return;
+            }
+
+            giftToastQueue.Show(viewerName, itemName, giftIcon, iconColor);
         }
     }
 }

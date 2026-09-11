@@ -112,8 +112,8 @@ StreamRushLive_Team-2_Game.slnx
 .vsconfig
 .idea/
 # Unity-MCP plugin binaries (DLL cong cu AI cua tung nguoi, khong phai code game) - moi nguoi tu cai qua Package Manager
-/Assets/Plugins/
-/Assets/Plugins.meta
+/Assets/Plugins/NuGet/
+/Assets/Plugins/NuGet.meta
 # ===== MinhHuy local-only docs (khong push) =====
 /README.md
 /AGENTS.md
