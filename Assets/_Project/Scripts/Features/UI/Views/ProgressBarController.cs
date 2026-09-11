@@ -17,7 +17,11 @@ namespace SteamRush.Features.UI.Views
 
             if (fillBar != null)
             {
-                fillBar.fillAmount = clampedKm / 100f;
+                // Resize theo chiều rộng thay vì dùng fillAmount, vì Image kiểu Filled
+                // không hỗ trợ 9-slice (2 đầu bo tròn sẽ bị kéo méo).
+                var fillRect = fillBar.rectTransform;
+                float fullWidth = ((RectTransform)fillRect.parent).rect.width;
+                fillRect.sizeDelta = new Vector2(fullWidth * (clampedKm / 100f), fillRect.sizeDelta.y);
             }
 
             if (labelKm != null)
