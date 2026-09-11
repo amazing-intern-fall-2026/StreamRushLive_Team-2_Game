@@ -7,15 +7,31 @@ namespace SteamRush.Track
         [SerializeField] private GameObject[] _buildingPrefabs;
         [SerializeField] private WorldSpeedManager _speedManager;
 
-        [SerializeField] private float _spawnXPosition = 40f;
-        [SerializeField] private float _rowY = 0f;
-        [SerializeField] private float _rowZ = 0f;
-        [SerializeField] private float _despawnXThreshold = -15f;
+        [Header("Speed Mode Settings")]
+        [Tooltip("Bật để các tòa nhà di chuyển theo WorldSpeedManager, tắt để dùng tốc độ riêng.")]
+        [SerializeField] private bool _useWorldSpeed = true;
 
+        [Tooltip("Tốc độ di chuyển riêng khi không dùng WorldSpeed.")]
+        [SerializeField] private float _customSpeed = 5f;
+
+        [Header("Spawn Settings")]
+        [SerializeField] private float _despawnXThreshold = -15f;
         [SerializeField] private float _minSpawnInterval = 1f;
         [SerializeField] private float _maxSpawnInterval = 3f;
 
         private float _timeUntilNextSpawn;
+
+        public bool UseWorldSpeed
+        {
+            get => _useWorldSpeed;
+            set => _useWorldSpeed = value;
+        }
+
+        public float CustomSpeed
+        {
+            get => _customSpeed;
+            set => _customSpeed = Mathf.Max(0f, value);
+        }
 
         public float WorldSpeed => _speedManager != null ? _speedManager.CurrentSpeed : 0f;
 
@@ -49,9 +65,9 @@ namespace SteamRush.Track
             }
 
             GameObject prefab = _buildingPrefabs[Random.Range(0, _buildingPrefabs.Length)];
-            Vector3 spawnPosition = new Vector3(_spawnXPosition, _rowY, _rowZ);
+            Vector3 spawnPosition = transform.position;
 
-            GameObject instance = Instantiate(prefab, spawnPosition, Quaternion.identity);
+            GameObject instance = Instantiate(prefab, spawnPosition, prefab.transform.rotation);
             MovingBuilding movingBuilding = instance.GetComponent<MovingBuilding>();
 
             if (movingBuilding == null)
@@ -59,7 +75,8 @@ namespace SteamRush.Track
                 movingBuilding = instance.AddComponent<MovingBuilding>();
             }
 
-            movingBuilding.Initialize(this, _despawnXThreshold);
+            // Khởi tạo tòa nhà với tùy chọn dùng WorldSpeed hoặc CustomSpeed từ Spawner
+            movingBuilding.Initialize(this, _despawnXThreshold, _useWorldSpeed, _customSpeed);
         }
     }
 }

@@ -132,4 +132,7 @@ mcp-server-unity*.json
 /.cursor/
 /[Dd]ocs/
 
-
+# Screenshots
+/[Ss]creenshots/
+/[Aa]ssets/[Ss]creenshots/
+/[Aa]ssets/[Ss]creenshots.meta

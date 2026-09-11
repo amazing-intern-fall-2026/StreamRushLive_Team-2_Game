@@ -1,117 +1,122 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using SteamRush.Relay;
 
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Xử lý các phím test trong quá trình phát triển.
+    /// Xử lý các phím test trong quá trình phát triển (hỗ trợ cả New Input System và Direct Keyboard).
     ///
-    /// 1 - Spawn trap
-    /// 2 - Spawn buff item
-    /// 3 - Add energy
-    /// 4 - Mock add follower
+    /// 1 - Spawn Rào thấp (Low Barrier - Buộc Nhảy)
+    /// 2 - Spawn Xà cao (High Barrier - Buộc Trượt)
+    /// 3 - Spawn Buff Item (Hồi năng lượng)
+    /// 4 - Thả tim (Add Energy +20)
+    /// 5 - Thêm Follower vào hàng đợi tiếp sức
     /// </summary>
     public class MockInput : MonoBehaviour
     {
-        [Header("Input Actions")]
-        [SerializeField] private InputActionReference spawnTrapAction;
-        [SerializeField] private InputActionReference spawnBuffAction;
-        [SerializeField] private InputActionReference addEnergyAction;
-        [SerializeField] private InputActionReference addFollowerAction;
-
         [Header("References")]
         [SerializeField] private Spawner spawner;
         [SerializeField] private EnergySystem energySystem;
+        [SerializeField] private RelayQueueManager relayQueue;
+
+        [Header("Spawn Settings 2.5D")]
+        [SerializeField] private float spawnX = 30f;
+        [SerializeField] private float lowBarrierY = 0.5f;
+        [SerializeField] private float highBarrierY = 1.8f;
+        [SerializeField] private float buffItemY = 0.8f;
 
         [Header("Test Settings")]
         [SerializeField] private float energyAmount = 20f;
 
-        private void OnEnable()
-        {
-            spawnTrapAction.action.performed += OnSpawnTrap;
-            spawnBuffAction.action.performed += OnSpawnBuff;
-            addEnergyAction.action.performed += OnAddEnergy;
-            addFollowerAction.action.performed += OnAddFollower;
+        private int followerCounter = 1;
 
-            spawnTrapAction.action.Enable();
-            spawnBuffAction.action.Enable();
-            addEnergyAction.action.Enable();
-            addFollowerAction.action.Enable();
+        private void Start()
+        {
+            if (spawner == null) spawner = FindFirstObjectByType<Spawner>();
+            if (energySystem == null) energySystem = FindFirstObjectByType<EnergySystem>();
+            if (relayQueue == null) relayQueue = FindFirstObjectByType<RelayQueueManager>();
         }
 
-        private void OnDisable()
+        private void Update()
         {
-            spawnTrapAction.action.performed -= OnSpawnTrap;
-            spawnBuffAction.action.performed -= OnSpawnBuff;
-            addEnergyAction.action.performed -= OnAddEnergy;
-            addFollowerAction.action.performed -= OnAddFollower;
+            if (Keyboard.current == null) return;
 
-            spawnTrapAction.action.Disable();
-            spawnBuffAction.action.Disable();
-            addEnergyAction.action.Disable();
-            addFollowerAction.action.Disable();
-        }
-
-        private void OnSpawnTrap(InputAction.CallbackContext context)
-        {
-            Debug.Log("Mock Input: Spawn Trap");
-
-            if (spawner == null)
+            // Phím 1: Rào thấp
+            if (Keyboard.current.digit1Key.wasPressedThisFrame || Keyboard.current.numpad1Key.wasPressedThisFrame)
             {
-                Debug.LogWarning("MockInput: Spawner reference is missing.");
-                return;
+                SpawnLowBarrier();
             }
 
-            spawner.Spawn(
-                SpawnType.LowBarrier,
-                GetSpawnPosition()
-            );
-        }
-
-        private void OnSpawnBuff(InputAction.CallbackContext context)
-        {
-            Debug.Log("Mock Input: Spawn Buff");
-
-            if (spawner == null)
+            // Phím 2: Xà cao
+            if (Keyboard.current.digit2Key.wasPressedThisFrame || Keyboard.current.numpad2Key.wasPressedThisFrame)
             {
-                Debug.LogWarning("MockInput: Spawner reference is missing.");
-                return;
+                SpawnHighBarrier();
             }
 
-            spawner.Spawn(
-                SpawnType.BuffItem,
-                GetSpawnPosition()
-            );
-        }
-
-        private void OnAddEnergy(InputAction.CallbackContext context)
-        {
-            Debug.Log($"Mock Input: Add {energyAmount} Energy");
-
-            if (energySystem == null)
+            // Phím 3: Buff Item
+            if (Keyboard.current.digit3Key.wasPressedThisFrame || Keyboard.current.numpad3Key.wasPressedThisFrame)
             {
-                Debug.LogWarning("MockInput: EnergySystem reference is missing.");
-                return;
+                SpawnBuffItem();
             }
 
-            energySystem.AddEnergy(energyAmount);
+            // Phím 4: Add Energy
+            if (Keyboard.current.digit4Key.wasPressedThisFrame || Keyboard.current.numpad4Key.wasPressedThisFrame)
+            {
+                AddEnergy();
+            }
+
+            // Phím 5: Add Follower
+            if (Keyboard.current.digit5Key.wasPressedThisFrame || Keyboard.current.numpad5Key.wasPressedThisFrame)
+            {
+                AddMockFollower();
+            }
         }
 
-        private void OnAddFollower(InputAction.CallbackContext context)
+        public void SpawnLowBarrier()
         {
-            Debug.Log(
-                "Mock Input: Add follower " +
-                "(TODO: Connect to Relay Queue system)"
-            );
+            Debug.Log("[MockInput] Spawn Rào thấp (Cần Nhảy né)");
+            if (spawner != null)
+            {
+                spawner.Spawn(SpawnType.LowBarrier, new Vector3(spawnX, lowBarrierY, 0f));
+            }
         }
 
-        private Vector3 GetSpawnPosition()
+        public void SpawnHighBarrier()
         {
-            return new Vector3(
-                0f,
-                0.5f,
-                transform.position.z + 10f
-            );
+            Debug.Log("[MockInput] Spawn Xà cao (Cần Cúi/Trượt né)");
+            if (spawner != null)
+            {
+                spawner.Spawn(SpawnType.HighBarrier, new Vector3(spawnX, highBarrierY, 0f));
+            }
+        }
+
+        public void SpawnBuffItem()
+        {
+            Debug.Log("[MockInput] Spawn Buff Item");
+            if (spawner != null)
+            {
+                spawner.Spawn(SpawnType.BuffItem, new Vector3(spawnX, buffItemY, 0f));
+            }
+        }
+
+        public void AddEnergy()
+        {
+            Debug.Log($"[MockInput] Thả tim: Thêm +{energyAmount} năng lượng");
+            if (energySystem != null)
+            {
+                energySystem.AddEnergy(energyAmount);
+            }
+        }
+
+        public void AddMockFollower()
+        {
+            string newFollower = $"Follower_{followerCounter++}";
+            Debug.Log($"[MockInput] Người xem mới: {newFollower} được thêm vào hàng đợi");
+            if (relayQueue != null)
+            {
+                relayQueue.EnqueueFollower(newFollower);
+            }
         }
     }
 }

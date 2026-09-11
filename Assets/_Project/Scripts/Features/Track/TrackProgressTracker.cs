@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.Events;
+using SteamRush.Features.UI;
 
 namespace SteamRush.Track
 {
@@ -17,11 +18,26 @@ namespace SteamRush.Track
         [SerializeField] private UnityEvent<int> _relayCompleted = new UnityEvent<int>();
         public UnityEvent<int> RelayCompleted => _relayCompleted;
 
+        [SerializeField] private HUDManager _hudManager;
+
         public float CurrentLegDistanceMeters { get; private set; }
         public float TotalDistanceMeters { get; private set; }
         public float GoalProgress => TotalDistanceMeters / GoalDistanceMeters;
 
         private int _completedRelayCount;
+
+        private void Start()
+        {
+            if (_hudManager == null)
+            {
+                _hudManager = FindFirstObjectByType<HUDManager>();
+            }
+
+            if (_hudManager != null)
+            {
+                _hudManager.UpdateProgress(TotalDistanceMeters / 1000f);
+            }
+        }
 
         public void AddDistance(float distanceDelta)
         {
@@ -41,6 +57,11 @@ namespace SteamRush.Track
             }
 
             _progressChanged.Invoke(CurrentLegDistanceMeters, TotalDistanceMeters, GoalProgress);
+
+            if (_hudManager != null)
+            {
+                _hudManager.UpdateProgress(TotalDistanceMeters / 1000f);
+            }
         }
     }
 }

@@ -1,68 +1,133 @@
+using System.Collections;
 using UnityEngine;
 
-namespace ProjectFGU.Tu.PlayerMovement 
+namespace SteamRush.Features.Runner
 {
     [RequireComponent(typeof(Rigidbody))]
     public class PlayerCore : MonoBehaviour
     {
-    public Rigidbody RB { get; private set; }
-    public bool IsGrounded { get; private set; }
+        public Rigidbody RB { get; private set; }
+        public bool IsGrounded { get; private set; }
+        public bool IsSliding { get; private set; }
 
-    [Header("Jump Settings")]
-    public int maxJumps = 2;
-    private int jumpCount = 0;
+        [Header("Jump Settings")]
+        [SerializeField] private int _maxJumps = 1;
+        [SerializeField] private float _fallMultiplier = 2.5f;
 
-    [Header("Gravity Settings")]
-    public float fallMultiplier = 2.5f; // Tăng số này nếu muốn rơi càng nhanh
+        [Header("Slide Settings")]
+        [SerializeField] private float _slideDuration = 0.8f;
+        [SerializeField] private float _slideHeightMultiplier = 0.5f;
 
-    void Awake()
-    {
-        RB = GetComponent<Rigidbody>();
-        RB.constraints = RigidbodyConstraints.FreezePositionZ | 
-                         RigidbodyConstraints.FreezeRotationX | 
-                         RigidbodyConstraints.FreezeRotationY | 
-                         RigidbodyConstraints.FreezeRotationZ;
-    }
+        private int _jumpCount = 0;
+        private CapsuleCollider _capsuleCollider;
+        private float _originalHeight;
+        private Vector3 _originalCenter;
+        private Coroutine _slideCoroutine;
 
-    void FixedUpdate()
-    {
-        // Khi vận tốc trục Y nhỏ hơn 0 (nghĩa là đang rơi xuống), áp dụng thêm lực hút
-        if (RB.linearVelocity.y < 0)
+        private void Awake()
         {
-            RB.linearVelocity += Vector3.up * Physics.gravity.y * (fallMultiplier - 1) * Time.fixedDeltaTime;
+            RB = GetComponent<Rigidbody>();
+            RB.constraints = RigidbodyConstraints.FreezePositionX |
+                             RigidbodyConstraints.FreezePositionZ |
+                             RigidbodyConstraints.FreezeRotationX |
+                             RigidbodyConstraints.FreezeRotationY |
+                             RigidbodyConstraints.FreezeRotationZ;
+
+            _capsuleCollider = GetComponent<CapsuleCollider>();
+            if (_capsuleCollider != null)
+            {
+                _originalHeight = _capsuleCollider.height;
+                _originalCenter = _capsuleCollider.center;
+            }
+        }
+
+        private void FixedUpdate()
+        {
+            // Tăng tốc rơi khi vận tốc trục Y âm
+            if (RB.linearVelocity.y < 0)
+            {
+                RB.linearVelocity += Vector3.up * Physics.gravity.y * (_fallMultiplier - 1) * Time.fixedDeltaTime;
+            }
+        }
+
+        public void PerformJump(float jumpForce)
+        {
+            if (IsSliding)
+            {
+                StopSlide();
+            }
+
+            if (_jumpCount < _maxJumps)
+            {
+                RB.linearVelocity = new Vector3(0f, 0f, 0f);
+                RB.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+                _jumpCount++;
+                IsGrounded = false;
+            }
+        }
+
+        public void PerformSlide()
+        {
+            if (!IsGrounded || IsSliding)
+            {
+                return;
+            }
+
+            if (_slideCoroutine != null)
+            {
+                StopCoroutine(_slideCoroutine);
+            }
+
+            _slideCoroutine = StartCoroutine(SlideRoutine());
+        }
+
+        private IEnumerator SlideRoutine()
+        {
+            IsSliding = true;
+
+            if (_capsuleCollider != null)
+            {
+                _capsuleCollider.height = _originalHeight * _slideHeightMultiplier;
+                _capsuleCollider.center = new Vector3(_originalCenter.x, _originalCenter.y * _slideHeightMultiplier, _originalCenter.z);
+            }
+
+            yield return new WaitForSeconds(_slideDuration);
+
+            StopSlide();
+        }
+
+        private void StopSlide()
+        {
+            if (_slideCoroutine != null)
+            {
+                StopCoroutine(_slideCoroutine);
+                _slideCoroutine = null;
+            }
+
+            if (_capsuleCollider != null)
+            {
+                _capsuleCollider.height = _originalHeight;
+                _capsuleCollider.center = _originalCenter;
+            }
+
+            IsSliding = false;
+        }
+
+        private void OnCollisionEnter(Collision collision)
+        {
+            if (collision.gameObject.CompareTag("Ground"))
+            {
+                IsGrounded = true;
+                _jumpCount = 0;
+            }
+        }
+
+        private void OnCollisionExit(Collision collision)
+        {
+            if (collision.gameObject.CompareTag("Ground"))
+            {
+                IsGrounded = false;
+            }
         }
     }
-
-    public void SetHorizontalVelocity(float speed, float direction)
-    {
-        RB.linearVelocity = new Vector3(direction * speed, RB.linearVelocity.y, 0f);
-    }
-
-    public void PerformJump(float jumpForce)
-    {
-        if (jumpCount < maxJumps)
-        {
-            RB.linearVelocity = new Vector3(RB.linearVelocity.x, 0f, 0f);
-            RB.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
-            jumpCount++;
-            IsGrounded = false;
-        }
-    }
-
-    private void OnCollisionEnter(Collision collision)
-    {
-        if (collision.gameObject.CompareTag("Ground"))
-        {
-            IsGrounded = true;
-            jumpCount = 0; 
-        }
-    }
-
-    private void OnCollisionExit(Collision collision)
-    {
-        if (collision.gameObject.CompareTag("Ground"))
-        {
-            IsGrounded = false;
-        }
-    }
-}}
+}

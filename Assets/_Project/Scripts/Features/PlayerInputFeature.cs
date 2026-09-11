@@ -1,48 +1,42 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace ProjectFGU.Tu.PlayerMovement
+namespace SteamRush.Features.Runner
 {
     [RequireComponent(typeof(PlayerCore))]
     public class PlayerInputFeature : MonoBehaviour
     {
         [Header("Movement Settings")]
-        public float moveSpeed = 8f;
-        public float jumpForce = 7f;
+        [SerializeField] private float _jumpForce = 7f;
 
-        private PlayerCore core;
-        private float horizontalInput;
+        private PlayerCore _core;
 
-        void Start()
+        private void Start()
         {
-            core = GetComponent<PlayerCore>();
+            _core = GetComponent<PlayerCore>();
         }
 
-        void Update()
+        private void Update()
         {
-            horizontalInput = 0f;
-
-            if (Keyboard.current != null)
+            if (Keyboard.current == null || _core == null)
             {
-                if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed)
-                {
-                    horizontalInput = -1f;
-                }
-                else if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed)
-                {
-                    horizontalInput = 1f;
-                }
-
-                if (Keyboard.current.spaceKey.wasPressedThisFrame)
-                {
-                    core.PerformJump(jumpForce);
-                }
+                return;
             }
-        }
 
-        void FixedUpdate()
-        {
-            core.SetHorizontalVelocity(moveSpeed, horizontalInput);
+            // Nhảy: W, Mũi tên lên, hoặc Phím cách (Space)
+            if (Keyboard.current.spaceKey.wasPressedThisFrame ||
+                Keyboard.current.wKey.wasPressedThisFrame ||
+                Keyboard.current.upArrowKey.wasPressedThisFrame)
+            {
+                _core.PerformJump(_jumpForce);
+            }
+
+            // Cúi / Trượt: S hoặc Mũi tên xuống
+            if (Keyboard.current.sKey.wasPressedThisFrame ||
+                Keyboard.current.downArrowKey.wasPressedThisFrame)
+            {
+                _core.PerformSlide();
+            }
         }
     }
 }
