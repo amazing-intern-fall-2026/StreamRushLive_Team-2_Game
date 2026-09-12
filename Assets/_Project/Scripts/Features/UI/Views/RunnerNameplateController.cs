@@ -15,23 +15,21 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private TMP_Text runnerName;
 
         [Header("Position Offset Settings")]
-        [Tooltip("Độ lệch vị trí trục X so với Runner (cho phép dịch chuyển bảng tên sang trái/phải).")]
         [SerializeField] private float offsetX = 0f;
 
-        [Tooltip("Khoảng cách đệm chiều cao trục Y phía trên đầu Runner.")]
+        [Tooltip("Vertical padding above the runner's head.")]
         [SerializeField] private float extraPadding = 0.3f;
 
-        [Tooltip("Độ lệch vị trí trục Z so với Runner.")]
         [SerializeField] private float offsetZ = 0f;
 
         [Header("Rotation Settings")]
-        [Tooltip("Bật để tự động xoay mặt theo Camera (Billboard). Tắt để sử dụng góc xoay cố định được setup bên dưới.")]
+        [Tooltip("Billboard face towards camera if true.")]
         [SerializeField] private bool faceCamera = true;
 
-        [Tooltip("Góc xoay cố định (Euler angles) khi faceCamera tắt - cập nhật liên tục mỗi frame.")]
+        [Tooltip("Fixed Euler angles when faceCamera is false.")]
         [SerializeField] private Vector3 fixedRotation = Vector3.zero;
 
-        [Tooltip("Góc xoay bù trừ (Offset Euler) cộng thêm khi faceCamera đang bật - cập nhật liên tục mỗi frame.")]
+        [Tooltip("Rotation offset added when faceCamera is true.")]
         [SerializeField] private Vector3 rotationOffset = Vector3.zero;
 
         private Transform target;

@@ -1,5 +1,20 @@
 {
   "dependencies": {
+    "ca.tim-cstj.fast-play": {
+      "version": "file:ca.tim-cstj.fast-play",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.qiaozhilei.easy-text-effects": {
+      "version": "https://github.com/LeiQiaoZhi/Easy-Text-Effect.git#v1.0.8",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "com.unity.ugui": "1.0.0"
+      },
+      "hash": "8e92bebf129bae32ab9d718346da37ba7c58f594"
+    },
     "com.unity.2d.sprite": {
       "version": "1.0.0",
       "depth": 1,

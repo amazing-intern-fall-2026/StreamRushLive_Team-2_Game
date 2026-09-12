@@ -29,7 +29,7 @@ namespace StreamRushLive.Features.Spawning
         public UnityEvent<float> OnEnergyNormalizedChanged = new UnityEvent<float>();
 
         private float currentEnergy;
-        private PlayerCollisionFeature playerCollision;
+        private RunnerCollisionHandler runnerCollision;
 
         public float MaxEnergy => maxEnergy;
         public float CurrentEnergy => currentEnergy;
@@ -49,7 +49,7 @@ namespace StreamRushLive.Features.Spawning
                 hudManager = FindFirstObjectByType<HUDManager>();
             }
 
-            playerCollision = FindFirstObjectByType<PlayerCollisionFeature>();
+            runnerCollision = FindFirstObjectByType<RunnerCollisionHandler>();
         }
 
         private void Update()
@@ -72,8 +72,8 @@ namespace StreamRushLive.Features.Spawning
         {
             if (worldSpeedManager == null) return;
 
-            // Nếu Player đang bị Stun thì để PlayerCollisionFeature tự quản lý tốc độ
-            if (playerCollision != null && playerCollision.IsStunned)
+            // Nếu Player đang bị Stun hoặc Knockback thì không ghi đè tốc độ
+            if (runnerCollision != null && runnerCollision.IsHandlingHit)
             {
                 return;
             }
@@ -115,6 +115,25 @@ namespace StreamRushLive.Features.Spawning
             currentEnergy += amount;
             currentEnergy = Mathf.Clamp(currentEnergy, 0f, maxEnergy);
             SyncHUD();
+        }
+
+        /// <summary>
+        /// Nhận tim / like từ viewer: hồi phục năng lượng và kích hoạt popup thông báo tim trên HUD.
+        /// </summary>
+        public void AddLike(float energyBonus = 20f, string sender = null)
+        {
+            AddEnergy(energyBonus);
+
+            if (hudManager == null)
+            {
+                hudManager = FindFirstObjectByType<HUDManager>();
+            }
+
+            string message = string.IsNullOrEmpty(sender)
+                ? $"+{energyBonus:F0}% Năng lượng từ Tim!"
+                : $"{sender} đã thả tim! +{energyBonus:F0}%";
+
+            hudManager?.ShowStatusPopup(message, true);
         }
 
         public float GetCurrentEnergy()

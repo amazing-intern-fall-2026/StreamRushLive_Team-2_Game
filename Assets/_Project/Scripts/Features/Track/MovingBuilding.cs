@@ -5,10 +5,9 @@ namespace SteamRush.Track
     public class MovingBuilding : MonoBehaviour
     {
         [Header("Speed Mode")]
-        [Tooltip("Bật để sử dụng tốc độ chung từ WorldSpeedManager, tắt để dùng tốc độ riêng.")]
+        [Tooltip("Use global speed from WorldSpeedManager if true, otherwise custom speed.")]
         [SerializeField] private bool _useWorldSpeed = true;
 
-        [Tooltip("Tốc độ di chuyển riêng của tòa nhà này.")]
         [SerializeField] private float _customSpeed = 5f;
 
         private BuildingSpawner _spawner;

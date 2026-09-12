@@ -8,10 +8,9 @@ namespace SteamRush.Track
         [SerializeField] private WorldSpeedManager _speedManager;
 
         [Header("Speed Mode Settings")]
-        [Tooltip("Bật để các tòa nhà di chuyển theo WorldSpeedManager, tắt để dùng tốc độ riêng.")]
+        [Tooltip("Move buildings according to WorldSpeedManager if true.")]
         [SerializeField] private bool _useWorldSpeed = true;
 
-        [Tooltip("Tốc độ di chuyển riêng khi không dùng WorldSpeed.")]
         [SerializeField] private float _customSpeed = 5f;
 
         [Header("Spawn Settings")]

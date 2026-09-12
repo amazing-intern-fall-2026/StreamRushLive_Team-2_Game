@@ -8,7 +8,7 @@ namespace SteamRush.Track
     {
         [SerializeField] private Transform[] _tiles;
 
-        [SerializeField, Tooltip("Phải khớp với kích thước thật của tile mesh, nếu đổi mesh thì nhớ đổi cả số này")]
+        [SerializeField, Tooltip("Tile mesh length in world units.")]
         private float _tileLengthInWorldUnits = 10f;
 
         [SerializeField] private WorldSpeedManager _speedManager;
@@ -19,10 +19,10 @@ namespace SteamRush.Track
             set { if (_speedManager != null) _speedManager.CurrentSpeed = value; }
         }
 
-        [SerializeField, Tooltip("Vị trí X mà khi tile lùi qua ngưỡng này sẽ được recycle ra phía trước.")]
+        [SerializeField, Tooltip("X position threshold to recycle tile forward.")]
         private float _recycleXThreshold = -15f;
 
-        [SerializeField, Tooltip("Optional: nếu gán, mỗi frame sẽ tự báo quãng đường world đã lùi vào đây.")]
+        [SerializeField, Tooltip("Optional tracker to record traveled world distance.")]
         private TrackProgressTracker _progressTracker;
 
 

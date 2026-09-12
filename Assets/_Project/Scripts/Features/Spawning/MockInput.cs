@@ -6,6 +6,7 @@ namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
     /// Xử lý các phím test trong quá trình phát triển (hỗ trợ cả New Input System và Direct Keyboard).
+    /// Sử dụng trực tiếp cấu hình vị trí spawn từ Spawner.
     ///
     /// 1 - Spawn Rào thấp (Low Barrier - Buộc Nhảy)
     /// 2 - Spawn Xà cao (High Barrier - Buộc Trượt)
@@ -19,12 +20,6 @@ namespace StreamRushLive.Features.Spawning
         [SerializeField] private Spawner spawner;
         [SerializeField] private EnergySystem energySystem;
         [SerializeField] private RelayQueueManager relayQueue;
-
-        [Header("Spawn Settings 2.5D")]
-        [SerializeField] private float spawnX = 30f;
-        [SerializeField] private float lowBarrierY = 0.5f;
-        [SerializeField] private float highBarrierY = 1.8f;
-        [SerializeField] private float buffItemY = 0.8f;
 
         [Header("Test Settings")]
         [SerializeField] private float energyAmount = 20f;
@@ -75,44 +70,39 @@ namespace StreamRushLive.Features.Spawning
 
         public void SpawnLowBarrier()
         {
-            Debug.Log("[MockInput] Spawn Rào thấp (Cần Nhảy né)");
             if (spawner != null)
             {
-                spawner.Spawn(SpawnType.LowBarrier, new Vector3(spawnX, lowBarrierY, 0f));
+                spawner.SpawnObstacle(ObstacleType.LowBarrier);
             }
         }
 
         public void SpawnHighBarrier()
         {
-            Debug.Log("[MockInput] Spawn Xà cao (Cần Cúi/Trượt né)");
             if (spawner != null)
             {
-                spawner.Spawn(SpawnType.HighBarrier, new Vector3(spawnX, highBarrierY, 0f));
+                spawner.SpawnObstacle(ObstacleType.HighBarrier);
             }
         }
 
         public void SpawnBuffItem()
         {
-            Debug.Log("[MockInput] Spawn Buff Item");
             if (spawner != null)
             {
-                spawner.Spawn(SpawnType.BuffItem, new Vector3(spawnX, buffItemY, 0f));
+                spawner.SpawnItem(ItemType.EnergyBuff);
             }
         }
 
         public void AddEnergy()
         {
-            Debug.Log($"[MockInput] Thả tim: Thêm +{energyAmount} năng lượng");
             if (energySystem != null)
             {
-                energySystem.AddEnergy(energyAmount);
+                energySystem.AddLike(energyAmount);
             }
         }
 
         public void AddMockFollower()
         {
             string newFollower = $"Follower_{followerCounter++}";
-            Debug.Log($"[MockInput] Người xem mới: {newFollower} được thêm vào hàng đợi");
             if (relayQueue != null)
             {
                 relayQueue.EnqueueFollower(newFollower);

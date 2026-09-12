@@ -16,6 +16,17 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private float floatDistance = 40f;
         [SerializeField] private float duration = 1.2f;
 
+        [Header("Text Settings")]
+        [Tooltip("Bật No Wrap để chữ luôn nằm trên 1 dòng duy nhất, không tự động xuống dòng.")]
+        [SerializeField] private bool noWrap = true;
+        [Tooltip("Bật để hiển thị ô icon bên cạnh chữ. Tắt để ẩn hoàn toàn các icon.")]
+        [SerializeField] private bool showIcon = false;
+
+        // Regex lọc sạch các ký tự emoji/icon unicode khỏi chuỗi text tránh lỗi font TextMeshPro
+        private static readonly System.Text.RegularExpressions.Regex EmojiRegex = new System.Text.RegularExpressions.Regex(
+            @"[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF\u2300-\u23FF\u2B50-\u2B55\uFE0F]",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
+
         // Màu tạm thời phân biệt buff/debuff khi chưa có icon (GDD: buff = tích cực, debuff = cảnh báo).
         private static readonly Color BuffColor = new Color(0.4f, 0.85f, 0.45f);
         private static readonly Color DebuffColor = new Color(0.95f, 0.35f, 0.3f);
@@ -26,7 +37,16 @@ namespace SteamRush.Features.UI.Views
         private void Awake()
         {
             startAnchoredPosition = ((RectTransform)transform).anchoredPosition;
+            ApplyNoWrap();
             ApplyCartoonOutline();
+        }
+
+        private void ApplyNoWrap()
+        {
+            if (label != null && noWrap)
+            {
+                label.textWrappingMode = TextWrappingModes.NoWrap;
+            }
         }
 
         // Viền đen đậm quanh chữ cho cảm giác cartoon/game-UI (kiểu Geometry Dash), không phải đổi font.
@@ -48,8 +68,15 @@ namespace SteamRush.Features.UI.Views
             var rect = (RectTransform)transform;
             rect.anchoredPosition = startAnchoredPosition;
 
+            // Xóa mọi emoji/icon còn sót lại trong chữ để văn bản luôn sạch đẹp
+            if (!string.IsNullOrEmpty(message))
+            {
+                message = EmojiRegex.Replace(message, "").Trim();
+            }
+
             if (label != null)
             {
+                ApplyNoWrap();
                 label.text = message;
                 label.color = isBuff ? BuffColor : DebuffColor;
             }
@@ -64,8 +91,9 @@ namespace SteamRush.Features.UI.Views
 
             if (iconImage != null)
             {
-                iconImage.gameObject.SetActive(icon != null);
-                if (icon != null)
+                bool shouldShow = showIcon && icon != null;
+                iconImage.gameObject.SetActive(shouldShow);
+                if (shouldShow)
                 {
                     iconImage.sprite = icon;
                     iconImage.color = iconColor ?? Color.white;

@@ -68,26 +68,35 @@ namespace SteamRush.MinhHuy
             Debug.Log("[MinhHuy] dữ liệu giả chờ module Relay/Like");
         }
 
+        [SerializeField] private bool testFakeProgressAndEnergy = true;
+        [SerializeField] private bool testRandomStatusPopups = false;
+
         private void Update()
         {
             // Tăng tiến độ giả để kiểm tra HUD khi các module gameplay chưa sẵn sàng.
-            fakeKm += Time.deltaTime;
-            hud?.UpdateProgress(fakeKm);
-            hud?.UpdateEnergy(Mathf.PingPong(Time.time, 1f));
-
-            // Giả lập buff/debuff ngẫu nhiên mỗi statusPopupInterval giây để test popup khi module GiftSystem chưa sẵn sàng.
-            statusPopupTimer += Time.deltaTime;
-            if (statusPopupTimer >= statusPopupInterval)
+            if (testFakeProgressAndEnergy)
             {
-                statusPopupTimer = 0f;
-                bool isBuff = Random.value > 0.5f;
-                string[] pool = isBuff ? BuffMessages : DebuffMessages;
-                int index = Random.Range(0, pool.Length);
-                Sprite[] iconPool = isBuff ? buffIcons : debuffIcons;
-                Color[] colorPool = isBuff ? buffIconColors : debuffIconColors;
-                Sprite icon = index < iconPool.Length ? iconPool[index] : null;
-                Color? iconColor = index < colorPool.Length ? colorPool[index] : (Color?)null;
-                hud?.ShowStatusPopup(pool[index], isBuff, icon, iconColor);
+                fakeKm += Time.deltaTime;
+                hud?.UpdateProgress(fakeKm);
+                hud?.UpdateEnergy(Mathf.PingPong(Time.time, 1f));
+            }
+
+            // Giả lập buff/debuff ngẫu nhiên khi được bật (dùng test UI khi không chạy gameplay thật).
+            if (testRandomStatusPopups)
+            {
+                statusPopupTimer += Time.deltaTime;
+                if (statusPopupTimer >= statusPopupInterval)
+                {
+                    statusPopupTimer = 0f;
+                    bool isBuff = Random.value > 0.5f;
+                    string[] pool = isBuff ? BuffMessages : DebuffMessages;
+                    int index = Random.Range(0, pool.Length);
+                    Sprite[] iconPool = isBuff ? buffIcons : debuffIcons;
+                    Color[] colorPool = isBuff ? buffIconColors : debuffIconColors;
+                    Sprite icon = index < iconPool.Length ? iconPool[index] : null;
+                    Color? iconColor = index < colorPool.Length ? colorPool[index] : (Color?)null;
+                    hud?.ShowStatusPopup(pool[index], isBuff, icon, iconColor);
+                }
             }
 
             // Giả lập viewer tặng quà ngẫu nhiên mỗi giftToastInterval giây để test toast khi module StreamIntegration chưa sẵn sàng.

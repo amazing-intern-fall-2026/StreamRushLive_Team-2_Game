@@ -7,8 +7,16 @@ namespace SteamRush.Track
 {
     public class TrackProgressTracker : MonoBehaviour
     {
-        public const float RelayDistanceMeters = 100f;
-        public const float GoalDistanceMeters = 100000f;
+        [Header("Relay & Goal Distance Settings")]
+        [Tooltip("Distance in meters required per baton relay / pass (e.g. 100m).")]
+        [SerializeField] private float _relayDistanceMeters = 100f;
+
+        [Tooltip("Total goal distance in kilometers (e.g. 100km).")]
+        [SerializeField] private float _goalDistanceKm = 100f;
+
+        public float RelayDistanceMeters => _relayDistanceMeters;
+        public float GoalDistanceKm => _goalDistanceKm;
+        public float GoalDistanceMeters => _goalDistanceKm * 1000f;
 
         [Serializable] public class ProgressChangedEvent : UnityEvent<float, float, float> { }
 
@@ -61,6 +69,25 @@ namespace SteamRush.Track
             if (_hudManager != null)
             {
                 _hudManager.UpdateProgress(TotalDistanceMeters / 1000f);
+            }
+        }
+
+        /// <summary>
+        /// Giảm quãng đường hiện tại (dùng khi người chơi va chạm phải chướng ngại vật có hình phạt trừ quãng đường).
+        /// </summary>
+        public void ReduceDistance(float distanceDelta)
+        {
+            if (distanceDelta <= 0f) return;
+
+            CurrentLegDistanceMeters = Mathf.Max(0f, CurrentLegDistanceMeters - distanceDelta);
+            TotalDistanceMeters = Mathf.Max(0f, TotalDistanceMeters - distanceDelta);
+
+            _progressChanged.Invoke(CurrentLegDistanceMeters, TotalDistanceMeters, GoalProgress);
+
+            if (_hudManager != null)
+            {
+                _hudManager.UpdateProgress(TotalDistanceMeters / 1000f);
+                _hudManager.ShowStatusPopup($"-{distanceDelta:F0}m Quãng đường!", false);
             }
         }
     }

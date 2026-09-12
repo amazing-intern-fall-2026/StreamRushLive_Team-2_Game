@@ -10,7 +10,20 @@ namespace SteamRush.Relay
     {
         [SerializeField] private TrackProgressTracker _progressTracker;
         [SerializeField] private HUDManager _hudManager;
+        [Header("Runner Settings")]
+        [Tooltip("Initial runner's display name.")]
         [SerializeField] private string _initialRunnerName = "Runner_Start";
+
+        [Header("Demo Queue Settings")]
+        [Tooltip("Predefined demo follower names queued up for baton pass.")]
+        [SerializeField] private List<string> _demoFollowers = new List<string>
+        {
+            "Viewer_Alex",
+            "Viewer_Bao",
+            "Viewer_Chi",
+            "Viewer_Dung",
+            "Viewer_Emma"
+        };
 
         private readonly Queue<string> _followers = new Queue<string>();
 
@@ -24,10 +37,17 @@ namespace SteamRush.Relay
             if (_progressTracker == null) _progressTracker = FindFirstObjectByType<TrackProgressTracker>();
             if (_hudManager == null) _hudManager = FindFirstObjectByType<HUDManager>();
 
-            // Khởi tạo một số follower giả lập để test
-            _followers.Enqueue("Viewer_Alex");
-            _followers.Enqueue("Viewer_Bao");
-            _followers.Enqueue("Viewer_Chi");
+            // Khởi tạo hàng đợi từ danh sách cấu hình trên Inspector
+            if (_demoFollowers != null && _demoFollowers.Count > 0)
+            {
+                for (int i = 0; i < _demoFollowers.Count; i++)
+                {
+                    if (!string.IsNullOrEmpty(_demoFollowers[i]))
+                    {
+                        _followers.Enqueue(_demoFollowers[i]);
+                    }
+                }
+            }
         }
 
         private void Start()
@@ -58,25 +78,24 @@ namespace SteamRush.Relay
         public void EnqueueFollower(string followerId)
         {
             _followers.Enqueue(followerId);
-            Debug.Log($"[RelayQueue] Follower {followerId} đã vào hàng đợi. Tổng: {_followers.Count}");
+            _hudManager?.ShowStatusPopup($"+1 Đăng ký: {followerId}", true);
         }
 
         private void HandleRelayCompleted(int relayNumber)
         {
             if (_followers.Count == 0)
             {
-                Debug.Log($"[RelayQueue] Chặng {relayNumber} hoàn thành, nhưng hàng đợi rỗng. Runner tiếp tục chạy chặng mới.");
+                _hudManager?.ShowStatusPopup($"Hoàn thành chặng {relayNumber}!", true);
                 return;
             }
 
             string followerId = _followers.Dequeue();
-            Debug.Log($"[RelayQueue] Chặng {relayNumber} hoàn thành. Runner tiếp theo: {followerId}");
-
             _followerNameChanged.Invoke(followerId);
 
             if (_hudManager != null)
             {
                 _hudManager.UpdateRunnerInfo(followerId, null);
+                _hudManager.ShowStatusPopup($"Chuyển gậy: {followerId}!", true);
             }
         }
     }
