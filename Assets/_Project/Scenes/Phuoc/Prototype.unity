@@ -1794,6 +1794,12 @@ MonoBehaviour:
   _progressTracker: {fileID: 696328611}
   _hudManager: {fileID: 1761481900}
   _initialRunnerName: Runner_Start
+  _demoFollowers:
+  - Viewer_Alex
+  - Viewer_Bao
+  - Viewer_Chi
+  - Viewer_Dung
+  - Viewer_Emma
   _followerNameChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -3154,6 +3160,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8d330105d04a89042a45fa64e02d3874, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Track.TrackProgressTracker
+  _relayDistanceMeters: 200
+  _goalDistanceKm: 100
   _progressChanged:
     m_PersistentCalls:
       m_Calls: []
