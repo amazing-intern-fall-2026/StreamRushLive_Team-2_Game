@@ -11,7 +11,6 @@ namespace SteamRush.Features.Runner
     /// Chịu trách nhiệm phát hiện va chạm TRIGGER giữa Runner với vật cản và vật phẩm:
     /// - Sử dụng cơ chế Trigger (OnTriggerEnter) giúp Runner không bị kẹt hay khựng vật lý cứng.
     /// - Đóng băng khung hình ngắn (hit-stop 0.15s).
-    /// - Đẩy lùi nhân vật (knockback easing).
     /// - Phạt trừ năng lượng (-25%) và hiển thị Status Popup "Vấp ngã!".
     /// - Tự động hồi phục tốc độ thế giới (WorldSpeedManager/GameSpeedController).
     /// - Nhặt Buff Item dạng Trigger hồi +20% năng lượng.
@@ -110,7 +109,6 @@ namespace SteamRush.Features.Runner
             // Lấy thông số phạt cụ thể từ chính Obstacle nếu có, ngược lại dùng mặc định
             float penalty = obstacle != null ? obstacle.EnergyPenaltyPercent : _energyPenaltyPercent;
             float hitStop = obstacle != null ? obstacle.HitStopDuration : _hitStopDuration;
-            string obstacleTitle = obstacle != null ? obstacle.ObstacleName : "Vật cản";
 
             // Chuyển chính Player thành Trigger để vật cản xuyên qua mà không xô đẩy
             _controller.SetTriggerMode(true);
@@ -137,9 +135,6 @@ namespace SteamRush.Features.Runner
                 energySystem.AddEnergy(-penalty);
             }
 
-            // Đẩy lùi nhân vật
-            _controller.ApplyKnockback();
-
             // Đóng băng khung hình (Hit-stop)
             Time.timeScale = 0f;
             yield return new WaitForSecondsRealtime(hitStop);
@@ -162,7 +157,7 @@ namespace SteamRush.Features.Runner
 
             // Hiệu ứng nhấp nháy miễn nhiễm và giữ Player ở trạng thái Trigger trong khi vật cản trôi qua
             float elapsed = 0f;
-            while (elapsed < _invulnerabilityDuration || _controller.IsKnockingBack)
+            while (elapsed < _invulnerabilityDuration)
             {
                 elapsed += Time.deltaTime;
                 SetRenderersVisible(elapsed % 0.15f < 0.075f);

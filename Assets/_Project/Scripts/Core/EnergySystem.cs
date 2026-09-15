@@ -72,7 +72,7 @@ namespace StreamRushLive.Features.Spawning
         {
             if (worldSpeedManager == null) return;
 
-            // Nếu Player đang bị Stun hoặc Knockback thì không ghi đè tốc độ
+            // Nếu Player đang xử lý va chạm (choáng/dừng) thì không ghi đè tốc độ
             if (runnerCollision != null && runnerCollision.IsHandlingHit)
             {
                 return;

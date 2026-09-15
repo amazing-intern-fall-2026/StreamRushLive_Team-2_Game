@@ -11,7 +11,7 @@ public class TestRunnerDriver : MonoBehaviour
 
     private void Start()
     {
-        _progressTracker.ProgressChanged.AddListener(OnProgressChanged);   // thêm dòng này
+        _progressTracker.ProgressChanged.AddListener(OnProgressChanged);
 
         _relayQueueManager.EnqueueFollower("follower_A");
         _relayQueueManager.EnqueueFollower("follower_B");
@@ -25,7 +25,7 @@ public class TestRunnerDriver : MonoBehaviour
        
     }
 
-    private void OnProgressChanged(float leg, float total, float goalProgress)   // thêm hàm này
+    private void OnProgressChanged(float leg, float total, float goalProgress)
     {
         Debug.Log($"Progress: leg={leg:F1}m total={total:F1}m goal={goalProgress:P1}");
     }

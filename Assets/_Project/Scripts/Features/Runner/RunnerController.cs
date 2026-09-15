@@ -4,8 +4,8 @@ namespace SteamRush.Features.Runner
     using StreamRushLive.Features.Spawning;
 
     /// <summary>
-    /// "Bộ não" vật lý của Runner: xử lý nhảy, cúi, rơi nhanh, ground-check
-    /// và đẩy lùi khi va chạm. Nhân vật ĐỨNG YÊN theo trục ngang (mô hình treadmill) — không có
+    /// "Bộ não" vật lý của Runner: xử lý nhảy, cúi, rơi nhanh, ground-check.
+    /// Nhân vật ĐỨNG YÊN theo trục ngang (mô hình treadmill) — không có
     /// hàm di chuyển ngang. Không đọc Input trực tiếp — RunnerInputHandler gọi các hàm public ở
     /// đây (Single Responsibility: Controller chỉ lo vật lý, không lo phím bấm).
     /// </summary>
@@ -32,11 +32,6 @@ namespace SteamRush.Features.Runner
         [Tooltip("Raycast check distance below collider bottom.")]
         [SerializeField] private float _groundCheckDistance = 0.25f;
 
-        [Header("Knockback")]
-        [SerializeField] private float _knockbackDistance = 1.5f;
-        [SerializeField] private float _knockbackDuration = 0.3f;
-        [Tooltip("Knockback direction upon obstacle collision.")]
-        [SerializeField] private Vector3 _knockbackDirection = Vector3.left;
 
         public Rigidbody RB { get; private set; }
         public bool IsGrounded { get; private set; }
@@ -51,16 +46,12 @@ namespace SteamRush.Features.Runner
         private Transform _visualRoot;
         private Vector3 _standingVisualScale = Vector3.one;
 
-        private float _startX;
-        private readonly KnockbackHandler _knockbackHandler = new KnockbackHandler();
-
         private bool _isCollidingWithGround;
         private float _jumpCooldownTimer;
 
         private void Awake()
         {
             RB = GetComponent<Rigidbody>();
-            _startX = transform.position.x;
 
             Animator animator = GetComponent<Animator>();
             if (animator != null)
@@ -94,7 +85,7 @@ namespace SteamRush.Features.Runner
 
             // Khoá cả Position X lẫn Z: nhân vật đứng yên tại chỗ theo cả 2 trục ngang — thế
             // giới (Track/Background) mới là thứ di chuyển, mô hình "treadmill" của endless
-            // runner. Chỉ còn trục Y (nhảy/rơi) là tự do. Trục X sẽ được MỞ TẠM lúc bị knockback.
+            // runner. Chỉ còn trục Y (nhảy/rơi) là tự do. Hoàn toàn không có knockback.
             RB.constraints = RigidbodyConstraints.FreezePositionX
                 | RigidbodyConstraints.FreezePositionZ
                 | RigidbodyConstraints.FreezeRotationX
@@ -120,8 +111,6 @@ namespace SteamRush.Features.Runner
             {
                 RB.linearVelocity += Vector3.up * Physics.gravity.y * (_risingMultiplier - 1f) * Time.fixedDeltaTime;
             }
-
-            ApplyKnockbackMotion();
         }
 
         public void PerformJump(float jumpForce)
@@ -184,14 +173,6 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        /// <summary>Gọi khi va chạm vật cản: đẩy lùi nhân vật một đoạn ngắn, giảm dần theo easing.</summary>
-        public void ApplyKnockback()
-        {
-            _knockbackHandler.BeginKnockback(_knockbackDistance, _knockbackDuration);
-        }
-
-        public bool IsKnockingBack => _knockbackHandler.IsKnockingBack;
-
         /// <summary>
         /// Chuyển đổi Collider của Player sang Trigger (dùng khi va chạm vật cản để vật thể trôi xuyên qua Player).
         /// Khi bật Trigger, tạm khoá trục Y và tắt gravity để Player đứng vững trên mặt sàn không bị rơi xuyên đất.
@@ -212,32 +193,6 @@ namespace SteamRush.Features.Runner
                 RB.constraints &= ~RigidbodyConstraints.FreezePositionY;
                 RB.useGravity = true;
             }
-        }
-
-        private void ApplyKnockbackMotion()
-        {
-            if (!_knockbackHandler.IsKnockingBack)
-            {
-                // Sau khi knockback xong, từ từ tiến lại vị trí treadmill ban đầu
-                if (Mathf.Abs(RB.position.x - _startX) > 0.02f)
-                {
-                    RB.constraints &= ~RigidbodyConstraints.FreezePositionX;
-                    float newX = Mathf.MoveTowards(RB.position.x, _startX, 2.5f * Time.fixedDeltaTime);
-                    RB.MovePosition(new Vector3(newX, RB.position.y, RB.position.z));
-                }
-                else
-                {
-                    RB.MovePosition(new Vector3(_startX, RB.position.y, RB.position.z));
-                    RB.constraints |= RigidbodyConstraints.FreezePositionX;
-                }
-                return;
-            }
-
-            // Mở tạm khoá trục X trong lúc đẩy lùi
-            RB.constraints &= ~RigidbodyConstraints.FreezePositionX;
-
-            float backward = _knockbackHandler.GetBackwardDelta(Time.fixedDeltaTime);
-            RB.MovePosition(RB.position + _knockbackDirection * backward);
         }
 
         private void UpdateGroundCheck()
