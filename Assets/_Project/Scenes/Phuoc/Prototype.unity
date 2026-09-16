@@ -3090,6 +3090,12 @@ MonoBehaviour:
   - {fileID: 4000001, guid: 37a23713a2a24da08276955244efe6b6, type: 3}
   buffItemPrefabs:
   - {fileID: 8390172763218304724, guid: d7a970a29d3109f41839b9cd77f1dd41, type: 3}
+  shieldItemPrefabs:
+  - {fileID: 4142973673762590350, guid: 5936c31fd1d2cce4094bc3f1c47dc418, type: 3}
+  highJumpItemPrefabs:
+  - {fileID: 3380443975215192768, guid: 300b435b77417a04aa8636bec7ea0ccc, type: 3}
+  hyperDashItemPrefabs:
+  - {fileID: 4339631351532938944, guid: 3932aa95273763343ac397d9bbc73616, type: 3}
   spawnPoint: {fileID: 655669062}
   useGameObjectPosition: 1
   spawnOffset: {x: 0, y: 0, z: 0}
@@ -3101,6 +3107,9 @@ MonoBehaviour:
   fallingHazardY: 4.5
   bouncingBoulderY: 0.5
   buffItemY: 1
+  shieldItemY: 1
+  highJumpItemY: 1
+  hyperDashItemY: 1
   worldSpeedManager: {fileID: 1410114198}
   minSafeDistance: 15
 --- !u!114 &655669061

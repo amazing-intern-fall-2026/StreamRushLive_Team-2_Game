@@ -50,6 +50,11 @@ namespace SteamRush.Features.Runner
         {
             _controller = GetComponent<RunnerController>();
             _renderers = GetComponentsInChildren<Renderer>();
+
+            if (!TryGetComponent<RunnerItemEffects>(out _))
+            {
+                gameObject.AddComponent<RunnerItemEffects>();
+            }
         }
 
         /// <summary>

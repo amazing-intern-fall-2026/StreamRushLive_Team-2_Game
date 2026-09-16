@@ -178,12 +178,18 @@ namespace SteamRush.Features.Runner
             RB.linearVelocity += Vector3.down * gravity * Time.fixedDeltaTime;
         }
 
-        /// <summary>Nhảy với vận tốc cố định GDD (+6.5 m/s), không phụ thuộc Mass của Rigidbody.</summary>
+        /// <summary>Nhảy với vận tốc cố định GDD (+6.5 m/s), không phụ thuộc Mass của Rigidbody. Áp dụng multiplier nếu có buff High Jump.</summary>
         public void PerformJump()
         {
             if (!IsGrounded || IsDucking) return;
 
-            RB.linearVelocity = new Vector3(RB.linearVelocity.x, _jumpVelocity, 0f);
+            float jumpVel = _jumpVelocity;
+            if (TryGetComponent<RunnerItemEffects>(out var itemEffects) && itemEffects.IsHighJumpActive)
+            {
+                jumpVel *= itemEffects.CurrentJumpForceMultiplier;
+            }
+
+            RB.linearVelocity = new Vector3(RB.linearVelocity.x, jumpVel, 0f);
             _isCollidingWithGround = false;
             IsGrounded = false;
             _jumpCooldownTimer = 0.15f;

@@ -46,12 +46,30 @@ namespace StreamRushLive.Features.Spawning
                 worldSpeedManager = FindFirstObjectByType<WorldSpeedManager>();
             }
 
+            if (worldSpeedManager != null)
+            {
+                worldSpeedManager.OnSprintEnergyConsumed += HandleSprintEnergyConsumed;
+            }
+
             if (hudManager == null)
             {
                 hudManager = FindFirstObjectByType<HUDManager>();
             }
 
             runnerCollision = FindFirstObjectByType<RunnerCollisionHandler>();
+        }
+
+        private void OnDestroy()
+        {
+            if (worldSpeedManager != null)
+            {
+                worldSpeedManager.OnSprintEnergyConsumed -= HandleSprintEnergyConsumed;
+            }
+        }
+
+        private void HandleSprintEnergyConsumed(float cost)
+        {
+            currentEnergy = Mathf.Max(0f, currentEnergy - cost);
         }
 
         private void Update()
@@ -74,13 +92,12 @@ namespace StreamRushLive.Features.Spawning
         {
             if (worldSpeedManager == null) return;
 
-            // Nếu Player đang xử lý va chạm (choáng/dừng) thì không ghi đè tốc độ
-            if (runnerCollision != null && runnerCollision.IsHandlingHit)
-            {
-                return;
-            }
+            worldSpeedManager.CurrentEnergyPercent01 = EnergyNormalized;
 
-            worldSpeedManager.CurrentSpeed = GetCurrentSpeed();
+            if (_hasSpeedOverride)
+            {
+                worldSpeedManager.CurrentSpeed = _speedOverride;
+            }
         }
 
         private void SyncHUD()
