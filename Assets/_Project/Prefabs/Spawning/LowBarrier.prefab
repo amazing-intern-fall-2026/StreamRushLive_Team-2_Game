@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 4903184610563482697}
   - component: {fileID: 4795408590554452225}
   - component: {fileID: 2317896448776275178}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: LowBarrier
   m_TagString: Obstacle
   m_Icon: {fileID: 0}

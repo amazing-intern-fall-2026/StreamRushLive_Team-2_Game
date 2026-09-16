@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 110647936106888263}
   - component: {fileID: 8185552545942452004}
   - component: {fileID: -3380859437483410033}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: SM_Prop_TrashBag_01
   m_TagString: Obstacle
   m_Icon: {fileID: 0}
@@ -141,4 +141,3 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
-

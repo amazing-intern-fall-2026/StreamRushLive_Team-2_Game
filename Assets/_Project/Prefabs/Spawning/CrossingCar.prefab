@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 5420653208262866615}
   - component: {fileID: 2953874292541548031}
   - component: {fileID: 6161772685385196757}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: CrossingCar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -127,7 +127,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::StreamRushLive.Features.Spawning.CrossingCar
   obstacleName: Obstacle
   obstacleType: 0
-  knockbackDistance: 1.5
   energyPenaltyPercent: 25
   hitStopDuration: 0.15
   distancePenaltyMeters: 0

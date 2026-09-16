@@ -59,15 +59,77 @@ namespace SteamRush.Features.Runner
 
         /// <summary>
         /// Bật hoặc tắt trạng thái Hyper Dash.
-        /// Khi Hyper Dash hoạt động, Runner trở thành Trigger để có thể đi xuyên qua vật cản.
+        /// Khi Hyper Dash hoạt động:
+        /// - Tắt va chạm layer giữa Layer Player và Layer Obstacle (Physics.IgnoreLayerCollision).
+        /// - Đổi collider sang Trigger mode.
+        /// - Runner đi xuyên và quét phá hủy vật cản.
         /// </summary>
         public void SetHyperDashState(bool isActive)
         {
             _isHyperDashActive = isActive;
 
+            int playerLayer = LayerMask.NameToLayer("Player");
+            int obstacleLayer = LayerMask.NameToLayer("Obstacle");
+
+            if (playerLayer != -1 && obstacleLayer != -1)
+            {
+                Physics.IgnoreLayerCollision(playerLayer, obstacleLayer, isActive);
+            }
+
             if (_controller != null)
             {
                 _controller.SetHyperDashTriggerMode(isActive);
+            }
+        }
+
+        private void Update()
+        {
+            if (_isHyperDashActive)
+            {
+                ClearHyperDashObstacles();
+            }
+        }
+
+        private void ClearHyperDashObstacles()
+        {
+            int obstacleLayer = LayerMask.NameToLayer("Obstacle");
+            if (obstacleLayer == -1) return;
+
+            Vector3 center = transform.position + Vector3.up * 1f;
+            Vector3 halfExtents = new Vector3(1.2f, 1.2f, 1.2f);
+
+            Collider[] hits = Physics.OverlapBox(center, halfExtents, transform.rotation, 1 << obstacleLayer);
+            for (int i = 0; i < hits.Length; i++)
+            {
+                ObstacleBase obstacle = hits[i].GetComponentInParent<ObstacleBase>();
+                if (obstacle != null)
+                {
+                    Destroy(obstacle.gameObject);
+                }
+                else if (hits[i].CompareTag(_obstacleTag) || hits[i].name.Contains("Barrier") || hits[i].name.Contains("Obstacle"))
+                {
+                    Destroy(hits[i].gameObject);
+                }
+            }
+        }
+
+        private void OnDisable()
+        {
+            ResetHyperDashLayerCollision();
+        }
+
+        private void OnDestroy()
+        {
+            ResetHyperDashLayerCollision();
+        }
+
+        private void ResetHyperDashLayerCollision()
+        {
+            int playerLayer = LayerMask.NameToLayer("Player");
+            int obstacleLayer = LayerMask.NameToLayer("Obstacle");
+            if (playerLayer != -1 && obstacleLayer != -1)
+            {
+                Physics.IgnoreLayerCollision(playerLayer, obstacleLayer, false);
             }
         }
 
