@@ -12,6 +12,12 @@ namespace StreamRushLive.Features.Spawning
     /// Hỗ trợ spawn tại vị trí truyền vào hoặc lấy trực tiếp tại vị trí của GameObject Spawner (hoặc SpawnPoint).
     /// Tự động gắn MovingWorldObject để vật thể trôi theo thế giới.
     /// </summary>
+    // ================================================================
+    // [DHUY] Bổ sung: Obstacle Queue (Safe Distance) — xem chi tiết ở
+    // các block code có comment "// [DHUY - ADDED]" bên dưới.
+    // Mục đích: đảm bảo khoảng cách tối thiểu 15m giữa 2 obstacle liên
+    // tiếp được spawn, theo yêu cầu task "Spawner Safe Distance".
+    // ================================================================
     public class Spawner : MonoBehaviour
     {
         [Header("Obstacle Prefabs (Lists - Random Spawn)")]
@@ -41,6 +47,19 @@ namespace StreamRushLive.Features.Spawning
         [Header("Settings")]
         [SerializeField] private WorldSpeedManager worldSpeedManager;
 
+        // [DHUY - ADDED] ---- Bắt đầu: field phục vụ Obstacle Queue (Safe Distance) ----
+        [Header("Obstacle Queue (Safe Distance) — Added by Dhuy")]
+        [Tooltip("Khoảng cách tối thiểu (mét) giữa 2 obstacle liên tiếp được spawn.")]
+        [SerializeField] private float minSafeDistance = 15f;
+
+        // Hàng chờ obstacle: được nạp vào qua EnqueueObstacle()/EnqueueObstacles(),
+        // lấy dần ra để spawn khi đã đủ khoảng cách an toàn với obstacle spawn trước đó.
+        private readonly Queue<ObstacleType> _obstacleQueue = new Queue<ObstacleType>();
+
+        // Tham chiếu obstacle vừa spawn gần nhất, dùng để đo khoảng cách mỗi frame.
+        private Transform _lastSpawnedObstacle;
+        // [DHUY - ADDED] ---- Kết thúc field ----
+
         public List<GameObject> LowBarrierPrefabs => lowBarrierPrefabs;
         public List<GameObject> HighBarrierPrefabs => highBarrierPrefabs;
         public List<GameObject> BuffItemPrefabs => buffItemPrefabs;
@@ -63,6 +82,9 @@ namespace StreamRushLive.Features.Spawning
             set => spawnOffset = value;
         }
 
+        // [DHUY - ADDED] Số obstacle còn đang chờ trong hàng đợi (dùng để debug/hiển thị nếu cần).
+        public int QueuedObstacleCount => _obstacleQueue.Count;
+
         private void Awake()
         {
             if (worldSpeedManager == null)
@@ -70,6 +92,74 @@ namespace StreamRushLive.Features.Spawning
                 worldSpeedManager = FindFirstObjectByType<WorldSpeedManager>();
             }
         }
+
+        // [DHUY - ADDED] ---- Bắt đầu: Update() mới, file gốc chưa có hàm này ----
+        // Mỗi frame kiểm tra hàng chờ, tự động spawn obstacle tiếp theo khi đủ khoảng cách an toàn.
+        private void Update()
+        {
+            TryDequeueAndSpawn();
+        }
+        // [DHUY - ADDED] ---- Kết thúc Update() ----
+
+        // ==========================================
+        // [DHUY - ADDED] OBSTACLE QUEUE (SAFE DISTANCE)
+        // Toàn bộ region này là code mới, phục vụ đúng yêu cầu task
+        // "Spawner Safe Distance": đảm bảo 2 obstacle liên tiếp trên
+        // đường cách nhau tối thiểu minSafeDistance (mặc định 15m).
+        // ==========================================
+
+        /// <summary>
+        /// [DHUY - ADDED] Đưa 1 loại obstacle vào hàng chờ, sẽ được spawn khi đủ khoảng cách an toàn.
+        /// Gọi hàm này thay vì gọi thẳng SpawnObstacle() nếu muốn áp dụng ràng buộc 15m.
+        /// </summary>
+        public void EnqueueObstacle(ObstacleType obstacleType)
+        {
+            _obstacleQueue.Enqueue(obstacleType);
+        }
+
+        /// <summary>
+        /// [DHUY - ADDED] Đưa nhiều loại obstacle vào hàng chờ cùng lúc, theo đúng thứ tự sẽ được spawn.
+        /// </summary>
+        public void EnqueueObstacles(IEnumerable<ObstacleType> obstacleTypes)
+        {
+            foreach (ObstacleType type in obstacleTypes)
+            {
+                _obstacleQueue.Enqueue(type);
+            }
+        }
+
+        /// <summary>
+        /// [DHUY - ADDED] Logic chính: nếu hàng chờ còn obstacle, kiểm tra khoảng cách giữa
+        /// SpawnPoint và obstacle spawn gần nhất — đủ minSafeDistance mới lấy obstacle tiếp
+        /// theo trong Queue ra để spawn. Nếu obstacle trước đã bị Destroy (đi quá xa, despawn),
+        /// _lastSpawnedObstacle sẽ null, coi như đã đủ xa, cho spawn ngay không cần chờ thêm.
+        /// </summary>
+        private void TryDequeueAndSpawn()
+        {
+            if (_obstacleQueue.Count == 0)
+            {
+                return;
+            }
+
+            float distanceSinceLast = -1f;
+
+            if (_lastSpawnedObstacle != null)
+            {
+                distanceSinceLast = Vector3.Distance(SpawnPoint.position, _lastSpawnedObstacle.position);
+                if (distanceSinceLast < minSafeDistance)
+                {
+                    return;
+                }
+            }
+
+            ObstacleType nextType = _obstacleQueue.Dequeue();
+            GameObject instance = SpawnObstacle(nextType);
+
+            Debug.Log($"[Spawner Queue] Spawned {nextType}, distanceSinceLast={distanceSinceLast:F2}m (min required: {minSafeDistance}m), remaining in queue: {_obstacleQueue.Count}");
+
+            _lastSpawnedObstacle = instance != null ? instance.transform : null;
+        }
+        // [DHUY - ADDED] ---- Kết thúc region Obstacle Queue ----
 
         // ==========================================
         // SPAWN HỆ THỐNG OBSTACLE (VẬT CẢN)
