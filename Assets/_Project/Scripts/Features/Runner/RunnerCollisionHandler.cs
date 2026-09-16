@@ -10,14 +10,8 @@ namespace SteamRush.Features.Runner
     /// Chịu trách nhiệm phát hiện va chạm TRIGGER giữa Runner với vật cản và vật phẩm:
     /// - Sử dụng cơ chế Trigger (OnTriggerEnter) giúp Runner không bị kẹt hay khựng vật lý cứng.
     /// - Đóng băng khung hình ngắn (hit-stop 0.15s).
-<<<<<<< HEAD
-    /// - Phạt trừ năng lượng (-25%) và hiển thị Status Popup "Vấp ngã!".
-    /// - Tự động hồi phục tốc độ thế giới (WorldSpeedManager/GameSpeedController).
-=======
-    /// - Đẩy lùi nhân vật (Knockback easing — GIỮ LẠI theo yêu cầu, khác GDD v1.2 mục 4.3).
     /// - Phạt trừ năng lượng và hiển thị Status Popup "Vấp ngã!".
     /// - Tự động hồi phục tốc độ thế giới qua WorldSpeedManager.TriggerRecovery().
->>>>>>> origin/feature/tu/speed-control-mechanics
     /// - Nhặt Buff Item dạng Trigger hồi +20% năng lượng.
     ///
     /// LƯU Ý: Không còn dùng GameSpeedController (đã xoá khỏi project) và không còn tự Lerp
@@ -201,12 +195,6 @@ namespace SteamRush.Features.Runner
                 energySystem.AddEnergy(-penalty);
             }
 
-<<<<<<< HEAD
-=======
-            // Đẩy lùi nhân vật (giữ lại theo yêu cầu)
-            _controller.ApplyKnockback();
-
->>>>>>> origin/feature/tu/speed-control-mechanics
             // Đóng băng khung hình (Hit-stop)
             Time.timeScale = 0f;
             yield return new WaitForSecondsRealtime(hitStop);
