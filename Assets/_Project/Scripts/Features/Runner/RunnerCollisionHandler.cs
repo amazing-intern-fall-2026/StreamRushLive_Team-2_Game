@@ -34,13 +34,29 @@ namespace SteamRush.Features.Runner
         private RunnerController _controller;
         private Renderer[] _renderers;
         private bool _isHandlingHit;
+        private bool _isHyperDashActive;
 
         public bool IsHandlingHit => _isHandlingHit;
+        public bool IsHyperDashActive => _isHyperDashActive;
 
         private void Awake()
         {
             _controller = GetComponent<RunnerController>();
             _renderers = GetComponentsInChildren<Renderer>();
+        }
+
+        /// <summary>
+        /// Bật hoặc tắt trạng thái Hyper Dash.
+        /// Khi Hyper Dash hoạt động, Runner trở thành Trigger để có thể đi xuyên qua vật cản.
+        /// </summary>
+        public void SetHyperDashState(bool isActive)
+        {
+            _isHyperDashActive = isActive;
+
+            if (_controller != null)
+            {
+                _controller.SetHyperDashTriggerMode(isActive);
+            }
         }
 
         /// <summary>
@@ -58,6 +74,25 @@ namespace SteamRush.Features.Runner
 
         private void HandleInteraction(GameObject obj)
         {
+            if (_isHyperDashActive)
+            {
+                ObstacleBase hyperDashObstacle = obj.GetComponentInParent<ObstacleBase>();
+
+                if (hyperDashObstacle != null)
+                {
+                    Destroy(hyperDashObstacle.gameObject);
+                    return;
+                }
+
+                // Fallback cho vật cản chưa có ObstacleBase nhưng vẫn mang Tag/tên vật cản.
+                if (obj.CompareTag(_obstacleTag)
+                    || obj.name.Contains("Barrier")
+                    || obj.name.Contains("Obstacle"))
+                {
+                    Destroy(obj);
+                    return;
+                }
+            }
             // 1. Kiểm tra nếu là Item (kế thừa ItemBase)
             ItemBase item = obj.GetComponentInParent<ItemBase>();
             if (item != null)
@@ -86,6 +121,12 @@ namespace SteamRush.Features.Runner
             ObstacleBase obstacle = obj.GetComponentInParent<ObstacleBase>();
             if (obstacle != null)
             {
+                if (TryConsumeShield())
+                {
+                    Destroy(obj);
+                    return;
+                }
+
                 if (!obstacle.HasCollided)
                 {
                     obstacle.TriggerHit(gameObject);
@@ -99,6 +140,11 @@ namespace SteamRush.Features.Runner
 
             if (obj.CompareTag(_obstacleTag) || obj.name.Contains("Barrier") || obj.name.Contains("Obstacle"))
             {
+                if (TryConsumeShield())
+                {
+                    Destroy(obj);
+                    return;
+                }
                 StartCoroutine(HandleObstacleHit(null));
             }
         }
@@ -208,5 +254,41 @@ namespace SteamRush.Features.Runner
                 speedManager.CurrentSpeed = targetSpeed;
             }
         }
+
+        /// <summary>
+        /// Kiểm tra Runner có Shield hay không và tiêu hao Shield nếu có.
+        /// </summary>
+        private bool TryConsumeShield()
+        {
+            RunnerItemEffects itemEffects = GetComponent<RunnerItemEffects>();
+
+            if (itemEffects == null)
+            {
+                itemEffects = GetComponentInParent<RunnerItemEffects>();
+            }
+
+            if (itemEffects == null)
+            {
+                return false;
+            }
+
+            if (!itemEffects.IsShieldActive)
+            {
+                return false;
+            }
+
+            bool blocked = itemEffects.ConsumeShield();
+
+            if (blocked)
+            {
+                Debug.Log("[RunnerCollisionHandler] Shield đã chặn va chạm.");
+
+                HUDManager hud = FindFirstObjectByType<HUDManager>();
+                hud?.ShowStatusPopup("Shield chặn va chạm!", true);
+            }
+
+            return blocked;
+        }
+
     }
 }

@@ -195,6 +195,35 @@ namespace SteamRush.Features.Runner
             }
         }
 
+        /// <summary>
+        /// Chuyển Collider của Player sang Trigger nhưng vẫn giữ nguyên vật lý theo trục Y.
+        /// Dùng cho Hyper Dash để Runner có thể nhảy/rơi bình thường trong khi đi xuyên vật cản.
+        /// </summary>
+        public void SetHyperDashTriggerMode(bool isTrigger)
+        {
+            if (_boxCollider != null)
+            {
+                _boxCollider.isTrigger = isTrigger;
+            }
+
+            if (_capsuleCollider != null)
+            {
+                _capsuleCollider.isTrigger = isTrigger;
+            }
+
+            if (isTrigger)
+            {
+                // Hyper Dash không được tắt Gravity hoặc khoá trục Y.
+                // Runner vẫn có thể nhảy và rơi bình thường.
+                RB.useGravity = true;
+                RB.constraints &= ~RigidbodyConstraints.FreezePositionY;
+            }
+            else
+            {
+                RB.constraints &= ~RigidbodyConstraints.FreezePositionY;
+                RB.useGravity = true;
+            }
+        }
         private void UpdateGroundCheck()
         {
             if (_jumpCooldownTimer > 0f)

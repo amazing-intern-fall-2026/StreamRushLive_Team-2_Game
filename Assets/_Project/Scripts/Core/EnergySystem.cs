@@ -30,6 +30,8 @@ namespace StreamRushLive.Features.Spawning
 
         private float currentEnergy;
         private RunnerCollisionHandler runnerCollision;
+        private bool _hasSpeedOverride;
+        private float _speedOverride;
 
         public float MaxEnergy => maxEnergy;
         public float CurrentEnergy => currentEnergy;
@@ -96,15 +98,44 @@ namespace StreamRushLive.Features.Spawning
         /// Trả về tốc độ hiện tại của Runner.
         /// Energy > 0: tăng 50%.
         /// Energy = 0: tốc độ bình thường.
+        /// Speed Override: dùng tốc độ đặc biệt của Item như Hyper Dash.
         /// </summary>
         public float GetCurrentSpeed()
         {
+            if (_hasSpeedOverride)
+            {
+                return _speedOverride;
+            }
+
             if (currentEnergy > 0f)
             {
                 return normalSpeed * sprintMultiplier;
             }
 
             return normalSpeed;
+        }
+
+        /// <summary>
+        /// Ghi đè tốc độ hiện tại bằng tốc độ đặc biệt của Item.
+        /// Dùng cho các Item có hiệu ứng tốc độ như Hyper Dash.
+        /// </summary>
+        public void SetSpeedOverride(float speed)
+        {
+            _hasSpeedOverride = true;
+            _speedOverride = Mathf.Max(0f, speed);
+
+            SyncWorldSpeed();
+        }
+
+        /// <summary>
+        /// Xóa tốc độ ghi đè và trả hệ thống về tốc độ bình thường dựa trên Energy.
+        /// </summary>
+        public void ClearSpeedOverride()
+        {
+            _hasSpeedOverride = false;
+            _speedOverride = 0f;
+
+            SyncWorldSpeed();
         }
 
         /// <summary>
