@@ -7,7 +7,8 @@ namespace StreamRushLive.Features.Spawning
     /// <summary>
     /// Lớp trừu tượng (Abstract Class) cơ sở cho toàn bộ chướng ngại vật (Obstacles) trong game:
     /// - Quản lý tên, loại ObstacleType.
-    /// - Cấu hình mức độ phạt riêng biệt cho từng loại: lực đẩy lùi, trừ năng lượng, khựng hình, trừ quãng đường.
+    /// - Cấu hình mức độ phạt riêng biệt cho từng loại: trừ năng lượng, khựng hình, trừ quãng đường.
+    /// - Không có lực đẩy lùi knockback (Runner luôn cố định tọa độ X).
     /// - Cung cấp hàm abstract OnHitPlayer() để các lớp con tự định nghĩa hành vi phụ (ví dụ trừ quãng đường, xoay vòng, văng mảnh vỡ,...).
     /// </summary>
     [RequireComponent(typeof(Collider))]
@@ -18,9 +19,6 @@ namespace StreamRushLive.Features.Spawning
         [SerializeField] protected ObstacleType obstacleType;
 
         [Header("Penalty Settings")]
-        [Tooltip("Player knockback distance in meters.")]
-        [SerializeField] protected float knockbackDistance = 1.5f;
-
         [Tooltip("Energy penalty percentage (%).")]
         [SerializeField] protected float energyPenaltyPercent = 25f;
 
@@ -34,7 +32,6 @@ namespace StreamRushLive.Features.Spawning
 
         public string ObstacleName => obstacleName;
         public ObstacleType Type => obstacleType;
-        public float KnockbackDistance => knockbackDistance;
         public float EnergyPenaltyPercent => energyPenaltyPercent;
         public float HitStopDuration => hitStopDuration;
         public float DistancePenaltyMeters => distancePenaltyMeters;

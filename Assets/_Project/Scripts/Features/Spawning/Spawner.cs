@@ -23,9 +23,16 @@ namespace StreamRushLive.Features.Spawning
         [Header("Obstacle Prefabs (Lists - Random Spawn)")]
         [SerializeField] private List<GameObject> lowBarrierPrefabs = new List<GameObject>();
         [SerializeField] private List<GameObject> highBarrierPrefabs = new List<GameObject>();
+        [SerializeField] private List<GameObject> stopSignPrefabs = new List<GameObject>();
+        [SerializeField] private List<GameObject> trafficLightPrefabs = new List<GameObject>();
+        [SerializeField] private List<GameObject> fallingHazardPrefabs = new List<GameObject>();
+        [SerializeField] private List<GameObject> bouncingBoulderPrefabs = new List<GameObject>();
 
         [Header("Item Prefabs (Lists - Random Spawn)")]
         [SerializeField] private List<GameObject> buffItemPrefabs = new List<GameObject>();
+        [SerializeField] private List<GameObject> shieldItemPrefabs = new List<GameObject>();
+        [SerializeField] private List<GameObject> highJumpItemPrefabs = new List<GameObject>();
+        [SerializeField] private List<GameObject> hyperDashItemPrefabs = new List<GameObject>();
 
         [Header("Spawn Position Settings")]
         [Tooltip("Spawn point transform. Uses this spawner if null.")]
@@ -42,7 +49,14 @@ namespace StreamRushLive.Features.Spawning
         [SerializeField] private bool useTypeYOffset = false;
         [SerializeField] private float lowBarrierY = 0.5f;
         [SerializeField] private float highBarrierY = 1.8f;
+        [SerializeField] private float stopSignY = 0.5f;
+        [SerializeField] private float trafficLightY = 0.5f;
+        [SerializeField] private float fallingHazardY = 4.5f;
+        [SerializeField] private float bouncingBoulderY = 0.5f;
         [SerializeField] private float buffItemY = 1.0f;
+        [SerializeField] private float shieldItemY = 1.0f;
+        [SerializeField] private float highJumpItemY = 1.0f;
+        [SerializeField] private float hyperDashItemY = 1.0f;
 
         [Header("Settings")]
         [SerializeField] private WorldSpeedManager worldSpeedManager;
@@ -62,7 +76,14 @@ namespace StreamRushLive.Features.Spawning
 
         public List<GameObject> LowBarrierPrefabs => lowBarrierPrefabs;
         public List<GameObject> HighBarrierPrefabs => highBarrierPrefabs;
+        public List<GameObject> StopSignPrefabs => stopSignPrefabs;
+        public List<GameObject> TrafficLightPrefabs => trafficLightPrefabs;
+        public List<GameObject> FallingHazardPrefabs => fallingHazardPrefabs;
+        public List<GameObject> BouncingBoulderPrefabs => bouncingBoulderPrefabs;
         public List<GameObject> BuffItemPrefabs => buffItemPrefabs;
+        public List<GameObject> ShieldItemPrefabs => shieldItemPrefabs;
+        public List<GameObject> HighJumpItemPrefabs => highJumpItemPrefabs;
+        public List<GameObject> HyperDashItemPrefabs => hyperDashItemPrefabs;
 
         public Transform SpawnPoint
         {
@@ -275,6 +296,26 @@ namespace StreamRushLive.Features.Spawning
         public GameObject SpawnHighBarrier() => SpawnObstacle(ObstacleType.HighBarrier);
         public GameObject SpawnBuffItem() => SpawnItem(ItemType.EnergyBuff);
 
+        public GameObject SpawnRandomObstacle()
+        {
+            ObstacleType randomType = (ObstacleType)Random.Range(
+                0,
+                System.Enum.GetValues(typeof(ObstacleType)).Length
+            );
+
+            return SpawnObstacle(randomType);
+        }
+
+        public GameObject SpawnRandomItem()
+        {
+            ItemType randomType = (ItemType)Random.Range(
+                0,
+                System.Enum.GetValues(typeof(ItemType)).Length
+            );
+
+            return SpawnItem(randomType);
+        }
+
         // ==========================================
         // HELPER FUNCTIONS
         // ==========================================
@@ -289,6 +330,7 @@ namespace StreamRushLive.Features.Spawning
         {
             bool hasDynamicRb = instance.TryGetComponent<Rigidbody>(out var rb) && !rb.isKinematic;
             Collider[] colliders = instance.GetComponentsInChildren<Collider>();
+
             for (int i = 0; i < colliders.Length; i++)
             {
                 if (colliders[i] is MeshCollider meshCol)
@@ -298,6 +340,7 @@ namespace StreamRushLive.Features.Spawning
                         meshCol.convex = true;
                     }
                 }
+
                 colliders[i].isTrigger = isTrigger;
             }
         }
@@ -305,6 +348,7 @@ namespace StreamRushLive.Features.Spawning
         private void SetupWorldMovement(GameObject instance)
         {
             MovingWorldObject mover = instance.GetComponent<MovingWorldObject>();
+
             if (mover == null)
             {
                 mover = instance.AddComponent<MovingWorldObject>();
@@ -328,8 +372,21 @@ namespace StreamRushLive.Features.Spawning
                     case ObstacleType.LowBarrier:
                         pos.y = lowBarrierY;
                         break;
+
                     case ObstacleType.HighBarrier:
                         pos.y = highBarrierY;
+                        break;
+                    case ObstacleType.StopSign:
+                        pos.y = stopSignY;
+                        break;
+                    case ObstacleType.TrafficLight:
+                        pos.y = trafficLightY;
+                        break;
+                    case ObstacleType.FallingHazard:
+                        pos.y = fallingHazardY;
+                        break;
+                    case ObstacleType.BouncingBoulder:
+                        pos.y = bouncingBoulderY;
                         break;
                 }
             }
@@ -349,6 +406,18 @@ namespace StreamRushLive.Features.Spawning
                     case ItemType.EnergyBuff:
                         pos.y = buffItemY;
                         break;
+
+                    case ItemType.Shield:
+                        pos.y = shieldItemY;
+                        break;
+
+                    case ItemType.HighJump:
+                        pos.y = highJumpItemY;
+                        break;
+
+                    case ItemType.HyperDash:
+                        pos.y = hyperDashItemY;
+                        break;
                 }
             }
 
@@ -361,8 +430,17 @@ namespace StreamRushLive.Features.Spawning
             {
                 case ObstacleType.LowBarrier:
                     return GetRandomPrefab(lowBarrierPrefabs);
+
                 case ObstacleType.HighBarrier:
                     return GetRandomPrefab(highBarrierPrefabs);
+                case ObstacleType.StopSign:
+                    return GetRandomPrefab(stopSignPrefabs);
+                case ObstacleType.TrafficLight:
+                    return GetRandomPrefab(trafficLightPrefabs);
+                case ObstacleType.FallingHazard:
+                    return GetRandomPrefab(fallingHazardPrefabs);
+                case ObstacleType.BouncingBoulder:
+                    return GetRandomPrefab(bouncingBoulderPrefabs);
                 default:
                     return null;
             }
@@ -374,6 +452,16 @@ namespace StreamRushLive.Features.Spawning
             {
                 case ItemType.EnergyBuff:
                     return GetRandomPrefab(buffItemPrefabs);
+
+                case ItemType.Shield:
+                    return GetRandomPrefab(shieldItemPrefabs);
+
+                case ItemType.HighJump:
+                    return GetRandomPrefab(highJumpItemPrefabs);
+
+                case ItemType.HyperDash:
+                    return GetRandomPrefab(hyperDashItemPrefabs);
+
                 default:
                     return null;
             }
@@ -387,6 +475,7 @@ namespace StreamRushLive.Features.Spawning
             }
 
             List<GameObject> validPrefabs = prefabs.FindAll(p => p != null);
+
             if (validPrefabs.Count == 0)
             {
                 return null;

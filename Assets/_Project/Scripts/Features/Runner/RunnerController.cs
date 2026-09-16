@@ -4,8 +4,8 @@ namespace SteamRush.Features.Runner
     using StreamRushLive.Features.Spawning;
 
     /// <summary>
-    /// "Bộ não" vật lý của Runner: xử lý nhảy, cúi, rơi nhanh, ground-check
-    /// và đẩy lùi khi va chạm. Nhân vật ĐỨNG YÊN theo trục ngang (mô hình treadmill) — không có
+    /// "Bộ não" vật lý của Runner: xử lý nhảy, cúi, rơi nhanh, ground-check.
+    /// Nhân vật ĐỨNG YÊN theo trục ngang (mô hình treadmill) — không có
     /// hàm di chuyển ngang. Không đọc Input trực tiếp — RunnerInputHandler gọi các hàm public ở
     /// đây (Single Responsibility: Controller chỉ lo vật lý, không lo phím bấm).
     ///
@@ -43,11 +43,6 @@ namespace SteamRush.Features.Runner
         [Tooltip("Raycast check distance below collider bottom.")]
         [SerializeField] private float _groundCheckDistance = 0.25f;
 
-        [Header("Knockback")]
-        [SerializeField] private float _knockbackDistance = 1.5f;
-        [SerializeField] private float _knockbackDuration = 0.3f;
-        [Tooltip("Knockback direction upon obstacle collision.")]
-        [SerializeField] private Vector3 _knockbackDirection = Vector3.left;
 
         [Header("Forgiving Hitbox")]
         [Tooltip("Bật để Collider tự động co nhỏ hơn Mesh 3D thật lúc Awake (GDD v1.2 mục 4.1). Tắt nếu muốn tự chỉnh tay Collider trong Inspector.")]
@@ -68,16 +63,12 @@ namespace SteamRush.Features.Runner
         private Transform _visualRoot;
         private Vector3 _standingVisualScale = Vector3.one;
 
-        private float _startX;
-        private readonly KnockbackHandler _knockbackHandler = new KnockbackHandler();
-
         private bool _isCollidingWithGround;
         private float _jumpCooldownTimer;
 
         private void Awake()
         {
             RB = GetComponent<Rigidbody>();
-            _startX = transform.position.x;
 
             // Tắt hẳn gravity mặc định của Unity — tự áp trọng lực thủ công (xem FixedUpdate)
             // để đúng chính xác 2 con số GDD (rơi -18.0 m/s², lên tính ngược ra 9.6 m/s²) bất kể
@@ -124,7 +115,7 @@ namespace SteamRush.Features.Runner
 
             // Khoá cả Position X lẫn Z: nhân vật đứng yên tại chỗ theo cả 2 trục ngang — thế
             // giới (Track/Background) mới là thứ di chuyển, mô hình "treadmill" của endless
-            // runner. Chỉ còn trục Y (nhảy/rơi) là tự do. Trục X sẽ được MỞ TẠM lúc bị knockback.
+            // runner. Chỉ còn trục Y (nhảy/rơi) là tự do. Hoàn toàn không có knockback.
             RB.constraints = RigidbodyConstraints.FreezePositionX
                 | RigidbodyConstraints.FreezePositionZ
                 | RigidbodyConstraints.FreezeRotationX
@@ -185,8 +176,6 @@ namespace SteamRush.Features.Runner
             // rơi -18.0 m/s²) thay vì dùng chung 1 multiplier nhân với gravity mặc định.
             float gravity = RB.linearVelocity.y > 0f ? _risingGravity : _fallingGravity;
             RB.linearVelocity += Vector3.down * gravity * Time.fixedDeltaTime;
-
-            ApplyKnockbackMotion();
         }
 
         /// <summary>Nhảy với vận tốc cố định GDD (+6.5 m/s), không phụ thuộc Mass của Rigidbody.</summary>
@@ -249,14 +238,6 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        /// <summary>Gọi khi va chạm vật cản: đẩy lùi nhân vật một đoạn ngắn, giảm dần theo easing.</summary>
-        public void ApplyKnockback()
-        {
-            _knockbackHandler.BeginKnockback(_knockbackDistance, _knockbackDuration);
-        }
-
-        public bool IsKnockingBack => _knockbackHandler.IsKnockingBack;
-
         /// <summary>
         /// Chuyển đổi Collider của Player sang Trigger (dùng khi va chạm vật cản để vật thể trôi xuyên qua Player).
         /// Khi bật Trigger, tạm khoá trục Y để Player đứng vững tại chỗ, không rơi tiếp trong lúc bất tử.
@@ -277,32 +258,35 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        private void ApplyKnockbackMotion()
+        /// <summary>
+        /// Chuyển Collider của Player sang Trigger nhưng vẫn giữ nguyên vật lý theo trục Y.
+        /// Dùng cho Hyper Dash để Runner có thể nhảy/rơi bình thường trong khi đi xuyên vật cản.
+        /// </summary>
+        public void SetHyperDashTriggerMode(bool isTrigger)
         {
-            if (!_knockbackHandler.IsKnockingBack)
+            if (_boxCollider != null)
             {
-                // Sau khi knockback xong, từ từ tiến lại vị trí treadmill ban đầu
-                if (Mathf.Abs(RB.position.x - _startX) > 0.02f)
-                {
-                    RB.constraints &= ~RigidbodyConstraints.FreezePositionX;
-                    float newX = Mathf.MoveTowards(RB.position.x, _startX, 2.5f * Time.fixedDeltaTime);
-                    RB.MovePosition(new Vector3(newX, RB.position.y, RB.position.z));
-                }
-                else
-                {
-                    RB.MovePosition(new Vector3(_startX, RB.position.y, RB.position.z));
-                    RB.constraints |= RigidbodyConstraints.FreezePositionX;
-                }
-                return;
+                _boxCollider.isTrigger = isTrigger;
             }
 
-            // Mở tạm khoá trục X trong lúc đẩy lùi
-            RB.constraints &= ~RigidbodyConstraints.FreezePositionX;
+            if (_capsuleCollider != null)
+            {
+                _capsuleCollider.isTrigger = isTrigger;
+            }
 
-            float backward = _knockbackHandler.GetBackwardDelta(Time.fixedDeltaTime);
-            RB.MovePosition(RB.position + _knockbackDirection * backward);
+            if (isTrigger)
+            {
+                // Hyper Dash không được tắt Gravity hoặc khoá trục Y.
+                // Runner vẫn có thể nhảy và rơi bình thường.
+                RB.useGravity = true;
+                RB.constraints &= ~RigidbodyConstraints.FreezePositionY;
+            }
+            else
+            {
+                RB.constraints &= ~RigidbodyConstraints.FreezePositionY;
+                RB.useGravity = true;
+            }
         }
-
         private void UpdateGroundCheck()
         {
             if (_jumpCooldownTimer > 0f)

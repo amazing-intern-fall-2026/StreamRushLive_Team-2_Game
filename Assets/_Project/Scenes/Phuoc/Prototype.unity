@@ -2523,6 +2523,58 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 412702, guid: 7b30b5ba44201104fba4e71a527b6905, type: 3}
   m_PrefabInstance: {fileID: 783997082}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &577824625
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 577824627}
+  - component: {fileID: 577824626}
+  m_Layer: 0
+  m_Name: Layer 1 (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &577824626
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 577824625}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 40608aa29201873458a60d69302f9aee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Track.BuildingSpawner
+  _buildingPrefabs:
+  - {fileID: 100086, guid: 82f734b8de4c88b4fbdc5232659df70f, type: 3}
+  _speedManager: {fileID: 1410114198}
+  _useWorldSpeed: 0
+  _customSpeed: 2
+  _despawnXThreshold: -25
+  _minSpawnInterval: 10
+  _maxSpawnInterval: 15
+--- !u!4 &577824627
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 577824625}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 80.1, y: -2.77, z: 48.8}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &599755062
 GameObject:
   m_ObjectHideFlags: 0
@@ -2721,9 +2773,21 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 150352, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 171288, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
       propertyPath: m_Name
       value: Character_Male_Jacket_01
+      objectReference: {fileID: 0}
+    - target: {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
       propertyPath: m_TagString
@@ -2776,6 +2840,10 @@ PrefabInstance:
     - target: {fileID: 440500, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9557904, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
+      propertyPath: m_Enabled
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 9557904, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
       propertyPath: m_Controller
@@ -2908,9 +2976,6 @@ MonoBehaviour:
   _fastFallSpeed: 20
   _groundTag: Ground
   _groundCheckDistance: 0.25
-  _knockbackDistance: 1.5
-  _knockbackDuration: 0.3
-  _knockbackDirection: {x: -1, y: 0, z: 0}
 --- !u!54 &650010908
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -2945,7 +3010,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 650010902}
-  m_Material: {fileID: 13400000, guid: d74a01a2cc9bb4a93a762320b7bf46d1, type: 2}
+  m_Material: {fileID: 1637129531}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -2957,8 +3022,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.8, y: 2, z: 0.8}
-  m_Center: {x: 0, y: 1, z: 0}
+  m_Size: {x: 0.80000013, y: 1.7570058, z: 0.80000013}
+  m_Center: {x: 0, y: 0.8785029, z: 0}
 --- !u!4 &651299535 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 412702, guid: 7b30b5ba44201104fba4e71a527b6905, type: 3}
@@ -3015,6 +3080,14 @@ MonoBehaviour:
   - {fileID: 8245660175374962882, guid: a30b67cc66b71fe4cbec589e7e992280, type: 3}
   highBarrierPrefabs:
   - {fileID: 3756146291101094273, guid: 214ee7cf48caa5443b2d8bd647782378, type: 3}
+  stopSignPrefabs:
+  - {fileID: 1000001, guid: ada2e08ae7f44b959b09e9b8d76e0f4f, type: 3}
+  trafficLightPrefabs:
+  - {fileID: 2000001, guid: 4d667d0a1f674d93ae2530a8b3859b40, type: 3}
+  fallingHazardPrefabs:
+  - {fileID: 3000001, guid: 14df77b5f09f463785f33234099505c7, type: 3}
+  bouncingBoulderPrefabs:
+  - {fileID: 4000001, guid: 37a23713a2a24da08276955244efe6b6, type: 3}
   buffItemPrefabs:
   - {fileID: 8390172763218304724, guid: d7a970a29d3109f41839b9cd77f1dd41, type: 3}
   spawnPoint: {fileID: 655669062}
@@ -3023,8 +3096,13 @@ MonoBehaviour:
   useTypeYOffset: 1
   lowBarrierY: 0.5
   highBarrierY: 1.8
+  stopSignY: 0.5
+  trafficLightY: 0.5
+  fallingHazardY: 4.5
+  bouncingBoulderY: 0.5
   buffItemY: 1
   worldSpeedManager: {fileID: 1410114198}
+  minSafeDistance: 15
 --- !u!114 &655669061
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3160,7 +3238,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8d330105d04a89042a45fa64e02d3874, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Track.TrackProgressTracker
-  _relayDistanceMeters: 200
+  _relayDistanceMeters: 100
   _goalDistanceKm: 100
   _progressChanged:
     m_PersistentCalls:
@@ -4034,6 +4112,68 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 401836, guid: 0c0aeb13e5f9e324ebd2bef52c75b6a2, type: 3}
   m_PrefabInstance: {fileID: 1718702593}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1193006010
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1193006012}
+  - component: {fileID: 1193006011}
+  m_Layer: 0
+  m_Name: BatonHandoverController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1193006011
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1193006010}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e822a34876ff5e44a94e9f5f32c89fee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Relay.BatonHandoverController
+  progressTracker: {fileID: 696328611}
+  relayQueueManager: {fileID: 371041902}
+  hudManager: {fileID: 1761481900}
+  worldSpeedManager: {fileID: 1410114198}
+  runnerTransform: {fileID: 650010903}
+  nameplatePrefab: {fileID: 9209442739566320157, guid: 00d277867472c794bab52cc5582d3691, type: 3}
+  arrivalThresholdMeters: 0.5
+  waitingLabel: "Ng\u01B0\u1EDDi ch\u01A1i ti\u1EBFp theo..."
+  outfitVariants:
+  - {fileID: 153506, guid: 5e488cfd825ce044395037d93a9d8eb6, type: 3}
+  - {fileID: 128674, guid: 471247d5cf89b2c46bcde0f08524197e, type: 3}
+  - {fileID: 183608, guid: 6412c6bdd410913469520a05a1632885, type: 3}
+  - {fileID: 184310, guid: 236e70cfb8ad0fc448c79a2155a5d3c2, type: 3}
+  - {fileID: 107314, guid: 841e8e4f1a54c754396b7559d1cc6fad, type: 3}
+  - {fileID: 166044, guid: adad89669382b0743a2c2f162c9601b0, type: 3}
+  - {fileID: 153682, guid: 48b470c6a762f60438c631f219257520, type: 3}
+  - {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
+  - {fileID: 191860, guid: 498a13929c1393e44be1126bcadc448b, type: 3}
+--- !u!4 &1193006012
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1193006010}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 44.62, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &1210147094 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 408044, guid: 69af78e726c8b9842bb53e9d215270fa, type: 3}
@@ -5531,6 +5671,19 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 412702, guid: 7b30b5ba44201104fba4e71a527b6905, type: 3}
   m_PrefabInstance: {fileID: 70948947}
   m_PrefabAsset: {fileID: 0}
+--- !u!134 &1637129531
+PhysicsMaterial:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: ZeroFriction (Instance)
+  serializedVersion: 2
+  m_DynamicFriction: 0
+  m_StaticFriction: 0
+  m_Bounciness: 0
+  m_FrictionCombine: 2
+  m_BounceCombine: 0
 --- !u!1001 &1657465251
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7148,6 +7301,7 @@ SceneRoots:
   - {fileID: 655669062}
   - {fileID: 2133419486}
   - {fileID: 1034566911}
+  - {fileID: 577824627}
   - {fileID: 1883960002}
   - {fileID: 240946956}
   - {fileID: 541185818}
@@ -7155,3 +7309,4 @@ SceneRoots:
   - {fileID: 1245623568}
   - {fileID: 117422672}
   - {fileID: 650010901}
+  - {fileID: 1193006012}
