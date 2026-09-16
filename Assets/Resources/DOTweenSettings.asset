@@ -39,12 +39,12 @@ MonoBehaviour:
   storeSettingsLocation: 0
   modules:
     showPanel: 0
-    audioEnabled: 0
-    physicsEnabled: 0
-    physics2DEnabled: 0
+    audioEnabled: 1
+    physicsEnabled: 1
+    physics2DEnabled: 1
     spriteEnabled: 1
     uiEnabled: 1
-    uiToolkitEnabled: 0
+    uiToolkitEnabled: 1
     textMeshProEnabled: 0
     tk2DEnabled: 0
     deAudioEnabled: 0

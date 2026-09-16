@@ -2,7 +2,6 @@ namespace SteamRush.Features.Runner
 {
     using System.Collections;
     using UnityEngine;
-    using SteamRush.Core;
     using SteamRush.Track;
     using StreamRushLive.Features.Spawning;
     using SteamRush.Features.UI;
@@ -11,9 +10,19 @@ namespace SteamRush.Features.Runner
     /// Chịu trách nhiệm phát hiện va chạm TRIGGER giữa Runner với vật cản và vật phẩm:
     /// - Sử dụng cơ chế Trigger (OnTriggerEnter) giúp Runner không bị kẹt hay khựng vật lý cứng.
     /// - Đóng băng khung hình ngắn (hit-stop 0.15s).
+<<<<<<< HEAD
     /// - Phạt trừ năng lượng (-25%) và hiển thị Status Popup "Vấp ngã!".
     /// - Tự động hồi phục tốc độ thế giới (WorldSpeedManager/GameSpeedController).
+=======
+    /// - Đẩy lùi nhân vật (Knockback easing — GIỮ LẠI theo yêu cầu, khác GDD v1.2 mục 4.3).
+    /// - Phạt trừ năng lượng và hiển thị Status Popup "Vấp ngã!".
+    /// - Tự động hồi phục tốc độ thế giới qua WorldSpeedManager.TriggerRecovery().
+>>>>>>> origin/feature/tu/speed-control-mechanics
     /// - Nhặt Buff Item dạng Trigger hồi +20% năng lượng.
+    ///
+    /// LƯU Ý: Không còn dùng GameSpeedController (đã xoá khỏi project) và không còn tự Lerp
+    /// CurrentSpeed bằng coroutine riêng — toàn bộ curve hồi tốc độ (giảm về 0 -> giữ 0 -> tăng
+    /// lại) nằm gọn trong WorldSpeedManager, chỉ cần gọi TriggerRecovery().
     /// </summary>
     [RequireComponent(typeof(RunnerController))]
     public class RunnerCollisionHandler : MonoBehaviour
@@ -26,6 +35,10 @@ namespace SteamRush.Features.Runner
 
         [Header("Energy Penalty Settings")]
         [SerializeField] private float _energyPenaltyPercent = 25f;
+
+        [Header("World Recovery Settings")]
+        [Tooltip("Thời gian hồi phục World Speed mặc định nếu obstacle không chỉ định riêng. GDD dao động 1.2s-1.8s tuỳ loại.")]
+        [SerializeField] private float _defaultWorldRecoveryDuration = 1.2f;
 
         [Header("Invulnerability Settings")]
         [Tooltip("Duration player remains as trigger to pass through obstacle.")]
@@ -188,25 +201,21 @@ namespace SteamRush.Features.Runner
                 energySystem.AddEnergy(-penalty);
             }
 
+<<<<<<< HEAD
+=======
+            // Đẩy lùi nhân vật (giữ lại theo yêu cầu)
+            _controller.ApplyKnockback();
+
+>>>>>>> origin/feature/tu/speed-control-mechanics
             // Đóng băng khung hình (Hit-stop)
             Time.timeScale = 0f;
             yield return new WaitForSecondsRealtime(hitStop);
             Time.timeScale = 1f;
 
-            // Kích hoạt hồi phục tốc độ trên GameSpeedController (nếu có)
-            if (GameSpeedController.Instance != null)
-            {
-                GameSpeedController.Instance.TriggerRecovery();
-            }
-
-            // Kích hoạt hồi phục tốc độ trên WorldSpeedManager (nếu có)
+            // Kích hoạt hồi phục tốc độ thế giới — curve 3 pha (giảm về 0 -> giữ 0 -> tăng lại)
+            // nằm gọn trong WorldSpeedManager, không cần tự Lerp thủ công ở đây nữa.
             WorldSpeedManager speedManager = FindFirstObjectByType<WorldSpeedManager>();
-            if (speedManager != null)
-            {
-                float originalSpeed = speedManager.CurrentSpeed;
-                speedManager.CurrentSpeed = originalSpeed * 0.3f;
-                StartCoroutine(RecoverWorldSpeed(speedManager, originalSpeed, 1.5f));
-            }
+            speedManager?.TriggerRecovery(_defaultWorldRecoveryDuration);
 
             // Hiệu ứng nhấp nháy miễn nhiễm và giữ Player ở trạng thái Trigger trong khi vật cản trôi qua
             float elapsed = 0f;
@@ -235,7 +244,6 @@ namespace SteamRush.Features.Runner
                 }
             }
         }
-
         private IEnumerator RecoverWorldSpeed(WorldSpeedManager speedManager, float targetSpeed, float duration)
         {
             float elapsed = 0f;
@@ -289,6 +297,5 @@ namespace SteamRush.Features.Runner
 
             return blocked;
         }
-
     }
 }
