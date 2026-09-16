@@ -29,6 +29,11 @@ namespace SteamRush.Relay
 
         public int Count => _followers.Count;
 
+        // Đọc trước tên follower đầu hàng đợi mà KHÔNG lấy ra khỏi hàng đợi (không dequeue).
+        // Thêm cho BatonHandoverController hiển thị đúng tên thật trên Model chờ (Proxy) ngay từ
+        // lúc spawn (GDD mục 6), thay vì phải chờ tới lúc bàn giao xong mới biết tên.
+        public string PeekNextFollower() => _followers.Count > 0 ? _followers.Peek() : null;
+
         [SerializeField] private UnityEvent<string> _followerNameChanged = new UnityEvent<string>();
         public UnityEvent<string> FollowerNameChanged => _followerNameChanged;
 
