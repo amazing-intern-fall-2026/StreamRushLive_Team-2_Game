@@ -44,7 +44,6 @@
 *.spriteatlas unity-yaml-file
 *.terrainlayer unity-yaml-file
 *.unity unity-yaml-file
-*.wlt unity-yaml-file
 
 # Unity binary files
 *.bundle lfs-file
