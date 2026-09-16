@@ -2871,6 +2871,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
       insertIndex: -1
       addedObject: {fileID: 650010904}
+    - targetCorrespondingSourceObject: {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 650010911}
   m_SourcePrefab: {fileID: 100100000, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
 --- !u!1 &650010902 stripped
 GameObject:
@@ -2944,6 +2947,7 @@ MonoBehaviour:
   _obstacleTag: Obstacle
   _hitStopDuration: 0.15
   _energyPenaltyPercent: 25
+  _defaultWorldRecoveryDuration: 1.2
   _invulnerabilityDuration: 0.8
 --- !u!114 &650010906
 MonoBehaviour:
@@ -2957,7 +2961,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1a4cba5a99e44b899ed8b019b4f27db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.RunnerInputHandler
-  _jumpForce: 7
+  _slideHoldThreshold: 0.15
+  _slideTapDuckDuration: 0.8
 --- !u!114 &650010907
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2970,12 +2975,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f77d07c219c4b4d5bb4080d34b66530d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.RunnerController
-  _risingMultiplier: 1.5
-  _fallMultiplier: 2.5
+  _jumpVelocity: 6.5
+  _risingGravity: 9.6
+  _fallingGravity: 18
   _duckHeightRatio: 0.5
   _fastFallSpeed: 20
   _groundTag: Ground
   _groundCheckDistance: 0.25
+  _autoApplyForgivingHitbox: 1
+  _hitboxToleranceRatio: 0.85
 --- !u!54 &650010908
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -3024,6 +3032,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.80000013, y: 1.7570058, z: 0.80000013}
   m_Center: {x: 0, y: 0.8785029, z: 0}
+--- !u!114 &650010911
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 650010902}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 939322c7a4ec6f943a1a51639f82e9e8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StreamRushLive.Features.Spawning.RunnerItemEffects
+  shieldActive: 0
+  highJumpActive: 0
+  currentJumpForceMultiplier: 1
 --- !u!4 &651299535 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 412702, guid: 7b30b5ba44201104fba4e71a527b6905, type: 3}
@@ -4919,7 +4942,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0c3fd9fee63da7e4e8c906f5aec50570, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Track.WorldSpeedManager
-  _worldSpeed: 5
+  _baseSpeed: 10
+  _rampReferenceSeconds: 60
+  _rampReferenceMultiplier: 1.2
+  _slideTapDuration: 0.8
+  _slideTapSpeedMultiplier: 0.5
+  _holdDecelRate: 8
+  _normalAccelRate: 8
+  _sprintMaxSpeed: 18
+  _sprintAccelMultiplier: 2
+  _sprintEnergyDrainPerSecond: 3
+  _sprintEnergyLockThreshold: 0.1
+  _recoveryDecelDuration: 0.4
+  _defaultRecoveryTotalDuration: 1.2
 --- !u!4 &1410114200
 Transform:
   m_ObjectHideFlags: 0
