@@ -6,42 +6,10 @@ using SteamRush.Features.Runner;
 
 namespace SteamRush.Relay
 {
-    // Orchestrator: Cơ chế "In-Place Relay Handover" (GDD v1.2 mục 6).
-    // CHỦ ĐỘNG KHÔNG sửa TrackProgressTracker.cs - chỉ subscribe UnityEvent có sẵn
-    // (ProgressChanged) theo đúng README của Track, để tránh đụng code module người khác.
-    // RelayQueueManager.cs chỉ được thêm ĐÚNG 1 method mới (PeekNextFollower - chỉ đọc, không
-    // dequeue), không đổi logic cũ nào - đã xin phép trước khi sửa.
-    //
-    // Đánh đổi còn lại (do không dùng va chạm vật lý thật):
-    // - Proxy không có Collider để tránh bị RunnerCollisionHandler hiểu nhầm là Obstacle/Buff.
-    //
-    // spawnAheadDistanceMeters vừa là mốc TRIGGER (còn bao nhiêu m thì spawn) vừa là khoảng cách ĐẶT
-    // VỊ TRÍ Proxy - CỐ TÌNH dùng chung 1 biến (không tách 2 biến khác nhau) vì GDD mục 6.1 ghi rõ
-    // Proxy phải "đứng chờ sẵn ở mốc [relay]" - nếu tách riêng 2 khoảng cách khác nhau, vị trí spawn
-    // sẽ lệch RA NGOÀI mốc thật (không còn "ở mốc" nữa). Công thức bắt buộc để Proxy đứng ĐÚNG mốc:
-    // vị_trí_spawn = vị_trí_Runner + (quãng_đường_còn_lại_lúc_trigger) => 2 khoảng cách này PHẢI BẰNG
-    // NHAU.
-    //
-    // Giá trị mặc định đổi từ 10m (đúng chữ GDD: "còn 10m/đạt 90m") lên 25m kể từ bản cập nhật 15/09:
-    // đo thực tế trên Prototype.unity cho thấy 10m khiến Proxy hiện ra NGAY TRONG khung hình Camera
-    // (viewport x=0.63) và cả vòng đời spawn->bàn giao chỉ ~0.8s ở tốc độ 12m/s - cảm giác như "bàn
-    // giao cho ma" vì mắt người không kịp nhận ra model. 25m đo được là đủ để spawn ngoài khung hình,
-    // cho ~2s để thấy Runner "chạy tới gần" Proxy đúng như Leader mô tả. Đánh đổi: mốc trigger lệch
-    // khỏi con số chữ "10m" trong GDD, nhưng bù lại Proxy luôn đứng ĐÚNG THẬT tại mốc relay (thay vì
-    // lệch ra ngoài như khi tách 2 biến), và vì khoảng cách Proxy cần chạy tới == quãng đường leg còn
-    // lại lúc trigger, Proxy sẽ chạm Runner CHÍNH XÁC đúng lúc leg đạt mốc 100%/200m - khớp thời điểm
-    // với lúc RelayQueueManager.HandleRelayCompleted() cập nhật Nameplate/Avatar (không cần sửa thêm
-    // RelayQueueManager.cs để đồng bộ).
-    //
-    // Dù vậy, dequeue hàng đợi/reset quãng đường vẫn có thể tới TRƯỚC khoảnh khắc Proxy chạm Runner
-    // vài phần trăm giây (sai số float, hoặc GDD mục 6.4 hoãn do IsHandlingHit) - nên phần HIỂN THỊ
-    // (đổi mesh Runner, hủy Proxy) vẫn luôn chờ HasProxyArrived() == true ở Update(), không dựa thẳng
-    // vào sự kiện FollowerNameChanged.
-    //
-    // Edge case GDD mục 6.4 (va chạm ngay lúc bàn giao, vd tại 99m): TrackProgressTracker vẫn tự
-    // bắn FollowerNameChanged như bình thường (không sửa được từ đây), nhưng CHỈ HOÃN việc thực sự
-    // đổi mesh/tên tới khi RunnerCollisionHandler.IsHandlingHit (property public có sẵn, chỉ đọc)
-    // trở lại false - tránh đổi mesh giữa lúc Runner đang chạy animation ngã.
+    /// <summary>
+    /// Điều phối cơ chế chuyển gậy tiếp sức (In-Place Relay Handover) tại các mốc cự ly (GDD v1.2 Mục 6).
+    /// Tự động spawn nhân vật tiếp theo từ outfitVariants trên đường chạy và hoán đổi trang phục cho Runner khi hoàn tất bàn giao.
+    /// </summary>
     public class BatonHandoverController : MonoBehaviour
     {
         [Header("Refs")]
@@ -52,20 +20,21 @@ namespace SteamRush.Relay
         [SerializeField] private Transform runnerTransform;
 
         [Header("Proxy")]
-        [SerializeField] private HandoverProxyController proxyPrefab;
-        [Tooltip("Vừa là mốc TRIGGER (còn bao nhiêu m thì spawn) vừa là khoảng cách đặt VỊ TRÍ Proxy phía trước Runner - dùng chung 1 số để Proxy luôn đứng ĐÚNG tại mốc relay (GDD mục 6.1). Mặc định 25m (thay vì đúng 10m theo chữ GDD) vì đo thực tế trên Prototype.unity: 10m khiến Proxy hiện ra ngay trong khung hình Camera, giống 'bàn giao cho ma'.")]
-        [SerializeField] private float spawnAheadDistanceMeters = 25f;
-        [Tooltip("Khoảng cách X còn lại giữa Proxy và Runner được coi là đã 'chạm tới' để thực sự đổi mesh/tên (m).")]
+        [Tooltip("Prefab Nameplate hiển thị tên Viewer nổi trên đầu nhân vật bàn giao (Proxy).")]
+        [SerializeField] private GameObject nameplatePrefab;
+        [Tooltip("Khoảng cách X coi như đã chạm tới để thực hiện bàn giao (m).")]
         [SerializeField] private float arrivalThresholdMeters = 0.5f;
         [SerializeField] private string waitingLabel = "Người chơi tiếp theo...";
 
-        [Header("Model Swap (đổi trang phục Runner)")]
-        [Tooltip("Danh sách GameObject mesh trang phục con dùng chung 1 rig trên Runner - bật/tắt để đổi 'người chơi mới'. Chờ mapping avatar->outfit thật từ StreamIntegration, tạm thời chọn ngẫu nhiên.")]
+        [Header("Model Swap")]
+        [Tooltip("Danh sách Model Prefab - mỗi lần bàn giao sẽ bốc ngẫu nhiên 1 model để spawn Proxy và hoán đổi trang phục cho Runner.")]
         [SerializeField] private List<GameObject> outfitVariants = new List<GameObject>();
 
         private HandoverProxyController _activeProxy;
         private bool _proxySpawnedForCurrentLeg;
-        private GameObject _currentOutfit;
+        private string _currentOutfitName;
+        private GameObject _pendingNextOutfit;
+        private float _lastTotalDistance;
 
         // Chỉ đọc IsHandlingHit từ RunnerCollisionHandler (KHÔNG sửa file đó) để hoãn bàn giao
         // đúng theo GDD mục 6.4 khi Runner đang bị va chạm/ngã ngay lúc chuẩn bị bàn giao.
@@ -83,10 +52,30 @@ namespace SteamRush.Relay
             if (runnerTransform != null)
             {
                 _runnerCollisionHandler = runnerTransform.GetComponent<RunnerCollisionHandler>();
-            }
 
-            // Outfit đang bật sẵn (mặc định) = phần tử đầu tiên đang active trong danh sách.
-            _currentOutfit = outfitVariants.Find(o => o != null && o.activeSelf);
+                // Xác định outfit hiện tại đang bật trên Runner
+                foreach (Transform child in runnerTransform)
+                {
+                    if (child.name.StartsWith("Character_") && child.gameObject.activeSelf)
+                    {
+                        _currentOutfitName = CleanOutfitName(child.name);
+                        break;
+                    }
+                }
+
+                // Nếu danh sách outfitVariants chưa được kéo thả trên Inspector, tự động gom các mesh con trên Runner làm fallback
+                if (outfitVariants == null || outfitVariants.Count == 0)
+                {
+                    outfitVariants = new List<GameObject>();
+                    foreach (Transform child in runnerTransform)
+                    {
+                        if (child.name.StartsWith("Character_") && child.GetComponent<SkinnedMeshRenderer>() != null)
+                        {
+                            outfitVariants.Add(child.gameObject);
+                        }
+                    }
+                }
+            }
 
             // Gán Runner hiện tại làm target cho Nameplate bám theo đầu - chưa có module nào khác
             // gọi HUDManager.UpdateRunnerTarget() nên tự làm ở đây để Nameplate hoạt động khi test.
@@ -101,6 +90,7 @@ namespace SteamRush.Relay
             if (progressTracker != null)
             {
                 progressTracker.ProgressChanged.AddListener(OnProgressChanged);
+                progressTracker.RelayCompleted.AddListener(OnRelayCompleted);
             }
 
             if (relayQueueManager != null)
@@ -114,6 +104,7 @@ namespace SteamRush.Relay
             if (progressTracker != null)
             {
                 progressTracker.ProgressChanged.RemoveListener(OnProgressChanged);
+                progressTracker.RelayCompleted.RemoveListener(OnRelayCompleted);
             }
 
             if (relayQueueManager != null)
@@ -122,19 +113,38 @@ namespace SteamRush.Relay
             }
         }
 
+        private void OnRelayCompleted(int relayNumber)
+        {
+            // Đảm bảo reset trạng thái cho phép spawn Proxy cho chặng kế tiếp
+            _proxySpawnedForCurrentLeg = false;
+        }
+
         private void OnProgressChanged(float legDistance, float totalDistance, float goalProgress)
         {
             if (progressTracker == null) return;
 
-            // Chặng mới bắt đầu (leg vừa reset về gần 0) - cho phép spawn Proxy lại cho chặng này.
+            // Xử lý khi bị trừ quãng đường do va chạm vật cản (GDD mục 6):
+            // Nếu totalDistance giảm, đẩy Proxy lùi lại (về phía +X) đúng bằng cự ly bị trừ để mốc 100m luôn đồng bộ
+            if (_lastTotalDistance > 0f && totalDistance < _lastTotalDistance)
+            {
+                float distanceLost = _lastTotalDistance - totalDistance;
+                if (_activeProxy != null)
+                {
+                    _activeProxy.transform.position += Vector3.right * distanceLost;
+                }
+            }
+            _lastTotalDistance = totalDistance;
+
+            // Chặng mới bắt đầu hoặc sau khi hoàn tất chặng
             if (legDistance < 1f)
             {
                 _proxySpawnedForCurrentLeg = false;
             }
 
-            if (_proxySpawnedForCurrentLeg) return;
+            if (_proxySpawnedForCurrentLeg && _activeProxy != null) return;
 
-            float triggerDistance = progressTracker.RelayDistanceMeters - spawnAheadDistanceMeters;
+            float aheadDistance = GetSpawnAheadDistance();
+            float triggerDistance = progressTracker.RelayDistanceMeters - aheadDistance;
             if (legDistance >= triggerDistance)
             {
                 _proxySpawnedForCurrentLeg = true;
@@ -142,11 +152,21 @@ namespace SteamRush.Relay
             }
         }
 
+        public float GetSpawnAheadDistance()
+        {
+            if (runnerTransform != null)
+            {
+                float diffX = transform.position.x - runnerTransform.position.x;
+                if (diffX > 0f) return diffX;
+            }
+            return 25f;
+        }
+
         private void TrySpawnProxy()
         {
-            if (proxyPrefab == null || runnerTransform == null)
+            if (runnerTransform == null)
             {
-                Debug.LogWarning("[BatonHandoverController] Chưa gán proxyPrefab hoặc runnerTransform - bỏ qua spawn Proxy.");
+                Debug.LogWarning("[BatonHandoverController] Chưa gán runnerTransform - bỏ qua spawn Proxy.");
                 return;
             }
 
@@ -157,39 +177,154 @@ namespace SteamRush.Relay
                 return;
             }
 
-            // PeekNextFollower() đọc trước tên thật mà không dequeue - hiện đúng tên ngay từ lúc
-            // spawn (GDD mục 6.1), waitingLabel chỉ còn dùng làm fallback phòng khi queue trống.
             string displayName = relayQueueManager.PeekNextFollower() ?? waitingLabel;
 
-            Vector3 spawnPosition = runnerTransform.position + Vector3.right * spawnAheadDistanceMeters;
-            _activeProxy = Instantiate(proxyPrefab, spawnPosition, Quaternion.identity);
-            _activeProxy.SetInfo(displayName, null);
+            // Random chọn trước outfit tiếp theo từ danh sách outfitVariants
+            PickPendingNextOutfit();
 
-            MovingWorldObject mover = _activeProxy.gameObject.AddComponent<MovingWorldObject>();
+            if (_pendingNextOutfit == null)
+            {
+                Debug.LogWarning("[BatonHandoverController] outfitVariants đang trống - không thể spawn Proxy.");
+                return;
+            }
+
+            Vector3 spawnPosition = transform.position;
+            Quaternion spawnRotation = runnerTransform.rotation;
+
+            // 1. Instantiate trực tiếp model prefab được chọn ngẫu nhiên từ outfitVariants!
+            GameObject proxyObj = Instantiate(_pendingNextOutfit, spawnPosition, spawnRotation);
+            proxyObj.name = $"Proxy_{_pendingNextOutfit.name}";
+
+            // 2. Vô hiệu hoá Collider trên Proxy để tránh va chạm vật lý với Runner/Obstacle
+            Collider[] colliders = proxyObj.GetComponentsInChildren<Collider>();
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                colliders[i].enabled = false;
+            }
+
+            // 3. Gắn HandoverProxyController
+            _activeProxy = proxyObj.GetComponent<HandoverProxyController>();
+            if (_activeProxy == null)
+            {
+                _activeProxy = proxyObj.AddComponent<HandoverProxyController>();
+            }
+
+            // 4. Gắn Nameplate hiển thị tên Viewer nổi trên đầu
+            AttachNameplate(proxyObj, displayName);
+
+            // 5. Bật Animation chạy cho Proxy nếu có Animator (Tắt Root Motion để không bị di chuyển lung tung!)
+            var runnerAnim = runnerTransform.GetComponent<Animator>();
+            var proxyAnimators = proxyObj.GetComponentsInChildren<Animator>();
+            for (int i = 0; i < proxyAnimators.Length; i++)
+            {
+                proxyAnimators[i].applyRootMotion = false;
+                if (runnerAnim != null)
+                {
+                    proxyAnimators[i].runtimeAnimatorController = runnerAnim.runtimeAnimatorController;
+                }
+            }
+
+            // 6. Gắn MovingWorldObject để Proxy trôi theo tốc độ đường đua về phía Runner
+            MovingWorldObject mover = proxyObj.GetComponent<MovingWorldObject>();
+            if (mover == null)
+            {
+                mover = proxyObj.AddComponent<MovingWorldObject>();
+            }
+
             if (worldSpeedManager != null)
             {
                 mover.Initialize(worldSpeedManager);
             }
         }
 
-        // Bắn kèm tên ĐÚNG, chỉ bắn SAU khi RelayQueueManager đã dequeue xong - dùng làm tín hiệu
-        // "đã bàn giao" chính xác, không dựa vào RelayCompleted (thứ tự gọi giữa các listener của
-        // TrackProgressTracker.RelayCompleted không đảm bảo, dễ đọc tên chưa kịp cập nhật).
+        private void AttachNameplate(GameObject proxyObj, string displayName)
+        {
+            if (nameplatePrefab == null) return;
+
+            GameObject nameplateObj = Instantiate(nameplatePrefab, proxyObj.transform);
+            if (nameplateObj != null)
+            {
+                // Xoá hậu tố (Clone) để Hierarchy sạch sẽ đúng tên RelayNameplate
+                nameplateObj.name = "RelayNameplate";
+                nameplateObj.transform.localPosition = new Vector3(0f, 2.1f, 0f);
+                
+                // Khởi tạo góc xoay ban đầu hướng về camera chính
+                if (Camera.main != null)
+                {
+                    nameplateObj.transform.rotation = Camera.main.transform.rotation;
+                }
+
+                var tmp = nameplateObj.GetComponentInChildren<TMPro.TMP_Text>();
+                if (tmp != null)
+                {
+                    tmp.text = displayName;
+                }
+
+                if (_activeProxy != null)
+                {
+                    _activeProxy.SetNameplate(nameplateObj.transform, tmp);
+                }
+            }
+        }
+
+        private void PickPendingNextOutfit()
+        {
+            if (outfitVariants == null || outfitVariants.Count == 0)
+            {
+                _pendingNextOutfit = null;
+                return;
+            }
+
+            // Loại trừ outfit hiện tại của Runner để mỗi lần bàn giao luôn đổi sang model khác
+            List<GameObject> candidates = outfitVariants.FindAll(o =>
+            {
+                if (o == null) return false;
+                string cleanName = CleanOutfitName(o.name);
+                return !string.Equals(cleanName, _currentOutfitName, System.StringComparison.OrdinalIgnoreCase);
+            });
+
+            if (candidates.Count > 0)
+            {
+                _pendingNextOutfit = candidates[Random.Range(0, candidates.Count)];
+            }
+            else
+            {
+                _pendingNextOutfit = outfitVariants[Random.Range(0, outfitVariants.Count)];
+            }
+        }
+
+        private string CleanOutfitName(string rawName)
+        {
+            if (string.IsNullOrEmpty(rawName)) return "";
+            string clean = rawName.Replace("(Clone)", "").Trim();
+            if (clean.EndsWith("_01")) clean = clean.Substring(0, clean.Length - 3);
+            return clean;
+        }
+
+        // Lắng nghe khi hoàn thành chặng và cập nhật viewer tiếp theo.
+        // Hoãn bàn giao cho tới khi Proxy chạm Runner và Runner không trong trạng thái ngã.
         private void OnFollowerNameChanged(string followerId)
         {
-            // Luôn hoãn, không đổi mesh/tên ngay tại đây nữa: dù spawnAheadDistanceMeters dùng chung
-            // cho cả trigger lẫn vị trí (Proxy sẽ chạm Runner gần như đúng lúc mốc 100% này bắn ra),
-            // vẫn có thể lệch vài phần trăm giây (sai số float, hoặc đang hoãn do IsHandlingHit ở GDD
-            // mục 6.4) - nên đổi mesh thực sự chỉ diễn ra khi HasProxyArrived() == true (xem Update()),
-            // không dựa thẳng vào sự kiện số học này.
             _hasPendingHandover = true;
             _pendingFollowerName = followerId;
         }
 
         private void Update()
         {
+            // Bảo vệ Proxy: Không để Proxy trôi tụt lại sau lưng Runner khi đang chờ bàn giao hoặc Runner đang choáng
+            if (_activeProxy != null && runnerTransform != null)
+            {
+                if (_activeProxy.transform.position.x < runnerTransform.position.x)
+                {
+                    Vector3 p = _activeProxy.transform.position;
+                    p.x = runnerTransform.position.x;
+                    _activeProxy.transform.position = p;
+                }
+            }
+
             if (!_hasPendingHandover) return;
 
+            // GDD mục 6: Tạm hoãn chuyển giao cho đến khi Runner đứng dậy hoàn toàn (IsHandlingHit == false)
             if (_runnerCollisionHandler != null && _runnerCollisionHandler.IsHandlingHit) return;
 
             if (!HasProxyArrived()) return;
@@ -198,53 +333,85 @@ namespace SteamRush.Relay
             CompleteHandover(_pendingFollowerName);
         }
 
-        // Proxy được xem là "chạm tới" khi khoảng cách X còn lại với Runner nhỏ hơn ngưỡng cho phép.
-        // Nếu Proxy đã bị hủy vì lý do khác (không nên xảy ra trong luồng bình thường) thì coi như
-        // đã tới để không bao giờ bị kẹt _hasPendingHandover mãi mãi.
         private bool HasProxyArrived()
         {
             if (_activeProxy == null) return true;
 
-            float distanceX = Mathf.Abs(_activeProxy.transform.position.x - runnerTransform.position.x);
-            return distanceX <= arrivalThresholdMeters;
+            // Proxy di chuyển từ +X về phía Runner. Khi deltaX <= arrivalThresholdMeters tức là đã tiếp cận/chạm.
+            float deltaX = _activeProxy.transform.position.x - runnerTransform.position.x;
+            return deltaX <= arrivalThresholdMeters;
         }
 
         private void CompleteHandover(string followerName)
         {
+            // 1. Hoán đổi trang phục (model mesh)
             SwapOutfit();
 
+            // 2. Cập nhật tên Runner trên HUD và hiển thị popup đúng thời điểm va chạm
+            if (hudManager != null)
+            {
+                string display = !string.IsNullOrEmpty(followerName) ? followerName : waitingLabel;
+                hudManager.UpdateRunnerInfo(display, null);
+                hudManager.ShowStatusPopup($"Chuyển gậy: {display}!", true);
+            }
+
+            // 3. Huỷ nhân vật Proxy
             if (_activeProxy != null)
             {
                 Destroy(_activeProxy.gameObject);
                 _activeProxy = null;
             }
 
-            Debug.Log($"[BatonHandoverController] Chuyển gậy In-Place thành công cho: {followerName}");
+            // 4. Reset trạng thái sẵn sàng cho chặng tiếp theo
+            _proxySpawnedForCurrentLeg = false;
+            _hasPendingHandover = false;
+
+            Debug.Log($"[BatonHandoverController] Chuyển gậy In-Place thành công cho: {followerName} (Đã chuyển sang model: {_currentOutfitName})");
         }
 
         private void SwapOutfit()
         {
-            if (outfitVariants == null || outfitVariants.Count == 0)
+            if (_pendingNextOutfit == null)
+            {
+                PickPendingNextOutfit();
+            }
+
+            if (_pendingNextOutfit == null)
             {
                 Debug.Log("[BatonHandoverController] Chưa có danh sách outfit - bỏ qua đổi mesh.");
                 return;
             }
 
-            List<GameObject> candidates = outfitVariants.FindAll(o => o != null && o != _currentOutfit);
-            if (candidates.Count == 0) return;
+            string targetOutfitName = CleanOutfitName(_pendingNextOutfit.name);
+            bool swapped = false;
 
-            GameObject next = candidates[Random.Range(0, candidates.Count)];
-
-            if (_currentOutfit != null)
+            if (runnerTransform != null)
             {
-                _currentOutfit.SetActive(false);
+                foreach (Transform child in runnerTransform)
+                {
+                    if (child.name.StartsWith("Character_") && child.GetComponent<SkinnedMeshRenderer>() != null)
+                    {
+                        bool isMatch = string.Equals(child.name, targetOutfitName, System.StringComparison.OrdinalIgnoreCase);
+                        child.gameObject.SetActive(isMatch);
+                        if (isMatch)
+                        {
+                            swapped = true;
+                            _currentOutfitName = child.name;
+                        }
+                    }
+                }
             }
 
-            next.SetActive(true);
-            _currentOutfit = next;
+            if (swapped)
+            {
+                Debug.Log($"[BatonHandoverController] Đã đổi Runner sang outfit: {_currentOutfitName}");
+            }
+            else
+            {
+                Debug.LogWarning($"[BatonHandoverController] Không tìm thấy mesh con trên Runner khớp với outfit '{targetOutfitName}'");
+            }
 
-            // TODO: chờ dữ liệu mapping avatar -> outfit thật từ StreamIntegration, hiện tại
-            // chọn ngẫu nhiên trong các outfit có sẵn trên rig để tạo cảm giác "người chơi mới".
+            _pendingNextOutfit = null;
         }
     }
 }

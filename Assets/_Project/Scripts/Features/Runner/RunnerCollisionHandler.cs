@@ -86,7 +86,14 @@ namespace SteamRush.Features.Runner
             ObstacleBase obstacle = obj.GetComponentInParent<ObstacleBase>();
             if (obstacle != null)
             {
-                StartCoroutine(HandleObstacleHit(obstacle));
+                if (!obstacle.HasCollided)
+                {
+                    obstacle.TriggerHit(gameObject);
+                }
+                else
+                {
+                    StartCoroutine(HandleObstacleHit(obstacle));
+                }
                 return;
             }
 

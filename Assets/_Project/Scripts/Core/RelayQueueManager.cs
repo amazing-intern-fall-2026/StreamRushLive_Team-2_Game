@@ -97,7 +97,9 @@ namespace SteamRush.Relay
             string followerId = _followers.Dequeue();
             _followerNameChanged.Invoke(followerId);
 
-            if (_hudManager != null)
+            // Nếu không có BatonHandoverController xử lý va chạm chuyển gậy trực tiếp (In-Place),
+            // mới cập nhật HUD ngay tại đây làm fallback.
+            if (_hudManager != null && FindFirstObjectByType<BatonHandoverController>() == null)
             {
                 _hudManager.UpdateRunnerInfo(followerId, null);
                 _hudManager.ShowStatusPopup($"Chuyển gậy: {followerId}!", true);

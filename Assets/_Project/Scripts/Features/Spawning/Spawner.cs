@@ -23,6 +23,10 @@ namespace StreamRushLive.Features.Spawning
         [Header("Obstacle Prefabs (Lists - Random Spawn)")]
         [SerializeField] private List<GameObject> lowBarrierPrefabs = new List<GameObject>();
         [SerializeField] private List<GameObject> highBarrierPrefabs = new List<GameObject>();
+        [SerializeField] private List<GameObject> stopSignPrefabs = new List<GameObject>();
+        [SerializeField] private List<GameObject> trafficLightPrefabs = new List<GameObject>();
+        [SerializeField] private List<GameObject> fallingHazardPrefabs = new List<GameObject>();
+        [SerializeField] private List<GameObject> bouncingBoulderPrefabs = new List<GameObject>();
 
         [Header("Item Prefabs (Lists - Random Spawn)")]
         [SerializeField] private List<GameObject> buffItemPrefabs = new List<GameObject>();
@@ -42,6 +46,10 @@ namespace StreamRushLive.Features.Spawning
         [SerializeField] private bool useTypeYOffset = false;
         [SerializeField] private float lowBarrierY = 0.5f;
         [SerializeField] private float highBarrierY = 1.8f;
+        [SerializeField] private float stopSignY = 0.5f;
+        [SerializeField] private float trafficLightY = 0.5f;
+        [SerializeField] private float fallingHazardY = 4.5f;
+        [SerializeField] private float bouncingBoulderY = 0.5f;
         [SerializeField] private float buffItemY = 1.0f;
 
         [Header("Settings")]
@@ -62,6 +70,10 @@ namespace StreamRushLive.Features.Spawning
 
         public List<GameObject> LowBarrierPrefabs => lowBarrierPrefabs;
         public List<GameObject> HighBarrierPrefabs => highBarrierPrefabs;
+        public List<GameObject> StopSignPrefabs => stopSignPrefabs;
+        public List<GameObject> TrafficLightPrefabs => trafficLightPrefabs;
+        public List<GameObject> FallingHazardPrefabs => fallingHazardPrefabs;
+        public List<GameObject> BouncingBoulderPrefabs => bouncingBoulderPrefabs;
         public List<GameObject> BuffItemPrefabs => buffItemPrefabs;
 
         public Transform SpawnPoint
@@ -331,6 +343,18 @@ namespace StreamRushLive.Features.Spawning
                     case ObstacleType.HighBarrier:
                         pos.y = highBarrierY;
                         break;
+                    case ObstacleType.StopSign:
+                        pos.y = stopSignY;
+                        break;
+                    case ObstacleType.TrafficLight:
+                        pos.y = trafficLightY;
+                        break;
+                    case ObstacleType.FallingHazard:
+                        pos.y = fallingHazardY;
+                        break;
+                    case ObstacleType.BouncingBoulder:
+                        pos.y = bouncingBoulderY;
+                        break;
                 }
             }
 
@@ -363,6 +387,14 @@ namespace StreamRushLive.Features.Spawning
                     return GetRandomPrefab(lowBarrierPrefabs);
                 case ObstacleType.HighBarrier:
                     return GetRandomPrefab(highBarrierPrefabs);
+                case ObstacleType.StopSign:
+                    return GetRandomPrefab(stopSignPrefabs);
+                case ObstacleType.TrafficLight:
+                    return GetRandomPrefab(trafficLightPrefabs);
+                case ObstacleType.FallingHazard:
+                    return GetRandomPrefab(fallingHazardPrefabs);
+                case ObstacleType.BouncingBoulder:
+                    return GetRandomPrefab(bouncingBoulderPrefabs);
                 default:
                     return null;
             }

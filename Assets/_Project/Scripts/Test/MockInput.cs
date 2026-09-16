@@ -66,6 +66,36 @@ namespace StreamRushLive.Features.Spawning
             {
                 AddMockFollower();
             }
+
+            // Phím 6: Stop Sign (NguyenHuy)
+            if (Keyboard.current.digit6Key.wasPressedThisFrame || Keyboard.current.numpad6Key.wasPressedThisFrame)
+            {
+                SpawnStopSign();
+            }
+
+            // Phím 7: Traffic Light + Crossing Car (NguyenHuy)
+            if (Keyboard.current.digit7Key.wasPressedThisFrame || Keyboard.current.numpad7Key.wasPressedThisFrame)
+            {
+                SpawnTrafficLight();
+            }
+
+            // Phím 8: Falling Hazard (NguyenHuy)
+            if (Keyboard.current.digit8Key.wasPressedThisFrame || Keyboard.current.numpad8Key.wasPressedThisFrame)
+            {
+                SpawnFallingHazard();
+            }
+
+            // Phím 9: Bouncing Boulder (NguyenHuy)
+            if (Keyboard.current.digit9Key.wasPressedThisFrame || Keyboard.current.numpad9Key.wasPressedThisFrame)
+            {
+                SpawnBouncingBoulder();
+            }
+
+            // Phím 0: Test Queue Safe Distance 15m (NguyenHuy)
+            if (Keyboard.current.digit0Key.wasPressedThisFrame || Keyboard.current.numpad0Key.wasPressedThisFrame)
+            {
+                EnqueueSafeDistanceBatch();
+            }
         }
 
         public void SpawnLowBarrier()
@@ -81,6 +111,50 @@ namespace StreamRushLive.Features.Spawning
             if (spawner != null)
             {
                 spawner.SpawnObstacle(ObstacleType.HighBarrier);
+            }
+        }
+
+        public void SpawnStopSign()
+        {
+            if (spawner != null)
+            {
+                spawner.SpawnObstacle(ObstacleType.StopSign);
+            }
+        }
+
+        public void SpawnTrafficLight()
+        {
+            if (spawner != null)
+            {
+                spawner.SpawnObstacle(ObstacleType.TrafficLight);
+            }
+        }
+
+        public void SpawnFallingHazard()
+        {
+            if (spawner != null)
+            {
+                spawner.SpawnObstacle(ObstacleType.FallingHazard);
+            }
+        }
+
+        public void SpawnBouncingBoulder()
+        {
+            if (spawner != null)
+            {
+                spawner.SpawnObstacle(ObstacleType.BouncingBoulder);
+            }
+        }
+
+        public void EnqueueSafeDistanceBatch()
+        {
+            if (spawner != null)
+            {
+                Debug.Log("[MockInput] Enqueuing batch of 4 obstacles to test safe distance (15m)...");
+                spawner.EnqueueObstacle(ObstacleType.LowBarrier);
+                spawner.EnqueueObstacle(ObstacleType.StopSign);
+                spawner.EnqueueObstacle(ObstacleType.TrafficLight);
+                spawner.EnqueueObstacle(ObstacleType.BouncingBoulder);
             }
         }
 
