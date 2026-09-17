@@ -1,0 +1,106 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4350800584351893093
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2609728861828042946}
+  - component: {fileID: 2070690988631267303}
+  - component: {fileID: 2892380118852192226}
+  - component: {fileID: 4269758386154132737}
+  - component: {fileID: 9043492929042649570}
+  m_Layer: 0
+  m_Name: ChatRunnerManagers
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2609728861828042946
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4350800584351893093}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2070690988631267303
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4350800584351893093}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aeb395c47b6da4241a48ee255dd1002b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.StreamIntegration.FactionTugOfWarManager
+  _antiCarThreshold: 500
+  _antiCarCost: 300
+  _defaultFaction: 0
+  _factionValuesChanged:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &2892380118852192226
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4350800584351893093}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b22127fa44122d34494d33452ca708a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.ChatRunnerQueueManager
+  _worldSpeedManager: {fileID: 0}
+  _legDistanceMeters: 100
+  _hudManager: {fileID: 0}
+  _runnerTransform: {fileID: 0}
+  _waitingStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &4269758386154132737
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4350800584351893093}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a262b16cb5624b43847aeeece187781, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.CheckpointManager
+  _runnerTransform: {fileID: 0}
+  _worldSpeedManager: {fileID: 0}
+  _checkpointIntervalMeters: 200
+  _heartCount: 3
+--- !u!114 &9043492929042649570
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4350800584351893093}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4985a38c0af80d64f9cfbd0cc10ea648, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.UI.ChatRunnerUIBinder
+  _factionManager: {fileID: 2070690988631267303}
+  _factionUI: {fileID: 0}
+  _queueManager: {fileID: 2892380118852192226}
+  _waitingPanel: {fileID: 0}
