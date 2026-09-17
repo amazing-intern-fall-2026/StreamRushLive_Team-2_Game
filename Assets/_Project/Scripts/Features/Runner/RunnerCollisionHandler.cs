@@ -75,11 +75,6 @@ namespace SteamRush.Features.Runner
             {
                 Physics.IgnoreLayerCollision(playerLayer, obstacleLayer, isActive);
             }
-
-            if (_controller != null)
-            {
-                _controller.SetHyperDashTriggerMode(isActive);
-            }
         }
 
         private void Update()
