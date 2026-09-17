@@ -21,11 +21,16 @@ namespace StreamRushLive.Features.Spawning
 
         [SerializeField] private float currentJumpForceMultiplier = 1f;
 
+        [Header("Hyper Dash State")]
+        [SerializeField] private bool hyperDashActive = false;
+
         private Coroutine shieldCoroutine;
         private Coroutine highJumpCoroutine;
+        private Coroutine hyperDashCoroutine;
 
         public bool IsShieldActive => shieldActive;
         public bool IsHighJumpActive => highJumpActive;
+        public bool IsHyperDashActive => hyperDashActive;
         public float CurrentJumpForceMultiplier => currentJumpForceMultiplier;
 
         /// <summary>
@@ -111,6 +116,58 @@ namespace StreamRushLive.Features.Spawning
             highJumpCoroutine = null;
 
             Debug.Log("[RunnerItemEffects] High Jump đã hết thời gian.");
+        }
+
+        /// <summary>
+        /// Kích hoạt Hyper Dash cho Runner.
+        /// Tăng tốc độ tối đa (18 m/s) và cấp quyền đi xuyên/phá huỷ vật cản trong duration giây.
+        /// </summary>
+        public void ActivateHyperDash(float duration, float maxSpeed)
+        {
+            if (hyperDashCoroutine != null)
+            {
+                StopCoroutine(hyperDashCoroutine);
+            }
+
+            hyperDashCoroutine = StartCoroutine(HyperDashTimer(duration, maxSpeed));
+        }
+
+        private IEnumerator HyperDashTimer(float duration, float maxSpeed)
+        {
+            hyperDashActive = true;
+            Debug.Log($"[RunnerItemEffects] Hyper Dash activated for {duration:F0}s at {maxSpeed:F0} m/s.");
+
+            SteamRush.Features.Runner.RunnerCollisionHandler collisionHandler =
+                GetComponent<SteamRush.Features.Runner.RunnerCollisionHandler>()
+                ?? GetComponentInParent<SteamRush.Features.Runner.RunnerCollisionHandler>();
+
+            if (collisionHandler != null)
+            {
+                collisionHandler.SetHyperDashState(true);
+            }
+
+            EnergySystem energySystem = FindFirstObjectByType<EnergySystem>();
+            if (energySystem != null)
+            {
+                energySystem.SetSpeedOverride(maxSpeed);
+            }
+
+            yield return new WaitForSeconds(duration);
+
+            hyperDashActive = false;
+
+            if (collisionHandler != null)
+            {
+                collisionHandler.SetHyperDashState(false);
+            }
+
+            if (energySystem != null)
+            {
+                energySystem.ClearSpeedOverride();
+            }
+
+            hyperDashCoroutine = null;
+            Debug.Log("[RunnerItemEffects] Hyper Dash đã hết thời gian.");
         }
     }
 }

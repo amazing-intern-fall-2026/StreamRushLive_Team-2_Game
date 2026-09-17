@@ -29,39 +29,19 @@ namespace StreamRushLive.Features.Spawning
 
         public override void OnCollected(GameObject collector)
         {
-            RunnerCollisionHandler collisionHandler =
-                collector.GetComponentInParent<RunnerCollisionHandler>();
-
-            EnergySystem energySystem =
-                FindFirstObjectByType<EnergySystem>();
-
-            if (collisionHandler != null)
+            RunnerItemEffects itemEffects = collector.GetComponent<RunnerItemEffects>();
+            if (itemEffects == null)
             {
-                collisionHandler.SetHyperDashState(true);
+                itemEffects = collector.GetComponentInParent<RunnerItemEffects>();
             }
 
-            if (energySystem != null)
+            if (itemEffects != null)
             {
-                energySystem.SetSpeedOverride(maxSpeed);
+                itemEffects.ActivateHyperDash(duration, maxSpeed);
             }
-
-            StartCoroutine(HyperDashRoutine(collisionHandler, energySystem));
-        }
-
-        private IEnumerator HyperDashRoutine(
-            RunnerCollisionHandler collisionHandler,
-            EnergySystem energySystem)
-        {
-            yield return new WaitForSeconds(duration);
-
-            if (collisionHandler != null)
+            else
             {
-                collisionHandler.SetHyperDashState(false);
-            }
-
-            if (energySystem != null)
-            {
-                energySystem.ClearSpeedOverride();
+                Debug.LogWarning("[HyperDashItem] Không tìm thấy RunnerItemEffects trên Runner.");
             }
         }
     }

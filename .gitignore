@@ -123,3 +123,8 @@ StreamRushLive_Team-2_Game.slnx
 /.github/
 /.cursor/
 /docs/
+
+# Screenshots / Captures
+/Screenshots/
+/[Aa]ssets/Screenshots/
+/[Aa]ssets/Screenshots.meta

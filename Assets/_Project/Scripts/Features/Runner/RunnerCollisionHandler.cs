@@ -190,20 +190,15 @@ namespace SteamRush.Features.Runner
             ObstacleBase obstacle = obj.GetComponentInParent<ObstacleBase>();
             if (obstacle != null)
             {
+                if (obstacle.HasCollided) return;
+
                 if (TryConsumeShield())
                 {
-                    Destroy(obj);
+                    Destroy(obstacle.gameObject);
                     return;
                 }
 
-                if (!obstacle.HasCollided)
-                {
-                    obstacle.TriggerHit(gameObject);
-                }
-                else
-                {
-                    StartCoroutine(HandleObstacleHit(obstacle));
-                }
+                obstacle.TriggerHit(gameObject);
                 return;
             }
 
@@ -227,6 +222,23 @@ namespace SteamRush.Features.Runner
         private IEnumerator HandleObstacleHit(ObstacleBase obstacle)
         {
             _isHandlingHit = true;
+
+            // Bỏ qua va chạm vật lý giữa Player và vật cản này để không xô đẩy hoặc kích hoạt lại
+            if (obstacle != null)
+            {
+                Collider[] obsColliders = obstacle.GetComponentsInChildren<Collider>();
+                Collider[] playerColliders = GetComponentsInChildren<Collider>();
+                for (int i = 0; i < obsColliders.Length; i++)
+                {
+                    for (int j = 0; j < playerColliders.Length; j++)
+                    {
+                        if (obsColliders[i] != null && playerColliders[j] != null)
+                        {
+                            Physics.IgnoreCollision(playerColliders[j], obsColliders[i], true);
+                        }
+                    }
+                }
+            }
 
             // Lấy thông số phạt cụ thể từ chính Obstacle nếu có, ngược lại dùng mặc định
             float penalty = obstacle != null ? obstacle.EnergyPenaltyPercent : _energyPenaltyPercent;
