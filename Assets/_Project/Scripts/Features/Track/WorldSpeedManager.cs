@@ -7,11 +7,17 @@ namespace SteamRush.Track
     /// Điều phối tốc độ cuộn của TOÀN BỘ thế giới (Track, Background, Spawner, MovingWorldObject...).
     /// Runner đứng cố định tại X = 9.55; mọi cảm giác "di chuyển" đến từ việc thay đổi CurrentSpeed.
     ///   - Singleton Instance, Speed Ramp tăng dần theo thời gian, Recovery curve khi va chạm.
-    /// Triển khai Controls & World Speed Mechanics + Collision Pipeline:
+    /// Triển khai Controls & World Speed Mechanics + Collision Pipeline (GDD v1.2):
     ///   - Slide & Active World Deceleration (nhấp nhả / đè giữ Ctrl-S-↓)
     ///   - Active Sprint (giữ Shift/E, tiêu hao Energy)
     ///   - Khi va chạm: giảm về 0 (0.3-0.5s) -> giữ 0 (thời gian ngã tuỳ obstacle)
     ///     -> tăng mượt lại 10.0 m/s
+    ///
+    /// THÊM MỚI cho GDD v1.3 (bản thử nghiệm Chat 3-Lane, song song với v1.2):
+    ///   - CommandOverride: state riêng cho lệnh chat "fast"/"slow" từ ChatLaneRunnerController —
+    ///     ép tốc độ về 1 mục tiêu cụ thể trong 1 khoảng thời gian cố định rồi tự trả về bình
+    ///     thường. KHÔNG dùng chung với Sprint (Sprint cần giữ phím liên tục + khoá theo Energy,
+    ///     khác hẳn ngữ nghĩa 1 lệnh chat kích hoạt tức thì trong khung giờ cố định).
     /// </summary>
     public class WorldSpeedManager : MonoBehaviour
     {
@@ -70,9 +76,16 @@ namespace SteamRush.Track
         [SerializeField] private float _defaultRecoveryTotalDuration = 1.2f;
 
         // ============================================================
+        // COMMAND OVERRIDE (GDD v1.3 - lệnh chat fast/slow)
+        // ============================================================
+        [Header("Command Override (Chat fast/slow - GDD v1.3)")]
+        [Tooltip("Tốc độ tăng/giảm mỗi giây khi đang tiến tới mục tiêu Command Override.")]
+        [SerializeField] private float _commandOverrideAccelRate = 6f;
+
+        // ============================================================
         // STATE
         // ============================================================
-        private enum SpeedState { Normal, SlideTap, SlideHold, Sprint, Recovery }
+        private enum SpeedState { Normal, SlideTap, SlideHold, Sprint, Recovery, CommandOverride }
         private SpeedState _state = SpeedState.Normal;
 
         private float _rampIncreasePerSecond;
@@ -84,6 +97,10 @@ namespace SteamRush.Track
         private float _recoveryTotalDuration;
         private float _recoverySpeedAtImpact;
 
+        // Command Override state riêng (GDD v1.3)
+        private float _commandOverrideTimer;
+        private float _commandOverrideTargetSpeed;
+
         /// <summary>
         /// Tốc độ cuộn hiện tại của thế giới. Giữ public set để tương thích ngược với
         /// TrackTileLooper.WorldSpeed (setter cũ) — KHÔNG tự ý gán từ bên ngoài, hãy dùng
@@ -94,6 +111,7 @@ namespace SteamRush.Track
         public bool IsSliding => _state == SpeedState.SlideTap || _state == SpeedState.SlideHold;
         public bool IsSprinting => _state == SpeedState.Sprint;
         public bool IsRecovering => _state == SpeedState.Recovery;
+        public bool IsCommandOverrideActive => _state == SpeedState.CommandOverride;
 
         /// <summary>
         /// EnergySystem cần set giá trị này mỗi frame (0-1) trong Update() của nó,
@@ -140,6 +158,10 @@ namespace SteamRush.Track
 
                 case SpeedState.Recovery:
                     UpdateRecovery(dt, normalTargetSpeed);
+                    break;
+
+                case SpeedState.CommandOverride:
+                    UpdateCommandOverride(dt, normalTargetSpeed);
                     break;
 
                 case SpeedState.Normal:
@@ -205,8 +227,24 @@ namespace SteamRush.Track
             }
         }
 
+        /// <summary>
+        /// GDD v1.3 mục 5.2 (lệnh chat fast/slow): tiến dần CurrentSpeed về
+        /// _commandOverrideTargetSpeed, đếm ngược _commandOverrideTimer, hết giờ thì tự thoát về
+        /// Normal (Update() sẽ lại tự MoveTowards về tốc độ ramp chuẩn ở frame kế tiếp).
+        /// </summary>
+        private void UpdateCommandOverride(float dt, float normalTargetSpeed)
+        {
+            CurrentSpeed = Mathf.MoveTowards(CurrentSpeed, _commandOverrideTargetSpeed, _commandOverrideAccelRate * dt);
+
+            _commandOverrideTimer -= dt;
+            if (_commandOverrideTimer <= 0f)
+            {
+                _state = SpeedState.Normal;
+            }
+        }
+
         // ============================================================
-        // PUBLIC INPUT API — gọi từ RunnerInputHandler
+        // PUBLIC INPUT API — gọi từ RunnerInputHandler (GDD v1.2)
         // ============================================================
 
         /// <summary>Gọi khi người chơi NHẤP NHẢ phím Slide (Ctrl / S / ↓).</summary>
@@ -269,6 +307,25 @@ namespace SteamRush.Track
             _recoveryElapsed = 0f;
             _recoveryTotalDuration = totalRecoveryDuration > 0f ? totalRecoveryDuration : _defaultRecoveryTotalDuration;
             _state = SpeedState.Recovery;
+        }
+
+        // ============================================================
+        // PUBLIC INPUT API — gọi từ ChatLaneRunnerController (GDD v1.3)
+        // ============================================================
+
+        /// <summary>
+        /// GDD v1.3 mục 5.2: lệnh chat "fast" hoặc "slow". Ép CurrentSpeed tiến dần về
+        /// <paramref name="targetSpeed"/> trong <paramref name="duration"/> giây, sau đó tự trả
+        /// lại Normal (tốc độ ramp chuẩn của GDD v1.2 tiếp tục chạy như cũ).
+        /// Va chạm (TriggerRecovery) vẫn luôn được ưu tiên ngắt ngang state này nếu xảy ra.
+        /// </summary>
+        public void TriggerCommandSpeed(float targetSpeed, float duration)
+        {
+            if (_state == SpeedState.Recovery) return; // đang ngã thì lệnh chat không có tác dụng
+
+            _commandOverrideTargetSpeed = targetSpeed;
+            _commandOverrideTimer = duration;
+            _state = SpeedState.CommandOverride;
         }
     }
 }
