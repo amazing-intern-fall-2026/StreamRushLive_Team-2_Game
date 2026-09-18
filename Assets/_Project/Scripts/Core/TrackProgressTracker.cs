@@ -75,7 +75,7 @@ namespace SteamRush.Track
         /// <summary>
         /// Giảm quãng đường hiện tại (dùng khi người chơi va chạm phải chướng ngại vật có hình phạt trừ quãng đường).
         /// </summary>
-        public void ReduceDistance(float distanceDelta)
+        public void ReduceDistance(float distanceDelta, bool showPopup = true)
         {
             if (distanceDelta <= 0f) return;
 
@@ -87,7 +87,10 @@ namespace SteamRush.Track
             if (_hudManager != null)
             {
                 _hudManager.UpdateProgress(TotalDistanceMeters / 1000f);
-                _hudManager.ShowStatusPopup($"-{distanceDelta:F0}m Quãng đường!", false);
+                if (showPopup)
+                {
+                    _hudManager.ShowStatusPopup($"-{distanceDelta:F0}m Quãng đường!", false);
+                }
             }
         }
     }

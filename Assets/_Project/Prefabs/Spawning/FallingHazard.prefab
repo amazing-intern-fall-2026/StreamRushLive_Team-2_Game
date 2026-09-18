@@ -158,7 +158,9 @@ MonoBehaviour:
   obstacleType: 4
   energyPenaltyPercent: 40
   hitStopDuration: 0.15
-  distancePenaltyMeters: 0
+  distancePenaltyMeters: 10
+  despawnOnHit: 1
+  despawnDelay: 0
   warningDuration: 1
   warningShadowSprite: {fileID: 0}
   blinkInterval: 0.15

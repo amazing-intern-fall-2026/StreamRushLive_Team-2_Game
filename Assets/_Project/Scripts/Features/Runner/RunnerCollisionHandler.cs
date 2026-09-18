@@ -209,7 +209,7 @@ namespace SteamRush.Features.Runner
                     Destroy(obj);
                     return;
                 }
-                StartCoroutine(HandleObstacleHit(null));
+                StartCoroutine(HandleObstacleHit(null, obj));
             }
         }
 
@@ -219,14 +219,16 @@ namespace SteamRush.Features.Runner
             StartCoroutine(HandleObstacleHit(obstacle));
         }
 
-        private IEnumerator HandleObstacleHit(ObstacleBase obstacle)
+        private IEnumerator HandleObstacleHit(ObstacleBase obstacle, GameObject fallbackObj = null)
         {
             _isHandlingHit = true;
 
-            // Bỏ qua va chạm vật lý giữa Player và vật cản này để không xô đẩy hoặc kích hoạt lại
-            if (obstacle != null)
+            // Bỏ qua va chạm vật lý giữa Player và vật cản này để vật cản xuyên qua mà không xô đẩy
+            // Giữ nguyên Collider của Player ở trạng thái Solid để trọng lực và mặt đất luôn hoạt động bình thường
+            GameObject targetObj = obstacle != null ? obstacle.gameObject : fallbackObj;
+            if (targetObj != null)
             {
-                Collider[] obsColliders = obstacle.GetComponentsInChildren<Collider>();
+                Collider[] obsColliders = targetObj.GetComponentsInChildren<Collider>();
                 Collider[] playerColliders = GetComponentsInChildren<Collider>();
                 for (int i = 0; i < obsColliders.Length; i++)
                 {
@@ -244,14 +246,11 @@ namespace SteamRush.Features.Runner
             float penalty = obstacle != null ? obstacle.EnergyPenaltyPercent : _energyPenaltyPercent;
             float hitStop = obstacle != null ? obstacle.HitStopDuration : _hitStopDuration;
 
-            // Chuyển chính Player thành Trigger để vật cản xuyên qua mà không xô đẩy
-            _controller.SetTriggerMode(true);
-
             // Hiển thị Status Popup debuff
             HUDManager hud = FindFirstObjectByType<HUDManager>();
             if (obstacle != null && obstacle.DistancePenaltyMeters > 0f)
             {
-                hud?.ShowStatusPopup($"Vấp ngã! -{penalty:F0}% NL (-{obstacle.DistancePenaltyMeters:F0}m)", false);
+                hud?.ShowStatusPopup($"Vấp ngã! -{penalty:F0}% NL | Lùi -{obstacle.DistancePenaltyMeters:F0}m!", false);
             }
             else if (penalty > 0f)
             {
@@ -274,10 +273,10 @@ namespace SteamRush.Features.Runner
             yield return new WaitForSecondsRealtime(hitStop);
             Time.timeScale = 1f;
 
-            // Kích hoạt hồi phục tốc độ thế giới — curve 3 pha (giảm về 0 -> giữ 0 -> tăng lại)
-            // nằm gọn trong WorldSpeedManager, không cần tự Lerp thủ công ở đây nữa.
+            // Kích hoạt hồi phục tốc độ thế giới và xung cuộn ngược đẩy lùi Runner (Reverse Knockback)
             WorldSpeedManager speedManager = FindFirstObjectByType<WorldSpeedManager>();
-            speedManager?.TriggerRecovery(_defaultWorldRecoveryDuration);
+            float distPenalty = obstacle != null ? obstacle.DistancePenaltyMeters : 5f;
+            speedManager?.TriggerRecovery(_defaultWorldRecoveryDuration, distPenalty);
 
             // Hiệu ứng nhấp nháy miễn nhiễm và giữ Player ở trạng thái Trigger trong khi vật cản trôi qua
             float elapsed = 0f;
@@ -290,8 +289,7 @@ namespace SteamRush.Features.Runner
 
             SetRenderersVisible(true);
 
-            // Chuyển Player trở lại Collider vật lý bình thường
-            _controller.SetTriggerMode(false);
+            // Hoàn tất hồi phục va chạm
             _isHandlingHit = false;
         }
 
@@ -304,24 +302,6 @@ namespace SteamRush.Features.Runner
                 {
                     _renderers[i].enabled = visible;
                 }
-            }
-        }
-        private IEnumerator RecoverWorldSpeed(WorldSpeedManager speedManager, float targetSpeed, float duration)
-        {
-            float elapsed = 0f;
-            float startSpeed = speedManager.CurrentSpeed;
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                if (speedManager != null)
-                {
-                    speedManager.CurrentSpeed = Mathf.Lerp(startSpeed, targetSpeed, elapsed / duration);
-                }
-                yield return null;
-            }
-            if (speedManager != null)
-            {
-                speedManager.CurrentSpeed = targetSpeed;
             }
         }
 
@@ -351,8 +331,6 @@ namespace SteamRush.Features.Runner
 
             if (blocked)
             {
-                Debug.Log("[RunnerCollisionHandler] Shield đã chặn va chạm.");
-
                 HUDManager hud = FindFirstObjectByType<HUDManager>();
                 hud?.ShowStatusPopup("Shield chặn va chạm!", true);
             }

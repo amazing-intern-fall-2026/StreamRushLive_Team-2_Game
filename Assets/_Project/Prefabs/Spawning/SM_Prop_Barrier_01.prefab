@@ -18,6 +18,7 @@ GameObject:
   - component: {fileID: 2557360219984251634}
   - component: {fileID: 5305314506142312339}
   - component: {fileID: 3286059029637417189}
+  - component: {fileID: 8148470515289205166}
   m_Layer: 8
   m_Name: SM_Prop_Barrier_01
   m_TagString: Untagged
@@ -238,3 +239,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StreamRushLive.Features.Spawning.SpawnableObject
   spawnType: 1
+--- !u!114 &8148470515289205166
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3756146291101094273}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ec7a9d56d713274e98247a8cbab54b8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StreamRushLive.Features.Spawning.BarrierObstacle
+  obstacleName: Obstacle
+  obstacleType: 0
+  energyPenaltyPercent: 25
+  hitStopDuration: 0.15
+  distancePenaltyMeters: 5
+  despawnOnHit: 0
+  despawnDelay: 0
+  applyImpactPhysics: 0

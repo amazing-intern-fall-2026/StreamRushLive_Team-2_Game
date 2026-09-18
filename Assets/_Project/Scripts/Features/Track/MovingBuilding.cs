@@ -4,9 +4,12 @@ namespace SteamRush.Track
 {
     public class MovingBuilding : MonoBehaviour
     {
-        [Header("Speed Mode")]
+        [Header("Speed & Parallax Mode")]
         [Tooltip("Use global speed from WorldSpeedManager if true, otherwise custom speed.")]
         [SerializeField] private bool _useWorldSpeed = true;
+
+        [Tooltip("Hệ số nhân tốc độ parallax: 1.0 = bằng tốc độ thế giới (ở gần), 0.3 = chậm hơn (ở xa).")]
+        [SerializeField] private float _parallaxMultiplier = 1.0f;
 
         [SerializeField] private float _customSpeed = 5f;
 
@@ -15,13 +18,19 @@ namespace SteamRush.Track
 
         public bool UseWorldSpeedMode => _useWorldSpeed;
         public float CustomSpeed => _customSpeed;
+        public float ParallaxMultiplier
+        {
+            get => _parallaxMultiplier;
+            set => _parallaxMultiplier = Mathf.Max(0f, value);
+        }
 
-        public void Initialize(BuildingSpawner spawner, float despawnXThreshold, bool useWorldSpeed = true, float customSpeed = 5f)
+        public void Initialize(BuildingSpawner spawner, float despawnXThreshold, bool useWorldSpeed = true, float customSpeed = 5f, float parallaxMultiplier = 1.0f)
         {
             _spawner = spawner;
             _despawnXThreshold = despawnXThreshold;
             _useWorldSpeed = useWorldSpeed;
             _customSpeed = customSpeed;
+            _parallaxMultiplier = parallaxMultiplier;
         }
 
         /// <summary>
@@ -43,14 +52,14 @@ namespace SteamRush.Track
 
         /// <summary>
         /// Hàm xử lý và tính toán tốc độ hiện tại:
-        /// - Nếu dùng WorldSpeed: lấy từ Spawner (WorldSpeedManager)
+        /// - Nếu dùng WorldSpeed: lấy từ Spawner (WorldSpeedManager) nhân với hệ số Parallax
         /// - Nếu không: lấy CustomSpeed riêng
         /// </summary>
         public float GetCurrentSpeed()
         {
             if (_useWorldSpeed && _spawner != null)
             {
-                return _spawner.WorldSpeed;
+                return _spawner.WorldSpeed * _parallaxMultiplier;
             }
 
             return _customSpeed;

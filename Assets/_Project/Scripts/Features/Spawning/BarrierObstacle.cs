@@ -13,6 +13,18 @@ namespace StreamRushLive.Features.Spawning
         [Tooltip("Apply physics impulse to barrier upon player hit.")]
         [SerializeField] private bool applyImpactPhysics = false;
 
+        private void Awake()
+        {
+            if (distancePenaltyMeters <= 0f)
+            {
+                distancePenaltyMeters = 5f;
+            }
+            if (energyPenaltyPercent <= 0f)
+            {
+                energyPenaltyPercent = 25f;
+            }
+        }
+
         public override void OnHitPlayer(GameObject player)
         {
             if (applyImpactPhysics && TryGetComponent<Rigidbody>(out var rb))

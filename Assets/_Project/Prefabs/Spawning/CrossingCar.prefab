@@ -129,6 +129,8 @@ MonoBehaviour:
   obstacleType: 0
   energyPenaltyPercent: 25
   hitStopDuration: 0.15
-  distancePenaltyMeters: 0
+  distancePenaltyMeters: 12
+  despawnOnHit: 0
+  despawnDelay: 0
   crossSpeed: 6
   despawnZThreshold: 15

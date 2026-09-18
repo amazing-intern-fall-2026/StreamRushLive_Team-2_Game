@@ -253,15 +253,8 @@ namespace SteamRush.Features.Runner
             if (_boxCollider != null) _boxCollider.isTrigger = isTrigger;
             if (_capsuleCollider != null) _capsuleCollider.isTrigger = isTrigger;
 
-            if (isTrigger)
-            {
-                RB.linearVelocity = new Vector3(RB.linearVelocity.x, 0f, RB.linearVelocity.z);
-                RB.constraints |= RigidbodyConstraints.FreezePositionY;
-            }
-            else
-            {
-                RB.constraints &= ~RigidbodyConstraints.FreezePositionY;
-            }
+            // Không đóng băng trục Y để Runner luôn chịu tác động của trọng lực bình thường
+            RB.constraints &= ~RigidbodyConstraints.FreezePositionY;
         }
 
 

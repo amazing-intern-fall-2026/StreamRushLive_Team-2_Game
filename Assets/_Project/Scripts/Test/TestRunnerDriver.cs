@@ -27,6 +27,5 @@ public class TestRunnerDriver : MonoBehaviour
 
     private void OnProgressChanged(float leg, float total, float goalProgress)
     {
-        Debug.Log($"Progress: leg={leg:F1}m total={total:F1}m goal={goalProgress:P1}");
     }
 }

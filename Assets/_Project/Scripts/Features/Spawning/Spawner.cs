@@ -49,14 +49,18 @@ namespace StreamRushLive.Features.Spawning
         [SerializeField] private bool useTypeYOffset = false;
         [SerializeField] private float lowBarrierY = 0.5f;
         [SerializeField] private float highBarrierY = 1.8f;
-        [SerializeField] private float stopSignY = 0.5f;
-        [SerializeField] private float trafficLightY = 0.5f;
+        [SerializeField] private float stopSignY = 0.17f;
+        [SerializeField] private float trafficLightY = 0.17f;
         [SerializeField] private float fallingHazardY = 4.5f;
         [SerializeField] private float bouncingBoulderY = 0.5f;
         [SerializeField] private float buffItemY = 1.0f;
         [SerializeField] private float shieldItemY = 1.0f;
         [SerializeField] private float highJumpItemY = 1.0f;
         [SerializeField] private float hyperDashItemY = 1.0f;
+
+        [Header("Roadside Z-Offset Settings")]
+        [SerializeField] private float stopSignZ = 1.8f;
+        [SerializeField] private float trafficLightZ = 1.8f;
 
         [Header("Settings")]
         [SerializeField] private WorldSpeedManager worldSpeedManager;
@@ -175,9 +179,6 @@ namespace StreamRushLive.Features.Spawning
 
             ObstacleType nextType = _obstacleQueue.Dequeue();
             GameObject instance = SpawnObstacle(nextType);
-
-            Debug.Log($"[Spawner Queue] Spawned {nextType}, distanceSinceLast={distanceSinceLast:F2}m (min required: {minSafeDistance}m), remaining in queue: {_obstacleQueue.Count}");
-
             _lastSpawnedObstacle = instance != null ? instance.transform : null;
         }
         // [DHUY - ADDED] ---- Kết thúc region Obstacle Queue ----
@@ -203,6 +204,19 @@ namespace StreamRushLive.Features.Spawning
             {
                 position = GetObstacleSpawnPosition(obstacleType);
             }
+            else
+            {
+                // Dù truyền custom position, StopSign và TrafficLight vẫn bắt buộc ở lề đường Z = 1.8f
+                if (obstacleType == ObstacleType.StopSign || obstacleType == ObstacleType.TrafficLight)
+                {
+                    position.z = (obstacleType == ObstacleType.StopSign)
+                        ? (stopSignZ > 0.5f ? stopSignZ : 1.8f)
+                        : (trafficLightZ > 0.5f ? trafficLightZ : 1.8f);
+                    position.y = (obstacleType == ObstacleType.StopSign)
+                        ? (stopSignY > 0f ? stopSignY : 0.17f)
+                        : (trafficLightY > 0f ? trafficLightY : 0.17f);
+                }
+            }
 
             GameObject prefab = GetObstaclePrefab(obstacleType);
             if (prefab == null)
@@ -211,10 +225,26 @@ namespace StreamRushLive.Features.Spawning
                 return null;
             }
 
-            GameObject instance = InstantiatePrefab(prefab, position);
+            // Xoay mặt trước hướng thẳng về camera (Y = 180)
+            Quaternion rotation = prefab.transform.rotation;
+            switch (obstacleType)
+            {
+                case ObstacleType.StopSign:
+                    rotation = Quaternion.Euler(0f, 180f, 0f);
+                    break;
+                case ObstacleType.TrafficLight:
+                    rotation = Quaternion.Euler(0f, 180f, 0f);
+                    break;
+            }
 
-            // Vật cản là Solid Collider (không phải Trigger)
-            SetCollidersTrigger(instance, isTrigger: false);
+            GameObject instance = Instantiate(prefab, position, rotation);
+
+            // Giữ nguyên Trigger cho các chướng ngại vật sử dụng vùng kích hoạt (TrafficLight, StopSign bên lề đường)
+            bool preserveTriggers = obstacleType == ObstacleType.TrafficLight || obstacleType == ObstacleType.StopSign;
+            if (!preserveTriggers)
+            {
+                SetCollidersTrigger(instance, isTrigger: false);
+            }
 
             SetupWorldMovement(instance);
             return instance;
@@ -389,6 +419,21 @@ namespace StreamRushLive.Features.Spawning
                         pos.y = bouncingBoulderY;
                         break;
                 }
+            }
+
+            // StopSign và TrafficLight luôn luôn spawn bên lề đường (mép vỉa hè giáp đường chạy)
+            switch (type)
+            {
+                case ObstacleType.StopSign:
+                    pos.z = stopSignZ > 0.5f ? stopSignZ : 1.8f;
+                    if (useTypeYOffset && stopSignY > 0f) pos.y = stopSignY;
+                    else if (pos.y < 0.15f || !useTypeYOffset) pos.y = 0.17f;
+                    break;
+                case ObstacleType.TrafficLight:
+                    pos.z = trafficLightZ > 0.5f ? trafficLightZ : 1.8f;
+                    if (useTypeYOffset && trafficLightY > 0f) pos.y = trafficLightY;
+                    else if (pos.y < 0.15f || !useTypeYOffset) pos.y = 0.17f;
+                    break;
             }
 
             return pos;

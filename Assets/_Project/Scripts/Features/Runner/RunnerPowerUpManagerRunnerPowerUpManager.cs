@@ -69,8 +69,6 @@ namespace SteamRush.Features.Runner
         {
             _hasShield = true;
             _shieldTimer = _shieldDuration;
-
-            Debug.Log($"[PowerUp] Shield activated for {_shieldDuration:F0}s.");
         }
 
         /// <summary>
@@ -87,8 +85,6 @@ namespace SteamRush.Features.Runner
             _hasShield = false;
             _shieldTimer = 0f;
 
-            Debug.Log("[PowerUp] Shield blocked one collision.");
-
             return true;
         }
 
@@ -102,8 +98,6 @@ namespace SteamRush.Features.Runner
             {
                 _shieldTimer = 0f;
                 _hasShield = false;
-
-                Debug.Log("[PowerUp] Shield expired.");
             }
         }
 
@@ -119,8 +113,6 @@ namespace SteamRush.Features.Runner
         {
             _isHighJumpActive = true;
             _highJumpTimer = _highJumpDuration;
-
-            Debug.Log($"[PowerUp] High Jump activated for {_highJumpDuration:F0}s.");
         }
 
         /// <summary>
@@ -146,8 +138,6 @@ namespace SteamRush.Features.Runner
             {
                 _highJumpTimer = 0f;
                 _isHighJumpActive = false;
-
-                Debug.Log("[PowerUp] High Jump expired.");
             }
         }
 
@@ -164,8 +154,6 @@ namespace SteamRush.Features.Runner
         {
             _isHyperDashActive = true;
             _hyperDashTimer = _hyperDashDuration;
-
-            Debug.Log($"[PowerUp] Hyper Dash activated: {_hyperDashSpeed:F1} m/s for {_hyperDashDuration:F0}s.");
         }
 
         private void UpdateHyperDashTimer()
@@ -178,8 +166,6 @@ namespace SteamRush.Features.Runner
             {
                 _hyperDashTimer = 0f;
                 _isHyperDashActive = false;
-
-                Debug.Log("[PowerUp] Hyper Dash expired.");
             }
         }
     }

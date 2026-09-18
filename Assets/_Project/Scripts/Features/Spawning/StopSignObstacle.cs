@@ -21,6 +21,10 @@ namespace StreamRushLive.Features.Spawning
         private void Awake()
         {
             obstacleType = ObstacleType.StopSign;
+            if (distancePenaltyMeters <= 0f)
+            {
+                distancePenaltyMeters = 8f;
+            }
             _movingWorldObject = GetComponent<MovingWorldObject>();
         }
 

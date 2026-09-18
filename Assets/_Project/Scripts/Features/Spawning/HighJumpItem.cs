@@ -40,11 +40,6 @@ namespace StreamRushLive.Features.Spawning
             if (itemEffects != null)
             {
                 itemEffects.ActivateHighJump(effectDuration, jumpForceMultiplier);
-
-                Debug.Log(
-                    $"[HighJumpItem] High Jump activated: " +
-                    $"JumpForce x{jumpForceMultiplier:F1} for {effectDuration:F0}s."
-                );
             }
             else
             {

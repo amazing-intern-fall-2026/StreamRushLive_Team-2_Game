@@ -24,6 +24,10 @@ namespace StreamRushLive.Features.Spawning
         {
             obstacleType = ObstacleType.FallingHazard;
             energyPenaltyPercent = 40f;
+            if (distancePenaltyMeters <= 0f)
+            {
+                distancePenaltyMeters = 10f;
+            }
             _movingWorldObject = GetComponent<MovingWorldObject>();
 
             if (hazardRigidbody == null)

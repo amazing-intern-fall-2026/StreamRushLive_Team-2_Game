@@ -66,23 +66,15 @@ namespace StreamRushLive.Features.Spawning
                 shieldCoroutine = null;
             }
 
-            Debug.Log("[RunnerItemEffects] Shield đã chặn 1 lần va chạm.");
-
             return true;
         }
 
         private IEnumerator ShieldTimer(float duration)
         {
             shieldActive = true;
-
-            Debug.Log($"[RunnerItemEffects] Shield activated for {duration:F0}s.");
-
             yield return new WaitForSeconds(duration);
-
             shieldActive = false;
             shieldCoroutine = null;
-
-            Debug.Log("[RunnerItemEffects] Shield đã hết thời gian.");
         }
 
         /// <summary>
@@ -104,18 +96,11 @@ namespace StreamRushLive.Features.Spawning
             highJumpActive = true;
             currentJumpForceMultiplier = multiplier;
 
-            Debug.Log(
-                $"[RunnerItemEffects] High Jump activated: " +
-                $"JumpForce x{multiplier:F1} for {duration:F0}s."
-            );
-
             yield return new WaitForSeconds(duration);
 
             highJumpActive = false;
             currentJumpForceMultiplier = 1f;
             highJumpCoroutine = null;
-
-            Debug.Log("[RunnerItemEffects] High Jump đã hết thời gian.");
         }
 
         /// <summary>
@@ -135,7 +120,6 @@ namespace StreamRushLive.Features.Spawning
         private IEnumerator HyperDashTimer(float duration, float maxSpeed)
         {
             hyperDashActive = true;
-            Debug.Log($"[RunnerItemEffects] Hyper Dash activated for {duration:F0}s at {maxSpeed:F0} m/s.");
 
             SteamRush.Features.Runner.RunnerCollisionHandler collisionHandler =
                 GetComponent<SteamRush.Features.Runner.RunnerCollisionHandler>()
@@ -167,7 +151,6 @@ namespace StreamRushLive.Features.Spawning
             }
 
             hyperDashCoroutine = null;
-            Debug.Log("[RunnerItemEffects] Hyper Dash đã hết thời gian.");
         }
     }
 }

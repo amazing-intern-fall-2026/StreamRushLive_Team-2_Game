@@ -16,6 +16,8 @@ namespace StreamRushLive.Features.Spawning
     {
         [Header("Energy Settings")]
         [SerializeField] private float maxEnergy = 100f;
+        [Tooltip("Nếu true, năng lượng chỉ giảm khi đè Shift (Sprint) hoặc dính penalty vật cản, không tự động tụt theo thời gian.")]
+        [SerializeField] private bool onlyDrainOnSprint = true;
         [SerializeField] private float energyDrainPerSecond = 10f;
 
         [Header("Speed Settings")]
@@ -37,6 +39,11 @@ namespace StreamRushLive.Features.Spawning
         public float CurrentEnergy => currentEnergy;
         public float EnergyNormalized => Mathf.Clamp01(currentEnergy / maxEnergy);
 
+        private void Awake()
+        {
+            currentEnergy = maxEnergy;
+        }
+
         private void Start()
         {
             currentEnergy = maxEnergy;
@@ -57,6 +64,8 @@ namespace StreamRushLive.Features.Spawning
             }
 
             runnerCollision = FindFirstObjectByType<RunnerCollisionHandler>();
+
+            SyncHUD();
         }
 
         private void OnDestroy()
@@ -70,6 +79,7 @@ namespace StreamRushLive.Features.Spawning
         private void HandleSprintEnergyConsumed(float cost)
         {
             currentEnergy = Mathf.Max(0f, currentEnergy - cost);
+            SyncWorldSpeed();
         }
 
         private void Update()
@@ -81,6 +91,8 @@ namespace StreamRushLive.Features.Spawning
 
         private void DrainEnergy()
         {
+            if (onlyDrainOnSprint) return;
+
             if (currentEnergy > 0f)
             {
                 currentEnergy -= energyDrainPerSecond * Time.deltaTime;
@@ -162,6 +174,7 @@ namespace StreamRushLive.Features.Spawning
         {
             currentEnergy += amount;
             currentEnergy = Mathf.Clamp(currentEnergy, 0f, maxEnergy);
+            SyncWorldSpeed();
             SyncHUD();
         }
 

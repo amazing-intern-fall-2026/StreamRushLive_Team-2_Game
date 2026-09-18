@@ -65,7 +65,6 @@ namespace SteamRush.MinhHuy
 
             hud?.UpdateRunnerInfo("MinhHuy", dummyAvatar);
             hud?.UpdateRunnerTarget(dummyRunner);
-            Debug.Log("[MinhHuy] dữ liệu giả chờ module Relay/Like");
         }
 
         [SerializeField] private bool testFakeProgressAndEnergy = true;

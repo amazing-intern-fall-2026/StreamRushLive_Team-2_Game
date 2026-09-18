@@ -173,7 +173,6 @@ namespace SteamRush.Relay
             // Hàng đợi trống = Solo Marathon Mode (GDD mục 8) - không có ai bàn giao, không spawn Proxy.
             if (relayQueueManager == null || relayQueueManager.Count == 0)
             {
-                Debug.Log("[BatonHandoverController] Hàng đợi trống - Solo Marathon Mode, bỏ qua bàn giao.");
                 return;
             }
 
@@ -365,8 +364,6 @@ namespace SteamRush.Relay
             // 4. Reset trạng thái sẵn sàng cho chặng tiếp theo
             _proxySpawnedForCurrentLeg = false;
             _hasPendingHandover = false;
-
-            Debug.Log($"[BatonHandoverController] Chuyển gậy In-Place thành công cho: {followerName} (Đã chuyển sang model: {_currentOutfitName})");
         }
 
         private void SwapOutfit()
@@ -378,7 +375,6 @@ namespace SteamRush.Relay
 
             if (_pendingNextOutfit == null)
             {
-                Debug.Log("[BatonHandoverController] Chưa có danh sách outfit - bỏ qua đổi mesh.");
                 return;
             }
 
@@ -402,11 +398,7 @@ namespace SteamRush.Relay
                 }
             }
 
-            if (swapped)
-            {
-                Debug.Log($"[BatonHandoverController] Đã đổi Runner sang outfit: {_currentOutfitName}");
-            }
-            else
+            if (!swapped)
             {
                 Debug.LogWarning($"[BatonHandoverController] Không tìm thấy mesh con trên Runner khớp với outfit '{targetOutfitName}'");
             }

@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 110647936106888263}
   - component: {fileID: 8185552545942452004}
   - component: {fileID: -3380859437483410033}
+  - component: {fileID: 9105217450175936538}
   m_Layer: 8
   m_Name: SM_Prop_TrashBag_01
   m_TagString: Obstacle
@@ -141,3 +142,23 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &9105217450175936538
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8245660175374962882}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ec7a9d56d713274e98247a8cbab54b8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StreamRushLive.Features.Spawning.BarrierObstacle
+  obstacleName: Obstacle
+  obstacleType: 0
+  energyPenaltyPercent: 25
+  hitStopDuration: 0.15
+  distancePenaltyMeters: 5
+  despawnOnHit: 0
+  despawnDelay: 0
+  applyImpactPhysics: 0

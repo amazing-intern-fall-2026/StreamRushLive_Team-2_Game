@@ -6,6 +6,17 @@ namespace StreamRushLive.Features.Spawning
     {
         [SerializeField] private float crossSpeed = 6f;
         [SerializeField] private float despawnZThreshold = 15f;
+
+        private void Awake()
+        {
+            obstacleType = ObstacleType.TrafficLight;
+            energyPenaltyPercent = 40f;
+            if (distancePenaltyMeters <= 0f)
+            {
+                distancePenaltyMeters = 12f;
+            }
+        }
+
         private void Update()
         {
             transform.position += Vector3.back * (crossSpeed * Time.deltaTime);
@@ -19,7 +30,6 @@ namespace StreamRushLive.Features.Spawning
 
         public override void OnHitPlayer(GameObject player)
         {
-            Debug.Log($"Crossing Car va chạm Player — cần trừ {energyPenaltyPercent}% Energy.", this);
         }
     }
 }

@@ -39,10 +39,6 @@ namespace SteamRush.Track
         [Tooltip("Tỉ lệ tốc độ còn lại khi Tap (0.5 = giảm 50%, 10.0 -> 5.0 m/s theo GDD).")]
         [SerializeField, Range(0f, 1f)] private float _slideTapSpeedMultiplier = 0.5f;
 
-        [Header("Slide - Hold")]
-        [Tooltip("Tốc độ hãm khi ĐÈ GIỮ, m/s² . GDD v1.2 = 8.0 m/s².")]
-        [SerializeField] private float _holdDecelRate = 8f;
-
         [Header("Speed Transition")]
         [Tooltip("Tốc độ tăng mượt khi quay lại bình thường (nhả Slide, hết Tap, ramp bình thường).")]
         [SerializeField] private float _normalAccelRate = 8f;
@@ -57,17 +53,17 @@ namespace SteamRush.Track
         [SerializeField] private float _sprintAccelMultiplier = 2f;
         [Tooltip("Năng lượng tiêu hao mỗi giây khi Sprint. GDD = 3.0 Energy/s.")]
         [SerializeField] private float _sprintEnergyDrainPerSecond = 3f;
-        [Tooltip("Ngưỡng % Energy (0-1) để khóa Sprint. GDD = 10% -> 0.1.")]
-        [SerializeField, Range(0f, 1f)] private float _sprintEnergyLockThreshold = 0.1f;
 
         // ============================================================
-        // COLLISION RECOVERY 
+        // COLLISION RECOVERY & REVERSE KNOCKBACK
         // ============================================================
-        [Header("Collision Recovery")]
-        [Tooltip("Thời gian giảm về 0 m/s ngay khi va chạm. GDD v1.2 = 0.3-0.5s.")]
+        [Header("Collision Recovery & Knockback")]
+        [Tooltip("Thời gian giảm về 0 m/s khi không có knockback distance (giây). GDD v1.2 = 0.3-0.5s.")]
         [SerializeField] private float _recoveryDecelDuration = 0.4f;
         [Tooltip("Thời gian hồi phục mặc định nếu obstacle không truyền riêng (giây).")]
         [SerializeField] private float _defaultRecoveryTotalDuration = 1.2f;
+        [Tooltip("Thời lượng cơ sở cho xung cuộn ngược thế giới khi bị đẩy lùi (giây).")]
+        [SerializeField] private float _baseKnockbackDuration = 0.38f;
 
         // ============================================================
         // STATE
@@ -79,10 +75,12 @@ namespace SteamRush.Track
         private float _elapsedTime;
         private float _slideTapTimer;
 
-        // Recovery state riêng (3 pha: decel -> hold 0 -> reaccel)
+        // Recovery & Knockback state
         private float _recoveryElapsed;
         private float _recoveryTotalDuration;
         private float _recoverySpeedAtImpact;
+        private float _recoveryKnockbackDistance;
+        private float _recoveryKnockbackDuration;
 
         /// <summary>
         /// Tốc độ cuộn hiện tại của thế giới. Giữ public set để tương thích ngược với
@@ -131,7 +129,8 @@ namespace SteamRush.Track
                     break;
 
                 case SpeedState.SlideHold:
-                    CurrentSpeed = Mathf.Max(0f, CurrentSpeed - _holdDecelRate * dt);
+                    // Đã loại bỏ chức năng trượt giảm dần tới khi dừng — duy trì tốc độ chạy bình thường
+                    CurrentSpeed = Mathf.MoveTowards(CurrentSpeed, normalTargetSpeed, _normalAccelRate * dt);
                     break;
 
                 case SpeedState.Sprint:
@@ -162,8 +161,8 @@ namespace SteamRush.Track
 
         private void UpdateSprint(float dt)
         {
-            // Hết năng lượng / dưới ngưỡng khóa -> tự hủy Sprint, quay lại Normal.
-            if (CurrentEnergyPercent01 < _sprintEnergyLockThreshold)
+            // Hết năng lượng -> tự hủy Sprint, quay lại Normal.
+            if (CurrentEnergyPercent01 <= 0f)
             {
                 _state = SpeedState.Normal;
                 return;
@@ -177,29 +176,46 @@ namespace SteamRush.Track
         }
 
         /// <summary>
-        /// 3 pha theo GDD mục 4:
-        /// Pha 1 (0 -> _recoveryDecelDuration): giảm đều về 0.
-        /// Pha 2 (_recoveryDecelDuration -> _recoveryTotalDuration): giữ nguyên 0 (Runner đang ngã).
-        /// Pha 3 (sau _recoveryTotalDuration): tăng mượt trở lại tốc độ chuẩn, rồi thoát Recovery.
+        /// Xử lý hồi phục và đẩy lùi thế giới:
+        /// - Nếu có knockbackDistance > 0: Thế giới cuộn NGƯỢC CHIỀU (CurrentSpeed < 0) theo xung Sine
+        ///   trong _recoveryKnockbackDuration, đẩy lùi vật thể và đường chạy sang phải (+X) tạo cảm giác Runner bị giật lùi.
+        /// - Sau đó: Giữ nguyên 0 m/s (Runner đang choáng/ngã).
+        /// - Cuối cùng: Tăng mượt trở lại tốc độ chuẩn bằng _normalAccelRate rồi thoát Recovery.
         /// </summary>
         private void UpdateRecovery(float dt, float normalTargetSpeed)
         {
             _recoveryElapsed += dt;
 
-            if (_recoveryElapsed < _recoveryDecelDuration)
+            if (_recoveryKnockbackDistance > 0f && _recoveryElapsed < _recoveryKnockbackDuration)
             {
-                float decelProgress = Mathf.Clamp01(_recoveryElapsed / _recoveryDecelDuration);
-                CurrentSpeed = Mathf.Lerp(_recoverySpeedAtImpact, 0f, decelProgress);
+                // Pha 1: Cuộn thế giới NGƯỢC CHIỀU (Reverse Scroll) theo xung Sine mượt
+                // Tích phân xung: V_peak * (2 * T / PI) = distance => V_peak = (PI * distance) / (2 * T)
+                float progress = Mathf.Clamp01(_recoveryElapsed / _recoveryKnockbackDuration);
+                float peakReverseSpeed = (Mathf.PI * _recoveryKnockbackDistance) / (2f * _recoveryKnockbackDuration);
+
+                // Vận tốc âm -> Thế giới cuộn sang phải (+X), Runner đứng yên có cảm giác bị văng/đẩy lùi về phía sau
+                CurrentSpeed = -peakReverseSpeed * Mathf.Sin(progress * Mathf.PI);
             }
             else if (_recoveryElapsed < _recoveryTotalDuration)
             {
-                CurrentSpeed = 0f;
+                // Pha 2: Dừng tại chỗ (0 m/s) trong lúc Runner hồi phục sau khi bị đẩy lùi
+                if (_recoveryKnockbackDistance <= 0f && _recoveryElapsed < _recoveryDecelDuration)
+                {
+                    float decelProgress = Mathf.Clamp01(_recoveryElapsed / _recoveryDecelDuration);
+                    CurrentSpeed = Mathf.Lerp(_recoverySpeedAtImpact, 0f, decelProgress);
+                }
+                else
+                {
+                    CurrentSpeed = 0f;
+                }
             }
             else
             {
+                // Pha 3: Tăng tốc mượt mà trở lại tốc độ chạy chuẩn
                 CurrentSpeed = Mathf.MoveTowards(CurrentSpeed, normalTargetSpeed, _normalAccelRate * dt);
                 if (Mathf.Approximately(CurrentSpeed, normalTargetSpeed))
                 {
+                    _recoveryKnockbackDistance = 0f;
                     _state = SpeedState.Normal;
                 }
             }
@@ -219,11 +235,10 @@ namespace SteamRush.Track
             CurrentSpeed *= _slideTapSpeedMultiplier; // giảm tức thì -50%
         }
 
-        /// <summary>Gọi mỗi frame khi người chơi ĐÈ GIỮ phím Slide (đã vượt ngưỡng phân biệt Tap/Hold).</summary>
+        /// <summary>Đã loại bỏ chức năng trượt giảm dần tới khi dừng khi đè giữ phím trượt.</summary>
         public void HoldSlide()
         {
-            if (_state == SpeedState.Recovery) return; // đang ngã thì không cho Slide
-            _state = SpeedState.SlideHold;
+            // Không hãm tốc độ về 0
         }
 
         /// <summary>Gọi khi người chơi NHẢ phím Slide sau khi đã ở trạng thái Hold.</summary>
@@ -240,7 +255,7 @@ namespace SteamRush.Track
         public void HoldSprint()
         {
             if (IsSliding || _state == SpeedState.Recovery) return; // Slide/Recovery ưu tiên hơn
-            if (CurrentEnergyPercent01 < _sprintEnergyLockThreshold) return; // khóa khi thiếu năng lượng
+            if (CurrentEnergyPercent01 <= 0f) return; // khóa khi hết năng lượng (0%)
 
             _state = SpeedState.Sprint;
         }
@@ -255,19 +270,33 @@ namespace SteamRush.Track
         }
 
         /// <summary>
-        /// Gọi khi Runner va chạm vật cản: tốc độ giảm đều về 0 trong _recoveryDecelDuration (0.3-0.5s),
-        /// giữ 0 trong lúc Runner đang ngã, rồi tăng mượt trở lại tốc độ chuẩn.
+        /// Gọi khi Runner va chạm vật cản:
+        /// - Nếu có knockbackDistance: Thế giới giật cuộn ngược lại đẩy lùi Runner về phía sau.
+        /// - Sau đó giữ 0 trong lúc Runner đang ngã, rồi tăng mượt trở lại tốc độ chuẩn.
         /// </summary>
-        /// <param name="totalRecoveryDuration">
-        /// Tổng thời gian từ lúc va chạm tới lúc bắt đầu tăng tốc lại — theo GDD mỗi loại vật cản
-        /// có giá trị riêng (Rào thấp/Xà cao = 1.2s, Xe cắt ngang/Vật rơi = 1.8s...). Nếu obstacle
-        /// chưa expose field này thì dùng mặc định _defaultRecoveryTotalDuration.
-        /// </param>
-        public void TriggerRecovery(float totalRecoveryDuration = -1f)
+        /// <param name="totalRecoveryDuration">Tổng thời gian hồi phục (giây).</param>
+        /// <param name="knockbackDistance">Khoảng cách đẩy lùi (mét) của vật cản.</param>
+        public void TriggerRecovery(float totalRecoveryDuration = -1f, float knockbackDistance = 0f)
         {
             _recoverySpeedAtImpact = CurrentSpeed;
             _recoveryElapsed = 0f;
-            _recoveryTotalDuration = totalRecoveryDuration > 0f ? totalRecoveryDuration : _defaultRecoveryTotalDuration;
+            _recoveryKnockbackDistance = Mathf.Max(0f, knockbackDistance);
+
+            if (_recoveryKnockbackDistance > 0f)
+            {
+                // Thời lượng xung cuộn ngược thế giới (0.35s đến 0.55s tùy cự ly đẩy lùi)
+                _recoveryKnockbackDuration = Mathf.Clamp(_baseKnockbackDuration + (_recoveryKnockbackDistance * 0.012f), 0.35f, 0.55f);
+
+                // Tổng thời gian hồi phục phải bao gồm cả pha giật lùi + pha đứng dậy tối thiểu 0.45s
+                float minTotalDuration = _recoveryKnockbackDuration + 0.45f;
+                _recoveryTotalDuration = totalRecoveryDuration > minTotalDuration ? totalRecoveryDuration : minTotalDuration;
+            }
+            else
+            {
+                _recoveryKnockbackDuration = 0f;
+                _recoveryTotalDuration = totalRecoveryDuration > 0f ? totalRecoveryDuration : _defaultRecoveryTotalDuration;
+            }
+
             _state = SpeedState.Recovery;
         }
     }

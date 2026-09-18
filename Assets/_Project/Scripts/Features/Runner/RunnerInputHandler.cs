@@ -92,11 +92,6 @@ namespace SteamRush.Features.Runner
                     _slideRegisteredAsHold = true;
                 }
 
-                if (_slideRegisteredAsHold)
-                {
-                    _speedManager?.HoldSlide();
-                }
-
                 // Hitbox: cúi khi đứng đất, ép rơi thẳng khi đang trên không
                 if (_controller.IsGrounded)
                 {
@@ -114,15 +109,13 @@ namespace SteamRush.Features.Runner
                     // Vừa nhả phím trong frame này
                     if (_slideRegisteredAsHold)
                     {
-                        // Hold vừa kết thúc -> đứng thẳng lại ngay, tốc độ tăng mượt lại bình thường
-                        _speedManager?.ReleaseSlide();
+                        // Đè giữ vừa kết thúc -> đứng thẳng lại ngay, không hãm tốc độ
                         _controller.SetDucking(false);
                     }
                     else
                     {
                         // Đây là một cú Tap: bắt đầu đếm ngược 0.8s CỐ ĐỊNH cho hitbox, không phụ
                         // thuộc bạn giữ phím bao lâu (kể cả 1 frame cũng vẫn đủ 0.8s theo GDD).
-                        _speedManager?.BeginSlideTap();
                         _tapDuckTimer = _slideTapDuckDuration;
                     }
                 }

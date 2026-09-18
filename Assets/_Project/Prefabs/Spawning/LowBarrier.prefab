@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 4903184610563482697}
   - component: {fileID: 4795408590554452225}
   - component: {fileID: 2317896448776275178}
+  - component: {fileID: -6004316809922639083}
   m_Layer: 8
   m_Name: LowBarrier
   m_TagString: Obstacle
@@ -126,3 +127,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StreamRushLive.Features.Spawning.SpawnableObject
   spawnType: 0
+--- !u!114 &-6004316809922639083
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5981004604719476566}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ec7a9d56d713274e98247a8cbab54b8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StreamRushLive.Features.Spawning.BarrierObstacle
+  obstacleName: Obstacle
+  obstacleType: 0
+  energyPenaltyPercent: 25
+  hitStopDuration: 0.15
+  distancePenaltyMeters: 5
+  despawnOnHit: 0
+  despawnDelay: 0
+  applyImpactPhysics: 0

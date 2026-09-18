@@ -36,8 +36,6 @@ namespace StreamRushLive.Features.Spawning
             if (itemEffects != null)
             {
                 itemEffects.ActivateShield(shieldDuration);
-
-                Debug.Log($"[ShieldItem] Shield activated for {shieldDuration:F0}s.");
             }
             else
             {
