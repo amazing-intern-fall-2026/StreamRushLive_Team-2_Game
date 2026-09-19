@@ -66,12 +66,6 @@ namespace StreamRushLive.Features.Spawning
                 SpawnStopSign();
             }
 
-            // Phím 7: Traffic Light + Crossing Car (NguyenHuy)
-            if (Keyboard.current.digit7Key.wasPressedThisFrame || Keyboard.current.numpad7Key.wasPressedThisFrame)
-            {
-                SpawnTrafficLight();
-            }
-
             // Phím 8: Falling Hazard (NguyenHuy)
             if (Keyboard.current.digit8Key.wasPressedThisFrame || Keyboard.current.numpad8Key.wasPressedThisFrame)
             {
@@ -131,13 +125,6 @@ namespace StreamRushLive.Features.Spawning
             }
         }
 
-        public void SpawnTrafficLight()
-        {
-            if (spawner != null)
-            {
-                spawner.SpawnObstacle(ObstacleType.TrafficLight);
-            }
-        }
 
         public void SpawnFallingHazard()
         {
@@ -161,8 +148,8 @@ namespace StreamRushLive.Features.Spawning
             {
                 Debug.Log("[MockInput] Enqueuing batch of 4 obstacles to test safe distance (15m)...");
                 spawner.EnqueueObstacle(ObstacleType.LowBarrier);
+                spawner.EnqueueObstacle(ObstacleType.HighBarrier);
                 spawner.EnqueueObstacle(ObstacleType.StopSign);
-                spawner.EnqueueObstacle(ObstacleType.TrafficLight);
                 spawner.EnqueueObstacle(ObstacleType.BouncingBoulder);
             }
         }

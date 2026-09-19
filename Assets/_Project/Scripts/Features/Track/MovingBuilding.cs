@@ -13,9 +13,13 @@ namespace SteamRush.Track
 
         [SerializeField] private float _customSpeed = 5f;
 
-        private BuildingSpawner _spawner;
-        private float _despawnXThreshold = -15f;
+        [Header("Despawn Boundaries")]
+        [SerializeField] private float _despawnXThreshold = -130f;
+        [SerializeField] private float _despawnRightThreshold = 160f;
 
+        private BuildingSpawner _spawner;
+
+        public float BuildingWidth { get; set; } = 10f;
         public bool UseWorldSpeedMode => _useWorldSpeed;
         public float CustomSpeed => _customSpeed;
         public float ParallaxMultiplier
@@ -24,17 +28,23 @@ namespace SteamRush.Track
             set => _parallaxMultiplier = Mathf.Max(0f, value);
         }
 
-        public void Initialize(BuildingSpawner spawner, float despawnXThreshold, bool useWorldSpeed = true, float customSpeed = 5f, float parallaxMultiplier = 1.0f)
+        public void Initialize(BuildingSpawner spawner, float despawnXThreshold, float despawnRightThreshold, bool useWorldSpeed = true, float customSpeed = 5f, float parallaxMultiplier = 1.0f)
         {
             _spawner = spawner;
             _despawnXThreshold = despawnXThreshold;
+            _despawnRightThreshold = despawnRightThreshold;
             _useWorldSpeed = useWorldSpeed;
             _customSpeed = customSpeed;
             _parallaxMultiplier = parallaxMultiplier;
         }
 
+        public void Initialize(BuildingSpawner spawner, float despawnXThreshold, bool useWorldSpeed = true, float customSpeed = 5f, float parallaxMultiplier = 1.0f)
+        {
+            Initialize(spawner, despawnXThreshold, 160f, useWorldSpeed, customSpeed, parallaxMultiplier);
+        }
+
         /// <summary>
-        /// Hàm xử lý gán tốc độ di chuyển riêng cho tòa nhà (chuyển sang chế độ Custom Speed).
+        /// Gán tốc độ di chuyển riêng cho tòa nhà (chuyển sang chế độ Custom Speed).
         /// </summary>
         public void SetCustomSpeed(float speed)
         {
@@ -51,9 +61,9 @@ namespace SteamRush.Track
         }
 
         /// <summary>
-        /// Hàm xử lý và tính toán tốc độ hiện tại:
-        /// - Nếu dùng WorldSpeed: lấy từ Spawner (WorldSpeedManager) nhân với hệ số Parallax
-        /// - Nếu không: lấy CustomSpeed riêng
+        /// Tính toán tốc độ hiện tại:
+        /// - Dùng WorldSpeed: lấy từ Spawner nhân hệ số Parallax
+        /// - Dùng CustomSpeed riêng
         /// </summary>
         public float GetCurrentSpeed()
         {
@@ -71,7 +81,7 @@ namespace SteamRush.Track
             float step = speed * Time.deltaTime;
             transform.position += Vector3.left * step;
 
-            if (transform.position.x <= _despawnXThreshold)
+            if (transform.position.x <= _despawnXThreshold || transform.position.x >= _despawnRightThreshold)
             {
                 Destroy(gameObject);
             }

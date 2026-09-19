@@ -28,6 +28,9 @@ namespace StreamRushLive.Features.Spawning
         [Tooltip("Khoảng cách đẩy lùi quãng đường đã đi (mét). Khi va chạm, Runner bị trừ lùi cự ly chặng tương ứng.")]
         [SerializeField] protected float distancePenaltyMeters = 5f;
 
+        [Tooltip("Thời gian dừng hoặc hồi phục tốc độ thế giới (giây). Mặc định -1 (dùng thời gian mặc định 1.2s của hệ thống).")]
+        [SerializeField] protected float recoveryDuration = -1f;
+
         [Header("Despawn Settings")]
         [Tooltip("Whether to automatically despawn/destroy this obstacle GameObject upon colliding with the player.")]
         [SerializeField] protected bool despawnOnHit = false;
@@ -52,6 +55,11 @@ namespace StreamRushLive.Features.Spawning
         {
             get => distancePenaltyMeters;
             set => distancePenaltyMeters = Mathf.Max(0f, value);
+        }
+        public virtual float RecoveryDuration
+        {
+            get => recoveryDuration;
+            set => recoveryDuration = value;
         }
         public bool DespawnOnHit
         {

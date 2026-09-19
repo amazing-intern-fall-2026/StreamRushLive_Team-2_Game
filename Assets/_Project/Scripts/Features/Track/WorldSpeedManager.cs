@@ -88,6 +88,7 @@ namespace SteamRush.Track
         /// các hàm state (BeginSlideTap/HoldSlide/.../TriggerRecovery) thay vì set trực tiếp.
         /// </summary>
         public float CurrentSpeed { get; set; }
+        public float BaseSpeed => _baseSpeed;
 
         public bool IsSliding => _state == SpeedState.SlideTap || _state == SpeedState.SlideHold;
         public bool IsSprinting => _state == SpeedState.Sprint;

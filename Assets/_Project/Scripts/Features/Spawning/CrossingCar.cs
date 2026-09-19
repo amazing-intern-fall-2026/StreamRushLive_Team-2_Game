@@ -7,18 +7,28 @@ namespace StreamRushLive.Features.Spawning
         [SerializeField] private float crossSpeed = 6f;
         [SerializeField] private float despawnZThreshold = 15f;
 
+        private SteamRush.Track.WorldSpeedManager _speedManager;
+
         private void Awake()
         {
-            obstacleType = ObstacleType.TrafficLight;
-            energyPenaltyPercent = 40f;
-            if (distancePenaltyMeters <= 0f)
+            obstacleType = ObstacleType.LowBarrier;
+        }
+
+        private void Start()
+        {
+            if (_speedManager == null)
             {
-                distancePenaltyMeters = 12f;
+                _speedManager = FindFirstObjectByType<SteamRush.Track.WorldSpeedManager>();
             }
         }
 
         private void Update()
         {
+            if (_speedManager == null)
+            {
+                _speedManager = FindFirstObjectByType<SteamRush.Track.WorldSpeedManager>();
+            }
+
             transform.position += Vector3.back * (crossSpeed * Time.deltaTime);
 
             if (transform.position.z <= -despawnZThreshold)

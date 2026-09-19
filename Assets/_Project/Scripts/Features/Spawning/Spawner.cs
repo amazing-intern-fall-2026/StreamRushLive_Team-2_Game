@@ -24,7 +24,6 @@ namespace StreamRushLive.Features.Spawning
         [SerializeField] private List<GameObject> lowBarrierPrefabs = new List<GameObject>();
         [SerializeField] private List<GameObject> highBarrierPrefabs = new List<GameObject>();
         [SerializeField] private List<GameObject> stopSignPrefabs = new List<GameObject>();
-        [SerializeField] private List<GameObject> trafficLightPrefabs = new List<GameObject>();
         [SerializeField] private List<GameObject> fallingHazardPrefabs = new List<GameObject>();
         [SerializeField] private List<GameObject> bouncingBoulderPrefabs = new List<GameObject>();
 
@@ -50,7 +49,6 @@ namespace StreamRushLive.Features.Spawning
         [SerializeField] private float lowBarrierY = 0.5f;
         [SerializeField] private float highBarrierY = 1.8f;
         [SerializeField] private float stopSignY = 0.17f;
-        [SerializeField] private float trafficLightY = 0.17f;
         [SerializeField] private float fallingHazardY = 4.5f;
         [SerializeField] private float bouncingBoulderY = 0.5f;
         [SerializeField] private float buffItemY = 1.0f;
@@ -60,7 +58,6 @@ namespace StreamRushLive.Features.Spawning
 
         [Header("Roadside Z-Offset Settings")]
         [SerializeField] private float stopSignZ = 1.8f;
-        [SerializeField] private float trafficLightZ = 1.8f;
 
         [Header("Settings")]
         [SerializeField] private WorldSpeedManager worldSpeedManager;
@@ -81,7 +78,6 @@ namespace StreamRushLive.Features.Spawning
         public List<GameObject> LowBarrierPrefabs => lowBarrierPrefabs;
         public List<GameObject> HighBarrierPrefabs => highBarrierPrefabs;
         public List<GameObject> StopSignPrefabs => stopSignPrefabs;
-        public List<GameObject> TrafficLightPrefabs => trafficLightPrefabs;
         public List<GameObject> FallingHazardPrefabs => fallingHazardPrefabs;
         public List<GameObject> BouncingBoulderPrefabs => bouncingBoulderPrefabs;
         public List<GameObject> BuffItemPrefabs => buffItemPrefabs;
@@ -206,15 +202,11 @@ namespace StreamRushLive.Features.Spawning
             }
             else
             {
-                // Dù truyền custom position, StopSign và TrafficLight vẫn bắt buộc ở lề đường Z = 1.8f
-                if (obstacleType == ObstacleType.StopSign || obstacleType == ObstacleType.TrafficLight)
+                // Dù truyền custom position, StopSign vẫn bắt buộc ở lề đường Z = 1.8f
+                if (obstacleType == ObstacleType.StopSign)
                 {
-                    position.z = (obstacleType == ObstacleType.StopSign)
-                        ? (stopSignZ > 0.5f ? stopSignZ : 1.8f)
-                        : (trafficLightZ > 0.5f ? trafficLightZ : 1.8f);
-                    position.y = (obstacleType == ObstacleType.StopSign)
-                        ? (stopSignY > 0f ? stopSignY : 0.17f)
-                        : (trafficLightY > 0f ? trafficLightY : 0.17f);
+                    position.z = stopSignZ > 0.5f ? stopSignZ : 1.8f;
+                    position.y = stopSignY > 0f ? stopSignY : 0.17f;
                 }
             }
 
@@ -232,15 +224,12 @@ namespace StreamRushLive.Features.Spawning
                 case ObstacleType.StopSign:
                     rotation = Quaternion.Euler(0f, 180f, 0f);
                     break;
-                case ObstacleType.TrafficLight:
-                    rotation = Quaternion.Euler(0f, 180f, 0f);
-                    break;
             }
 
             GameObject instance = Instantiate(prefab, position, rotation);
 
-            // Giữ nguyên Trigger cho các chướng ngại vật sử dụng vùng kích hoạt (TrafficLight, StopSign bên lề đường)
-            bool preserveTriggers = obstacleType == ObstacleType.TrafficLight || obstacleType == ObstacleType.StopSign;
+            // Giữ nguyên Trigger cho các chướng ngại vật sử dụng vùng kích hoạt (StopSign bên lề đường)
+            bool preserveTriggers = obstacleType == ObstacleType.StopSign;
             if (!preserveTriggers)
             {
                 SetCollidersTrigger(instance, isTrigger: false);
@@ -409,9 +398,6 @@ namespace StreamRushLive.Features.Spawning
                     case ObstacleType.StopSign:
                         pos.y = stopSignY;
                         break;
-                    case ObstacleType.TrafficLight:
-                        pos.y = trafficLightY;
-                        break;
                     case ObstacleType.FallingHazard:
                         pos.y = fallingHazardY;
                         break;
@@ -421,19 +407,12 @@ namespace StreamRushLive.Features.Spawning
                 }
             }
 
-            // StopSign và TrafficLight luôn luôn spawn bên lề đường (mép vỉa hè giáp đường chạy)
-            switch (type)
+            // StopSign luôn luôn spawn bên lề đường (mép vỉa hè giáp đường chạy)
+            if (type == ObstacleType.StopSign)
             {
-                case ObstacleType.StopSign:
-                    pos.z = stopSignZ > 0.5f ? stopSignZ : 1.8f;
-                    if (useTypeYOffset && stopSignY > 0f) pos.y = stopSignY;
-                    else if (pos.y < 0.15f || !useTypeYOffset) pos.y = 0.17f;
-                    break;
-                case ObstacleType.TrafficLight:
-                    pos.z = trafficLightZ > 0.5f ? trafficLightZ : 1.8f;
-                    if (useTypeYOffset && trafficLightY > 0f) pos.y = trafficLightY;
-                    else if (pos.y < 0.15f || !useTypeYOffset) pos.y = 0.17f;
-                    break;
+                pos.z = stopSignZ > 0.5f ? stopSignZ : 1.8f;
+                if (useTypeYOffset && stopSignY > 0f) pos.y = stopSignY;
+                else if (pos.y < 0.15f || !useTypeYOffset) pos.y = 0.17f;
             }
 
             return pos;
@@ -480,8 +459,6 @@ namespace StreamRushLive.Features.Spawning
                     return GetRandomPrefab(highBarrierPrefabs);
                 case ObstacleType.StopSign:
                     return GetRandomPrefab(stopSignPrefabs);
-                case ObstacleType.TrafficLight:
-                    return GetRandomPrefab(trafficLightPrefabs);
                 case ObstacleType.FallingHazard:
                     return GetRandomPrefab(fallingHazardPrefabs);
                 case ObstacleType.BouncingBoulder:

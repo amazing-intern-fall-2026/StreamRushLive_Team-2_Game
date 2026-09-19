@@ -13,9 +13,9 @@ GameObject:
   - component: {fileID: 1340355290325430534}
   - component: {fileID: 6226212832062049052}
   - component: {fileID: 136511659149295173}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: BouncingBoulder
-  m_TagString: Buff
+  m_TagString: Obstacle
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -129,7 +129,7 @@ MonoBehaviour:
   obstacleType: 5
   energyPenaltyPercent: 35
   hitStopDuration: 0.15
-  distancePenaltyMeters: 15
+  distancePenaltyMeters: 150
   despawnOnHit: 1
   despawnDelay: 0
   bounceHeight: 4

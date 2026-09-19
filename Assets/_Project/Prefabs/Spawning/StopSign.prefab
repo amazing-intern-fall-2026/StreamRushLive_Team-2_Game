@@ -130,10 +130,10 @@ MonoBehaviour:
   obstacleType: 2
   energyPenaltyPercent: 25
   hitStopDuration: 0.15
-  distancePenaltyMeters: 8
+  distancePenaltyMeters: 0
   despawnOnHit: 0
   despawnDelay: 0
-  stopDuration: 1
+  stopDuration: 8
 --- !u!114 &1000007
 MonoBehaviour:
   m_ObjectHideFlags: 0

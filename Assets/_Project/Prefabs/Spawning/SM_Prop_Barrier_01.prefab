@@ -255,7 +255,7 @@ MonoBehaviour:
   obstacleType: 0
   energyPenaltyPercent: 25
   hitStopDuration: 0.15
-  distancePenaltyMeters: 5
+  distancePenaltyMeters: 0
   despawnOnHit: 0
   despawnDelay: 0
   applyImpactPhysics: 0

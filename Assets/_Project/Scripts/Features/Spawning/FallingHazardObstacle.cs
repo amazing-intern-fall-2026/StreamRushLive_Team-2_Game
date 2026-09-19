@@ -23,11 +23,6 @@ namespace StreamRushLive.Features.Spawning
         private void Awake()
         {
             obstacleType = ObstacleType.FallingHazard;
-            energyPenaltyPercent = 40f;
-            if (distancePenaltyMeters <= 0f)
-            {
-                distancePenaltyMeters = 10f;
-            }
             _movingWorldObject = GetComponent<MovingWorldObject>();
 
             if (hazardRigidbody == null)
@@ -55,7 +50,26 @@ namespace StreamRushLive.Features.Spawning
             // Chỉ tự dịch chuyển nếu chưa có MovingWorldObject quản lý để tránh di chuyển x2 tốc độ
             if (_movingWorldObject == null)
             {
-                float speed = _speedManager != null ? _speedManager.CurrentSpeed : 0f;
+                float speed;
+                if (_speedManager != null)
+                {
+                    if (_speedManager.CurrentSpeed < -0.05f)
+                    {
+                        speed = _speedManager.CurrentSpeed;
+                    }
+                    else if (_speedManager.CurrentSpeed > 0.05f && !_speedManager.IsRecovering)
+                    {
+                        speed = _speedManager.CurrentSpeed;
+                    }
+                    else
+                    {
+                        speed = _speedManager.BaseSpeed > 0f ? _speedManager.BaseSpeed : 10f;
+                    }
+                }
+                else
+                {
+                    speed = 10f;
+                }
                 transform.position += Vector3.left * (speed * Time.deltaTime);
             }
         }
@@ -77,9 +91,8 @@ namespace StreamRushLive.Features.Spawning
                     warningShadowSprite.enabled = isVisible;
                     isVisible = !isVisible;
                 }
-
-                yield return new WaitForSeconds(blinkInterval);
                 elapsed += blinkInterval;
+                yield return new WaitForSeconds(blinkInterval);
             }
 
             if (warningShadowSprite != null)

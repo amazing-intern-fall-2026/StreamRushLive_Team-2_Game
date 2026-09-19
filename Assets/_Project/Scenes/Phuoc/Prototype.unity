@@ -238,11 +238,13 @@ MonoBehaviour:
   _parallaxMultiplier: 0.65
   _customSpeed: 5
   _spacingBetweenBuildings: 4
-  _despawnXThreshold: -40
   _rotationOffset: {x: 0, y: 180, z: 0}
   _randomYFlip: 0
+  _leftCoverageX: -95
+  _rightCoverageX: 110
+  _despawnLeftX: -130
+  _despawnRightX: 160
   _prewarmOnStart: 1
-  _prewarmStartX: -35
 --- !u!1 &14840040
 GameObject:
   m_ObjectHideFlags: 0
@@ -807,11 +809,13 @@ MonoBehaviour:
   _parallaxMultiplier: 1
   _customSpeed: 5
   _spacingBetweenBuildings: 0
-  _despawnXThreshold: -35
   _rotationOffset: {x: 0, y: 0, z: 0}
   _randomYFlip: 0
+  _leftCoverageX: -95
+  _rightCoverageX: 110
+  _despawnLeftX: -130
+  _despawnRightX: 160
   _prewarmOnStart: 1
-  _prewarmStartX: -30
 --- !u!1 &64927620
 GameObject:
   m_ObjectHideFlags: 0
@@ -6977,8 +6981,6 @@ MonoBehaviour:
   - {fileID: 3756146291101094273, guid: 214ee7cf48caa5443b2d8bd647782378, type: 3}
   stopSignPrefabs:
   - {fileID: 1000001, guid: ada2e08ae7f44b959b09e9b8d76e0f4f, type: 3}
-  trafficLightPrefabs:
-  - {fileID: 2000001, guid: 4d667d0a1f674d93ae2530a8b3859b40, type: 3}
   fallingHazardPrefabs: []
   bouncingBoulderPrefabs:
   - {fileID: 8390172763218304724, guid: f84fec1eb4a03cd45adaac8392e2345d, type: 3}
@@ -6997,7 +6999,6 @@ MonoBehaviour:
   lowBarrierY: 0.5
   highBarrierY: 1.8
   stopSignY: 0.17
-  trafficLightY: 0.17
   fallingHazardY: 4.5
   bouncingBoulderY: 0.5
   buffItemY: 1
@@ -7005,7 +7006,6 @@ MonoBehaviour:
   highJumpItemY: 1
   hyperDashItemY: 1
   stopSignZ: 1.8
-  trafficLightZ: 1.8
   worldSpeedManager: {fileID: 1410114198}
   minSafeDistance: 15
 --- !u!114 &655669061
@@ -15269,11 +15269,13 @@ MonoBehaviour:
   _parallaxMultiplier: 0.3
   _customSpeed: 5
   _spacingBetweenBuildings: 6
-  _despawnXThreshold: -50
   _rotationOffset: {x: 0, y: 180, z: 0}
   _randomYFlip: 0
+  _leftCoverageX: -95
+  _rightCoverageX: 110
+  _despawnLeftX: -130
+  _despawnRightX: 160
   _prewarmOnStart: 1
-  _prewarmStartX: -45
 --- !u!1001 &1549769752
 PrefabInstance:
   m_ObjectHideFlags: 0

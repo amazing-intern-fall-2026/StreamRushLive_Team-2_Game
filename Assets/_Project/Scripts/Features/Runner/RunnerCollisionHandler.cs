@@ -170,21 +170,7 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            // Fallback nhặt Buff Item qua Tag nếu chưa gắn component ItemBase
-            if (obj.CompareTag("Buff") || obj.name.Contains("Buff"))
-            {
-                EnergySystem energy = FindFirstObjectByType<EnergySystem>();
-                if (energy != null)
-                {
-                    energy.AddEnergy(20f);
-                }
-                HUDManager hud = FindFirstObjectByType<HUDManager>();
-                hud?.ShowStatusPopup("Năng lượng +20%", true);
-                Destroy(obj);
-                return;
-            }
-
-            // 2. Xử lý va chạm vật cản: Nhận diện ObstacleBase hoặc theo Tag
+            // 2. Xử lý va chạm vật cản: Nhận diện ObstacleBase (ưu tiên trước fallback tag)
             if (_isHandlingHit) return;
 
             ObstacleBase obstacle = obj.GetComponentInParent<ObstacleBase>();
@@ -199,6 +185,20 @@ namespace SteamRush.Features.Runner
                 }
 
                 obstacle.TriggerHit(gameObject);
+                return;
+            }
+
+            // Fallback nhặt Buff Item qua Tag nếu chưa gắn component ItemBase
+            if (obj.CompareTag("Buff") || obj.name.Contains("Buff"))
+            {
+                EnergySystem energy = FindFirstObjectByType<EnergySystem>();
+                if (energy != null)
+                {
+                    energy.AddEnergy(20f);
+                }
+                HUDManager hud = FindFirstObjectByType<HUDManager>();
+                hud?.ShowStatusPopup("Năng lượng +20%", true);
+                Destroy(obj);
                 return;
             }
 
@@ -242,15 +242,23 @@ namespace SteamRush.Features.Runner
                 }
             }
 
-            // Lấy thông số phạt cụ thể từ chính Obstacle nếu có, ngược lại dùng mặc định
+            // Lấy thông số phạt cụ thể từ chính Obstacle TRƯỚC khi nó có thể bị despawn/destroy
             float penalty = obstacle != null ? obstacle.EnergyPenaltyPercent : _energyPenaltyPercent;
             float hitStop = obstacle != null ? obstacle.HitStopDuration : _hitStopDuration;
+            float distPenalty = obstacle != null ? obstacle.DistancePenaltyMeters : 0f;
+            float recoveryDuration = (obstacle != null && obstacle.RecoveryDuration > 0f)
+                                     ? obstacle.RecoveryDuration
+                                     : _defaultWorldRecoveryDuration;
 
             // Hiển thị Status Popup debuff
             HUDManager hud = FindFirstObjectByType<HUDManager>();
-            if (obstacle != null && obstacle.DistancePenaltyMeters > 0f)
+            if (distPenalty > 0f)
             {
-                hud?.ShowStatusPopup($"Vấp ngã! -{penalty:F0}% NL | Lùi -{obstacle.DistancePenaltyMeters:F0}m!", false);
+                hud?.ShowStatusPopup($"Vấp ngã! -{penalty:F0}% NL | Lùi -{distPenalty:F0}m!", false);
+            }
+            else if (recoveryDuration > _defaultWorldRecoveryDuration + 0.1f)
+            {
+                hud?.ShowStatusPopup($"STOP! Dừng {recoveryDuration:F1}s | -{penalty:F0}% NL", false);
             }
             else if (penalty > 0f)
             {
@@ -275,8 +283,7 @@ namespace SteamRush.Features.Runner
 
             // Kích hoạt hồi phục tốc độ thế giới và xung cuộn ngược đẩy lùi Runner (Reverse Knockback)
             WorldSpeedManager speedManager = FindFirstObjectByType<WorldSpeedManager>();
-            float distPenalty = obstacle != null ? obstacle.DistancePenaltyMeters : 5f;
-            speedManager?.TriggerRecovery(_defaultWorldRecoveryDuration, distPenalty);
+            speedManager?.TriggerRecovery(recoveryDuration, distPenalty);
 
             // Hiệu ứng nhấp nháy miễn nhiễm và giữ Player ở trạng thái Trigger trong khi vật cản trôi qua
             float elapsed = 0f;
@@ -289,7 +296,7 @@ namespace SteamRush.Features.Runner
 
             SetRenderersVisible(true);
 
-            // Hoàn tất hồi phục va chạm
+            // Hoàn tất hồi phục va chạm (sau thời gian miễn nhiễm 0.8s, cho phép Runner tiếp tục tương tác/va chạm với các vật cản lao tới tiếp theo)
             _isHandlingHit = false;
         }
 
