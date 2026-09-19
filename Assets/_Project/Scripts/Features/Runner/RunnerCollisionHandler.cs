@@ -7,16 +7,14 @@ namespace SteamRush.Features.Runner
     using SteamRush.Features.UI;
 
     /// <summary>
-    /// Chịu trách nhiệm phát hiện va chạm TRIGGER giữa Runner với vật cản và vật phẩm:
-    /// - Sử dụng cơ chế Trigger (OnTriggerEnter) giúp Runner không bị kẹt hay khựng vật lý cứng.
-    /// - Đóng băng khung hình ngắn (hit-stop 0.15s).
-    /// - Phạt trừ năng lượng và hiển thị Status Popup "Vấp ngã!".
-    /// - Tự động hồi phục tốc độ thế giới qua WorldSpeedManager.TriggerRecovery().
-    /// - Nhặt Buff Item dạng Trigger hồi +20% năng lượng.
+    /// Chịu trách nhiệm xử lý tương tác giữa Runner với vật cản và vật phẩm.
     ///
-    /// LƯU Ý: Không còn dùng GameSpeedController (đã xoá khỏi project) và không còn tự Lerp
-    /// CurrentSpeed bằng coroutine riêng — toàn bộ curve hồi tốc độ (giảm về 0 -> giữ 0 -> tăng
-    /// lại) nằm gọn trong WorldSpeedManager, chỉ cần gọi TriggerRecovery().
+    /// Gameplay hiện tại:
+    /// - Nếu có Shield: Shield chặn đúng 1 lần va chạm và không mất máu.
+    /// - Nếu không có Shield: Runner mất 1 tim thông qua RunnerHealthSystem.
+    /// - RunnerHealthSystem chịu trách nhiệm quản lý 2 giây bất tử sau damage.
+    /// - Có hit-stop ngắn khi va chạm.
+    /// - World Speed Recovery vẫn được xử lý thông qua WorldSpeedManager.
     /// </summary>
     [RequireComponent(typeof(RunnerController))]
     public class RunnerCollisionHandler : MonoBehaviour
@@ -27,19 +25,13 @@ namespace SteamRush.Features.Runner
         [Tooltip("Real-time hit-stop freeze duration on collision.")]
         [SerializeField] private float _hitStopDuration = 0.15f;
 
-        [Header("Energy Penalty Settings")]
-        [SerializeField] private float _energyPenaltyPercent = 25f;
-
         [Header("World Recovery Settings")]
-        [Tooltip("Thời gian hồi phục World Speed mặc định nếu obstacle không chỉ định riêng. GDD dao động 1.2s-1.8s tuỳ loại.")]
+        [Tooltip("Thời gian hồi phục World Speed mặc định.")]
         [SerializeField] private float _defaultWorldRecoveryDuration = 1.2f;
 
-        [Header("Invulnerability Settings")]
-        [Tooltip("Duration player remains as trigger to pass through obstacle.")]
-        [SerializeField] private float _invulnerabilityDuration = 0.8f;
-
         private RunnerController _controller;
-        private Renderer[] _renderers;
+        private RunnerHealthSystem _healthSystem;
+
         private bool _isHandlingHit;
         private bool _isHyperDashActive;
 
@@ -49,12 +41,18 @@ namespace SteamRush.Features.Runner
         private void Awake()
         {
             _controller = GetComponent<RunnerController>();
-            _renderers = GetComponentsInChildren<Renderer>();
+            _healthSystem = GetComponent<RunnerHealthSystem>();
+
+            if (_healthSystem == null)
+            {
+                _healthSystem = GetComponentInParent<RunnerHealthSystem>();
+            }
         }
 
         /// <summary>
         /// Bật hoặc tắt trạng thái Hyper Dash.
-        /// Khi Hyper Dash hoạt động, Runner trở thành Trigger để có thể đi xuyên qua vật cản.
+        /// Khi Hyper Dash hoạt động, Runner trở thành Trigger
+        /// để có thể đi xuyên qua vật cản.
         /// </summary>
         public void SetHyperDashState(bool isActive)
         {
@@ -67,13 +65,16 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Điểm nhận va chạm: Hỗ trợ cả Trigger lẫn Collision vật lý.
+        /// Điểm nhận tương tác Trigger.
         /// </summary>
         private void OnTriggerEnter(Collider other)
         {
             HandleInteraction(other.gameObject);
         }
 
+        /// <summary>
+        /// Điểm nhận tương tác Collision.
+        /// </summary>
         private void OnCollisionEnter(Collision collision)
         {
             HandleInteraction(collision.gameObject);
@@ -81,9 +82,14 @@ namespace SteamRush.Features.Runner
 
         private void HandleInteraction(GameObject obj)
         {
+            // =========================================================
+            // 1. HYPER DASH
+            // =========================================================
+
             if (_isHyperDashActive)
             {
-                ObstacleBase hyperDashObstacle = obj.GetComponentInParent<ObstacleBase>();
+                ObstacleBase hyperDashObstacle =
+                    obj.GetComponentInParent<ObstacleBase>();
 
                 if (hyperDashObstacle != null)
                 {
@@ -91,7 +97,7 @@ namespace SteamRush.Features.Runner
                     return;
                 }
 
-                // Fallback cho vật cản chưa có ObstacleBase nhưng vẫn mang Tag/tên vật cản.
+                // Fallback cho vật cản chưa có ObstacleBase.
                 if (obj.CompareTag(_obstacleTag)
                     || obj.name.Contains("Barrier")
                     || obj.name.Contains("Obstacle"))
@@ -100,40 +106,58 @@ namespace SteamRush.Features.Runner
                     return;
                 }
             }
-            // 1. Kiểm tra nếu là Item (kế thừa ItemBase)
+
+            // =========================================================
+            // 2. ITEM
+            // =========================================================
+
             ItemBase item = obj.GetComponentInParent<ItemBase>();
+
             if (item != null)
             {
                 item.Collect(gameObject);
                 return;
             }
 
-            // Fallback nhặt Buff Item qua Tag nếu chưa gắn component ItemBase
+            // Fallback Buff Item cũ.
             if (obj.CompareTag("Buff") || obj.name.Contains("Buff"))
             {
                 EnergySystem energy = FindFirstObjectByType<EnergySystem>();
+
                 if (energy != null)
                 {
                     energy.AddEnergy(20f);
                 }
+
                 HUDManager hud = FindFirstObjectByType<HUDManager>();
                 hud?.ShowStatusPopup("Năng lượng +20%", true);
+
                 Destroy(obj);
                 return;
             }
 
-            // 2. Xử lý va chạm vật cản: Nhận diện ObstacleBase hoặc theo Tag
-            if (_isHandlingHit) return;
+            // =========================================================
+            // 3. OBSTACLE
+            // =========================================================
 
-            ObstacleBase obstacle = obj.GetComponentInParent<ObstacleBase>();
+            if (_isHandlingHit)
+            {
+                return;
+            }
+
+            ObstacleBase obstacle =
+                obj.GetComponentInParent<ObstacleBase>();
+
             if (obstacle != null)
             {
+                // Shield được ưu tiên kiểm tra trước Health.
                 if (TryConsumeShield())
                 {
-                    Destroy(obj);
+                    Destroy(obstacle.gameObject);
                     return;
                 }
 
+                // ObstacleBase đã xử lý va chạm này rồi.
                 if (!obstacle.HasCollided)
                 {
                     obstacle.TriggerHit(gameObject);
@@ -142,125 +166,173 @@ namespace SteamRush.Features.Runner
                 {
                     StartCoroutine(HandleObstacleHit(obstacle));
                 }
+
                 return;
             }
 
-            if (obj.CompareTag(_obstacleTag) || obj.name.Contains("Barrier") || obj.name.Contains("Obstacle"))
+            // Fallback cho obstacle chưa có ObstacleBase.
+            if (obj.CompareTag(_obstacleTag)
+                || obj.name.Contains("Barrier")
+                || obj.name.Contains("Obstacle"))
             {
                 if (TryConsumeShield())
                 {
                     Destroy(obj);
                     return;
                 }
+
                 StartCoroutine(HandleObstacleHit(null));
             }
         }
 
+        /// <summary>
+        /// Được ObstacleBase gọi sau khi obstacle xác nhận Runner bị hit.
+        /// </summary>
         public void HandleObstacleHitFromSource(ObstacleBase obstacle)
         {
-            if (_isHandlingHit) return;
+            if (_isHandlingHit)
+            {
+                return;
+            }
+
             StartCoroutine(HandleObstacleHit(obstacle));
         }
 
+        /// <summary>
+        /// Xử lý một lần Runner bị vật cản đánh trúng.
+        ///
+        /// Damage thực tế được chuyển sang RunnerHealthSystem.
+        /// Không còn trừ Energy khi va chạm.
+        /// </summary>
         private IEnumerator HandleObstacleHit(ObstacleBase obstacle)
         {
             _isHandlingHit = true;
 
-            // Lấy thông số phạt cụ thể từ chính Obstacle nếu có, ngược lại dùng mặc định
-            float penalty = obstacle != null ? obstacle.EnergyPenaltyPercent : _energyPenaltyPercent;
-            float hitStop = obstacle != null ? obstacle.HitStopDuration : _hitStopDuration;
+            float hitStop =
+                obstacle != null
+                    ? obstacle.HitStopDuration
+                    : _hitStopDuration;
 
-            // Chuyển chính Player thành Trigger để vật cản xuyên qua mà không xô đẩy
+            // =========================================================
+            // 1. Kiểm tra Health System
+            // =========================================================
+
+            if (_healthSystem == null)
+            {
+                _healthSystem =
+                    GetComponent<RunnerHealthSystem>();
+
+                if (_healthSystem == null)
+                {
+                    _healthSystem =
+                        GetComponentInParent<RunnerHealthSystem>();
+                }
+            }
+
+            // =========================================================
+            // 2. Nếu Health đang bất tử thì không nhận damage
+            // =========================================================
+
+            if (_healthSystem != null &&
+                _healthSystem.IsInvulnerable)
+            {
+                _isHandlingHit = false;
+                yield break;
+            }
+
+            // =========================================================
+            // 3. Chuyển Runner thành Trigger
+            // =========================================================
+
             _controller.SetTriggerMode(true);
 
-            // Hiển thị Status Popup debuff
+            // =========================================================
+            // 4. Hiển thị thông báo bị va chạm
+            // =========================================================
+
             HUDManager hud = FindFirstObjectByType<HUDManager>();
-            if (obstacle != null && obstacle.DistancePenaltyMeters > 0f)
+
+            hud?.ShowStatusPopup("Vấp ngã! -1 tim", false);
+
+            // =========================================================
+            // 5. Trừ 1 tim
+            // =========================================================
+
+            if (_healthSystem != null)
             {
-                hud?.ShowStatusPopup($"Vấp ngã! -{penalty:F0}% NL (-{obstacle.DistancePenaltyMeters:F0}m)", false);
-            }
-            else if (penalty > 0f)
-            {
-                hud?.ShowStatusPopup($"Vấp ngã! -{penalty:F0}% Năng lượng", false);
+                _healthSystem.TakeDamage(1);
             }
             else
             {
-                hud?.ShowStatusPopup("Vấp ngã!", false);
+                Debug.LogWarning(
+                    "[RunnerCollisionHandler] Không tìm thấy RunnerHealthSystem."
+                );
             }
 
-            // Trừ năng lượng
-            EnergySystem energySystem = FindFirstObjectByType<EnergySystem>();
-            if (energySystem != null)
-            {
-                energySystem.AddEnergy(-penalty);
-            }
+            // =========================================================
+            // 6. Hit-stop
+            // =========================================================
 
-            // Đóng băng khung hình (Hit-stop)
             Time.timeScale = 0f;
+
             yield return new WaitForSecondsRealtime(hitStop);
+
             Time.timeScale = 1f;
 
-            // Kích hoạt hồi phục tốc độ thế giới — curve 3 pha (giảm về 0 -> giữ 0 -> tăng lại)
-            // nằm gọn trong WorldSpeedManager, không cần tự Lerp thủ công ở đây nữa.
-            WorldSpeedManager speedManager = FindFirstObjectByType<WorldSpeedManager>();
-            speedManager?.TriggerRecovery(_defaultWorldRecoveryDuration);
+            // =========================================================
+            // 7. World Speed Recovery
+            // =========================================================
 
-            // Hiệu ứng nhấp nháy miễn nhiễm và giữ Player ở trạng thái Trigger trong khi vật cản trôi qua
+            WorldSpeedManager speedManager =
+                FindFirstObjectByType<WorldSpeedManager>();
+
+            speedManager?.TriggerRecovery(
+                _defaultWorldRecoveryDuration
+            );
+
+            // =========================================================
+            // 8. Chờ Health xử lý trạng thái bất tử 2 giây
+            //
+            // RunnerHealthSystem chịu trách nhiệm:
+            // - IsInvulnerable
+            // - Blink
+            // - thời gian 2 giây
+            //
+            // Ở đây chỉ cần giữ Runner ở Trigger trong thời gian
+            // xử lý va chạm hiện tại để obstacle đi xuyên qua.
+            // =========================================================
+
+            float triggerDuration = 0.2f;
             float elapsed = 0f;
-            while (elapsed < _invulnerabilityDuration)
+
+            while (elapsed < triggerDuration)
             {
                 elapsed += Time.deltaTime;
-                SetRenderersVisible(elapsed % 0.15f < 0.075f);
                 yield return null;
             }
 
-            SetRenderersVisible(true);
+            // =========================================================
+            // 9. Trả Collider về trạng thái bình thường
+            // =========================================================
 
-            // Chuyển Player trở lại Collider vật lý bình thường
             _controller.SetTriggerMode(false);
+
             _isHandlingHit = false;
         }
 
-        private void SetRenderersVisible(bool visible)
-        {
-            if (_renderers == null) return;
-            for (int i = 0; i < _renderers.Length; i++)
-            {
-                if (_renderers[i] != null)
-                {
-                    _renderers[i].enabled = visible;
-                }
-            }
-        }
-        private IEnumerator RecoverWorldSpeed(WorldSpeedManager speedManager, float targetSpeed, float duration)
-        {
-            float elapsed = 0f;
-            float startSpeed = speedManager.CurrentSpeed;
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                if (speedManager != null)
-                {
-                    speedManager.CurrentSpeed = Mathf.Lerp(startSpeed, targetSpeed, elapsed / duration);
-                }
-                yield return null;
-            }
-            if (speedManager != null)
-            {
-                speedManager.CurrentSpeed = targetSpeed;
-            }
-        }
-
         /// <summary>
-        /// Kiểm tra Runner có Shield hay không và tiêu hao Shield nếu có.
+        /// Kiểm tra Runner có Shield hay không.
+        /// Nếu có, Shield sẽ bị tiêu hao và va chạm không gây mất máu.
         /// </summary>
         private bool TryConsumeShield()
         {
-            RunnerItemEffects itemEffects = GetComponent<RunnerItemEffects>();
+            RunnerItemEffects itemEffects =
+                GetComponent<RunnerItemEffects>();
 
             if (itemEffects == null)
             {
-                itemEffects = GetComponentInParent<RunnerItemEffects>();
+                itemEffects =
+                    GetComponentInParent<RunnerItemEffects>();
             }
 
             if (itemEffects == null)
@@ -273,14 +345,22 @@ namespace SteamRush.Features.Runner
                 return false;
             }
 
-            bool blocked = itemEffects.ConsumeShield();
+            bool blocked =
+                itemEffects.ConsumeShield();
 
             if (blocked)
             {
-                Debug.Log("[RunnerCollisionHandler] Shield đã chặn va chạm.");
+                Debug.Log(
+                    "[RunnerCollisionHandler] Shield đã chặn va chạm."
+                );
 
-                HUDManager hud = FindFirstObjectByType<HUDManager>();
-                hud?.ShowStatusPopup("Shield chặn va chạm!", true);
+                HUDManager hud =
+                    FindFirstObjectByType<HUDManager>();
+
+                hud?.ShowStatusPopup(
+                    "Shield chặn va chạm!",
+                    true
+                );
             }
 
             return blocked;
