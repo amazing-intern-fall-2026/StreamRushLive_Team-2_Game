@@ -122,4 +122,15 @@ StreamRushLive_Team-2_Game.slnx
 /.gitmessage.txt
 /.github/
 /.cursor/
+
+# Temporary test screenshots and dedicated media folders
+/Assets/Screenshots/
+/Assets/Screenshots.meta
+/screenshots/
+/docs/screenshots/
+
+# All documentation and doc/docx folders (local-only, not pushed to git)
 /docs/
+/docx/
+*.doc
+*.docx
