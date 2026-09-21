@@ -167,6 +167,10 @@ namespace SteamRush.Features.Runner
         private void Update()
         {
             UpdateGroundCheck();
+            if (_knockbackTimer < _knockbackDuration)
+            {
+                _knockbackTimer += Time.deltaTime;
+            }
         }
 
         private void FixedUpdate()
@@ -236,6 +240,23 @@ namespace SteamRush.Features.Runner
                     ? new Vector3(_standingVisualScale.x, _standingVisualScale.y * _duckHeightRatio, _standingVisualScale.z)
                     : _standingVisualScale;
             }
+        }
+
+        [Header("Knockback Settings (GDD v1.2)")]
+        [SerializeField] private float _knockbackDistance = 1.8f;
+        [SerializeField] private float _knockbackDuration = 0.45f;
+        private float _knockbackTimer = 999f;
+
+        public bool IsKnockingBack => _knockbackTimer < _knockbackDuration;
+
+        /// <summary>
+        /// Gọi khi va chạm vật cản: ghi nhận trạng thái knockback (GDD v1.2).
+        /// </summary>
+        public void ApplyKnockback(float distance = -1f, float duration = -1f)
+        {
+            _knockbackTimer = 0f;
+            if (duration > 0f) _knockbackDuration = duration;
+            if (distance > 0f) _knockbackDistance = distance;
         }
 
         /// <summary>

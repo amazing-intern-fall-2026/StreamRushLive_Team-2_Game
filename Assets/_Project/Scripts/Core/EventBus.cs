@@ -79,6 +79,12 @@ namespace SteamRush.Core
     // adapter cua PlayerDeathEvent voi RunnerHealthSystem (S1-24).
     public readonly struct RequestCarSpawnEvent
     {
+        public readonly int LaneIndex; // 0 = Random, 1 = Left, 2 = Center, 3 = Right
+
+        public RequestCarSpawnEvent(int laneIndex = 0)
+        {
+            LaneIndex = laneIndex;
+        }
     }
 
     // Ban khi 1 nguoi xem chua Follow co gui lenh dieu khien (left/right/fast/slow) - GDD v1.3

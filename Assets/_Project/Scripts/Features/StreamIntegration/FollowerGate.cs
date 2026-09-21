@@ -47,7 +47,6 @@ namespace SteamRush.Features.StreamIntegration
         {
             if (_followerStatusProvider == null)
             {
-                Debug.Log("[FollowerGate] chờ module StreamIntegration - mock cho qua Follower Gate.");
                 return true;
             }
 

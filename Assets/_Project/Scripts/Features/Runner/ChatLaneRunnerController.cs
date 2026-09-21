@@ -2,8 +2,8 @@ namespace SteamRush.Features.Runner
 {
     using System.Collections.Generic;
     using UnityEngine;
-    using UnityEngine.InputSystem;
     using SteamRush.Track;
+    using SteamRush.Features.StreamIntegration;
 
     /// <summary>
     /// Điều khiển Runner theo GDD v1.3 mục 1 (Lối chơi 3 làn) + mục 5 (Hệ thống điều khiển chat).
@@ -27,8 +27,8 @@ namespace SteamRush.Features.Runner
     public class ChatLaneRunnerController : MonoBehaviour
     {
         [Header("Lane Settings")]
-        [Tooltip("Vị trí trục Z của 3 làn: Trái / Giữa / Phải. GDD v1.3 = -3.0 / 0.0 / +3.0.")]
-        [SerializeField] private float[] _laneZPositions = { -3f, 0f, 3f };
+        [Tooltip("Vị trí trục Z của 3 làn: Trái (+3.0) / Giữa (0.0) / Phải (-3.0) theo hướng camera nhìn +X.")]
+        [SerializeField] private float[] _laneZPositions = { 3f, 0f, -3f };
         [Tooltip("Thời gian lách làn mượt mà. GDD v1.3 = 0.2s, dùng Mathf.SmoothDamp.")]
         [SerializeField] private float _laneChangeSmoothTime = 0.2f;
 
@@ -38,15 +38,51 @@ namespace SteamRush.Features.Runner
         [Tooltip("Thời gian chờ tối thiểu giữa 2 lệnh fast/slow liên tiếp trong queue (giây).")]
         [SerializeField] private float _nonLaneCommandDelay = 0.1f;
 
-        [Header("Speed Commands (fast / slow)")]
-        [Tooltip("Tốc độ cuộn thế giới khi nhận lệnh fast. GDD v1.3 = 10.0 m/s.")]
-        [SerializeField] private float _fastTargetSpeed = 10f;
-        [Tooltip("Thời gian duy trì hiệu ứng fast trước khi tự trở về bình thường. GDD v1.3 = 3.0s.")]
-        [SerializeField] private float _fastDuration = 3f;
-        [Tooltip("Tốc độ cuộn thế giới khi nhận lệnh slow (mức an toàn để né xe).")]
-        [SerializeField] private float _slowTargetSpeed = 4f;
-        [Tooltip("Thời gian duy trì hiệu ứng slow trước khi tự trở về bình thường.")]
-        [SerializeField] private float _slowDuration = 3f;
+        [Header("Speed Commands (fast)")]
+        [Tooltip("Tốc độ cuộn thế giới khi nhận lệnh fast (bứt tốc turbo). Mặc định = 18.0 m/s để tạo cảm giác bứt phá xé gió rõ rệt.")]
+        [SerializeField] private float _fastTargetSpeed = 18f;
+        [Tooltip("Tốc độ tiêu hao năng lượng Fan mỗi giây khi chạy fast (VD: 25/s thì 100 năng lượng chạy 4s, 50 năng lượng chạy 2s và giảm hết về 0).")]
+        [SerializeField] private float _fastEnergyDrainPerSecond = 25f;
+        [Tooltip("Tham chiếu FactionTugOfWarManager để kiểm tra và trừ năng lượng Fan.")]
+        [SerializeField] private FactionTugOfWarManager _factionManager;
+
+        [Header("Knockback Settings (GDD v1.2)")]
+        [Tooltip("Khoảng cách đẩy lùi Runner (mét) khi va chạm chướng ngại vật theo GDD v1.2.")]
+        [SerializeField] private float _knockbackDistance = 1.8f;
+        [Tooltip("Thời gian hồi phục lại vị trí gốc sau khi bị đẩy lùi (giây).")]
+        [SerializeField] private float _knockbackDuration = 0.45f;
+
+        private float _knockbackOffsetX;
+        private float _knockbackTimer = 999f;
+        private float _knockbackTotalDuration = 0.45f;
+        private float _knockbackStartOffset;
+
+        public bool IsKnockingBack => _knockbackTimer < _knockbackTotalDuration;
+
+        public void ApplyKnockback(float distance = -1f, float duration = -1f)
+        {
+            float dist = distance > 0f ? distance : _knockbackDistance;
+            _knockbackTotalDuration = duration > 0f ? duration : _knockbackDuration;
+            _knockbackTimer = 0f;
+            _knockbackStartOffset = -dist; // Đẩy lùi về phía sau (-X)
+            _knockbackOffsetX = _knockbackStartOffset;
+        }
+
+        private void UpdateKnockback(float dt)
+        {
+            if (_knockbackTimer < _knockbackTotalDuration)
+            {
+                _knockbackTimer += dt;
+                float progress = Mathf.Clamp01(_knockbackTimer / _knockbackTotalDuration);
+                // Ease Out Quad cho cảm giác bật lùi dứt khoát rồi từ từ lấy lại đà chạy
+                float ease = 1f - (1f - progress) * (1f - progress);
+                _knockbackOffsetX = Mathf.Lerp(_knockbackStartOffset, 0f, ease);
+            }
+            else
+            {
+                _knockbackOffsetX = 0f;
+            }
+        }
 
         private int _currentLaneIndex = 1; // bắt đầu ở làn giữa
         private float _zVelocity; // bắt buộc phải có cho Mathf.SmoothDamp, lưu vận tốc giữa các frame
@@ -57,12 +93,33 @@ namespace SteamRush.Features.Runner
         private WorldSpeedManager _speedManager;
         private RunnerCollisionHandler _collisionHandler; // chỉ tham chiếu, KHÔNG sửa logic bên trong
         private Rigidbody _rb;
+        private Animator _animator;
+        private Camera _mainCamera;
+        private float _baseFov = 60f;
+        private float _baseX;
+        private float _currentSurgeX;
+
+        private bool _isFastRunning;
+        private float _fastTimer;
+        private float _fastEnergyAccumulator;
 
         private void Awake()
         {
-            _speedManager = FindFirstObjectByType<WorldSpeedManager>();
+            _speedManager = FindFirstObjectByType<WorldSpeedManager>() ?? WorldSpeedManager.Instance;
             _collisionHandler = GetComponent<RunnerCollisionHandler>();
             _rb = GetComponent<Rigidbody>();
+            _animator = GetComponentInChildren<Animator>();
+            _mainCamera = Camera.main;
+            if (_mainCamera != null)
+            {
+                _baseFov = _mainCamera.fieldOfView;
+            }
+            _baseX = transform.position.x;
+
+            if (_factionManager == null)
+            {
+                _factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
+            }
         }
 
         private void Start()
@@ -71,7 +128,7 @@ namespace SteamRush.Features.Runner
             // xong constraints trước — nếu làm ở Awake(), thứ tự Awake() giữa 2 script trên cùng
             // GameObject không được đảm bảo, có thể bị RunnerController ghi đè lại constraints
             // SAU khi mình vừa mở khoá, làm mất tác dụng.
-            _rb.constraints &= ~RigidbodyConstraints.FreezePositionZ;
+            _rb.constraints &= ~(RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezePositionX);
 
             // Đặt vị trí Z ban đầu đúng làn giữa, tránh Runner spawn lệch làn nếu Scene đặt sai.
             Vector3 startPos = transform.position;
@@ -81,31 +138,61 @@ namespace SteamRush.Features.Runner
 
         private void Update()
         {
-            HandleDebugKeys();
             ProcessCommandQueue();
+            UpdateFastEnergyDrain();
+            UpdateSpeedVisualEffects();
+        }
+
+        private void UpdateSpeedVisualEffects()
+        {
+            if (_speedManager == null)
+            {
+                _speedManager = WorldSpeedManager.Instance ?? FindFirstObjectByType<WorldSpeedManager>();
+                if (_speedManager == null) return;
+            }
+
+            float currentSpeed = _speedManager.CurrentSpeed;
+            float baseSpeed = 8.0f;
+
+            // 1. Đồng bộ nhịp chạy Animator với tốc độ cuộn thế giới:
+            // 8m/s -> 1.0x (chạy đều), 18m/s -> 2.25x (bứt tốc cuồng nhiệt xé gió)
+            if (_animator != null)
+            {
+                if (currentSpeed <= 0.2f)
+                {
+                    _animator.speed = 0f;
+                }
+                else
+                {
+                    _animator.speed = Mathf.Clamp(currentSpeed / baseSpeed, 1.0f, 2.3f);
+                }
+            }
+
+            // 2. Hiệu ứng Camera FOV (Speed Warp Effect): mở rộng góc nhìn xé gió khi fast sprint
+            if (_mainCamera != null)
+            {
+                float targetFov = _baseFov;
+                if (currentSpeed > baseSpeed + 2f)
+                {
+                    targetFov = _baseFov + 12f; // Tăng lên 72 FOV tạo hiệu ứng bứt tốc rõ rệt
+                }
+
+                _mainCamera.fieldOfView = Mathf.Lerp(_mainCamera.fieldOfView, targetFov, Time.deltaTime * 7f);
+            }
+
+            // 3. Hiệu ứng vị trí Runner trên thảm chạy (rướn mạnh lên phía trước khi bứt tốc fast)
+            float targetSurgeX = 0f;
+            if (currentSpeed > baseSpeed + 2f)
+            {
+                targetSurgeX = 1.6f;
+            }
+
+            _currentSurgeX = Mathf.Lerp(_currentSurgeX, targetSurgeX, Time.deltaTime * 7f);
         }
 
         private void FixedUpdate()
         {
             UpdateLaneMovement();
-        }
-
-        /// <summary>
-        /// Bắt tạm phím A/D để tự test lách làn trên máy khi chưa kết nối bộ lọc chat thật.
-        /// </summary>
-        private void HandleDebugKeys()
-        {
-            if (Keyboard.current == null) return;
-
-            if (Keyboard.current.aKey.wasPressedThisFrame)
-            {
-                ExecuteSingleCommand("left");
-            }
-
-            if (Keyboard.current.dKey.wasPressedThisFrame)
-            {
-                ExecuteSingleCommand("right");
-            }
         }
 
         /// <summary>
@@ -115,10 +202,13 @@ namespace SteamRush.Features.Runner
         /// </summary>
         private void UpdateLaneMovement()
         {
+            UpdateKnockback(Time.fixedDeltaTime);
+
             float targetZ = _laneZPositions[_currentLaneIndex];
             Vector3 pos = _rb.position;
             float newZ = Mathf.SmoothDamp(pos.z, targetZ, ref _zVelocity, _laneChangeSmoothTime);
-            _rb.MovePosition(new Vector3(pos.x, pos.y, newZ));
+            float newX = _baseX + _currentSurgeX + _knockbackOffsetX;
+            _rb.MovePosition(new Vector3(newX, pos.y, newZ));
         }
 
         // ============================================================
@@ -151,9 +241,6 @@ namespace SteamRush.Features.Runner
             if (string.IsNullOrWhiteSpace(command)) return;
 
             string normalized = command.Trim().ToLowerInvariant();
-
-            // Đoạn 1 - Điểm nhận lệnh điều khiển
-            Debug.Log($"[ChatLaneRunner] Nhận lệnh: {normalized}");
 
             if (_commandQueue.Count >= _maxCommandsPerBatch)
             {
@@ -196,13 +283,23 @@ namespace SteamRush.Features.Runner
                     _commandCooldownTimer = _laneChangeSmoothTime;
                     break;
 
-                case "fast":
-                    TriggerFast();
-                    _commandCooldownTimer = _nonLaneCommandDelay;
+                case "1":
+                    SetLane(0); // Làn 1: Trái cùng (Z = +3.0)
+                    _commandCooldownTimer = _laneChangeSmoothTime;
                     break;
 
-                case "slow":
-                    TriggerSlow();
+                case "2":
+                    SetLane(1); // Làn 2: Giữa (Z = 0.0)
+                    _commandCooldownTimer = _laneChangeSmoothTime;
+                    break;
+
+                case "3":
+                    SetLane(2); // Làn 3: Phải cùng (Z = -3.0)
+                    _commandCooldownTimer = _laneChangeSmoothTime;
+                    break;
+
+                case "fast":
+                    TriggerFast();
                     _commandCooldownTimer = _nonLaneCommandDelay;
                     break;
 
@@ -212,13 +309,22 @@ namespace SteamRush.Features.Runner
             }
         }
 
+        private void SetLane(int targetIndex)
+        {
+            int clampedIndex = Mathf.Clamp(targetIndex, 0, _laneZPositions.Length - 1);
+            if (clampedIndex == _currentLaneIndex)
+            {
+                return;
+            }
+
+            _currentLaneIndex = clampedIndex;
+        }
+
         private void ChangeLane(int direction)
         {
             int newIndex = Mathf.Clamp(_currentLaneIndex + direction, 0, _laneZPositions.Length - 1);
-
             if (newIndex == _currentLaneIndex)
             {
-                Debug.Log("[ChatLaneRunner] Đã ở làn ngoài cùng, khoá lại không đổi làn được.");
                 return;
             }
 
@@ -227,15 +333,74 @@ namespace SteamRush.Features.Runner
 
         private void TriggerFast()
         {
-            // Đoạn 2 - Điểm bứt tốc fast
-            Debug.Log("[ChatLaneRunner] Tăng tốc (fast) — chưa nối thanh năng lượng thật.");
-            _speedManager?.TriggerCommandSpeed(_fastTargetSpeed, _fastDuration);
+            if (_factionManager == null)
+            {
+                _factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
+            }
+
+            if (_factionManager != null && _factionManager.FanLikes <= 0)
+            {
+                Debug.LogWarning($"[ChatLaneRunner] Hết năng lượng Fan ({_factionManager.FanLikes}) để bứt tốc fast!");
+                return;
+            }
+
+            if (_speedManager == null)
+            {
+                _speedManager = WorldSpeedManager.Instance ?? FindFirstObjectByType<WorldSpeedManager>();
+            }
+
+            _isFastRunning = true;
+            _fastTimer = 0f;
+            _fastEnergyAccumulator = 0f;
+
+            _speedManager?.TriggerCommandSpeed(_fastTargetSpeed, 9999f);
         }
 
-        private void TriggerSlow()
+        private void UpdateFastEnergyDrain()
         {
-            Debug.Log("[ChatLaneRunner] Giảm tốc (slow) về mức an toàn.");
-            _speedManager?.TriggerCommandSpeed(_slowTargetSpeed, _slowDuration);
+            if (!_isFastRunning) return;
+
+            // Nếu đang va chạm/hồi phục tốc độ thì hủy fast ngay
+            if (_speedManager != null && _speedManager.IsRecovering)
+            {
+                StopFast();
+                return;
+            }
+
+            float dt = Time.deltaTime;
+            _fastTimer += dt;
+
+            _fastEnergyAccumulator += _fastEnergyDrainPerSecond * dt;
+
+            if (_fastEnergyAccumulator >= 1f)
+            {
+                int intDrain = Mathf.FloorToInt(_fastEnergyAccumulator);
+                _fastEnergyAccumulator -= intDrain;
+
+                if (_factionManager != null)
+                {
+                    bool stillHasEnergy = _factionManager.TryConsumeFanEnergy(intDrain);
+                    if (!stillHasEnergy || _factionManager.FanLikes <= 0)
+                    {
+                        StopFast();
+                        return;
+                    }
+                }
+            }
+
+            if (_factionManager != null && _factionManager.FanLikes <= 0)
+            {
+                StopFast();
+            }
+        }
+
+        private void StopFast()
+        {
+            if (!_isFastRunning) return;
+            _isFastRunning = false;
+            _fastTimer = 0f;
+            _fastEnergyAccumulator = 0f;
+            _speedManager?.CancelCommandSpeed();
         }
     }
 }

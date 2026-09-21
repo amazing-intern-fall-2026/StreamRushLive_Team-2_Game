@@ -32,7 +32,8 @@ namespace SteamRush.Features.UI.Views
         [Tooltip("Rotation offset added when faceCamera is true.")]
         [SerializeField] private Vector3 rotationOffset = Vector3.zero;
 
-        private Transform target;
+        [Tooltip("Target runner transform to follow.")]
+        [SerializeField] private Transform target;
         private Transform nameplateAnchor;
         private Camera cachedCamera;
 
@@ -76,6 +77,11 @@ namespace SteamRush.Features.UI.Views
         {
             cachedCamera = Camera.main;
 
+            if (target != null && nameplateAnchor == null)
+            {
+                nameplateAnchor = target.Find("NameplateAnchor");
+            }
+
             // Nếu người dùng đã xoay sẵn trong Scene mà fixedRotation chưa đặt, lấy góc xoay đó làm mặc định
             if (fixedRotation == Vector3.zero && transform.rotation != Quaternion.identity)
             {
@@ -99,7 +105,7 @@ namespace SteamRush.Features.UI.Views
                 runnerName.text = name;
             }
 
-            if (avatar != null)
+            if (avatar != null && runnerAvatar != null)
             {
                 avatar.sprite = runnerAvatar;
             }

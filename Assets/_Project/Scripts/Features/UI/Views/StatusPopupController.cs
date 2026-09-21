@@ -13,8 +13,11 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private CanvasGroup canvasGroup;
         // Hiệu ứng "pop" từng ký tự khi chữ xuất hiện (asset Easy Text Effects, free/MIT) - bổ sung cho tween nổi lên + mờ dần bên dưới.
         [SerializeField] private TextEffect textEffect;
-        [SerializeField] private float floatDistance = 40f;
-        [SerializeField] private float duration = 1.2f;
+        [SerializeField] private float floatDistance = 50f;
+        [Tooltip("Tổng thời gian tồn tại của popup (giây). Mặc định 3.5s để người xem đọc rõ thông báo.")]
+        [SerializeField] private float duration = 3.5f;
+        [Tooltip("Thời gian giữ nguyên độ rõ nét 100% trước khi bắt đầu mờ dần (giây). Mặc định 2.5s.")]
+        [SerializeField] private float holdDuration = 2.5f;
 
         [Header("Text Settings")]
         [Tooltip("Bật No Wrap để chữ luôn nằm trên 1 dòng duy nhất, không tự động xuống dòng.")]
@@ -63,10 +66,21 @@ namespace SteamRush.Features.UI.Views
         }
 
         // icon: null khi chưa có icon phù hợp (vd. debuff đang chờ bổ sung icon riêng) - ẩn hẳn ô icon thay vì để trống.
-        public void Play(string message, bool isBuff, Sprite icon = null, Color? iconColor = null)
+        public void Play(
+            string message,
+            bool isBuff,
+            Sprite icon = null,
+            Color? iconColor = null,
+            System.Action onComplete = null,
+            float customDuration = -1f,
+            float customHold = -1f)
         {
             var rect = (RectTransform)transform;
             rect.anchoredPosition = startAnchoredPosition;
+
+            float activeDuration = customDuration > 0f ? customDuration : duration;
+            float activeHold = customHold > 0f ? customHold : holdDuration;
+            activeHold = Mathf.Min(activeHold, activeDuration * 0.8f);
 
             // Xóa mọi emoji/icon còn sót lại trong chữ để văn bản luôn sạch đẹp
             if (!string.IsNullOrEmpty(message))
@@ -110,12 +124,17 @@ namespace SteamRush.Features.UI.Views
             // Append tween đầu tiên, các tween sau mới Join - Join làm tween đầu tiên trên Sequence rỗng
             // khiến DOTween tính sai tổng thời lượng, OnComplete bắn gần như ngay lập tức (popup huỷ trong 1 frame).
             Sequence sequence = DOTween.Sequence().SetTarget(rect);
-            sequence.Append(rect.DOAnchorPosY(startAnchoredPosition.y + floatDistance, duration).SetEase(Ease.OutCubic));
+            sequence.Append(rect.DOAnchorPosY(startAnchoredPosition.y + floatDistance, activeDuration).SetEase(Ease.OutCubic));
             if (canvasGroup != null)
             {
-                sequence.Join(canvasGroup.DOFade(0f, duration).SetEase(Ease.InQuad));
+                float fadeTime = Mathf.Max(0.2f, activeDuration - activeHold);
+                sequence.Insert(activeHold, canvasGroup.DOFade(0f, fadeTime).SetEase(Ease.InQuad));
             }
-            sequence.OnComplete(() => Destroy(gameObject));
+            sequence.OnComplete(() =>
+            {
+                onComplete?.Invoke();
+                Destroy(gameObject);
+            });
         }
     }
 }

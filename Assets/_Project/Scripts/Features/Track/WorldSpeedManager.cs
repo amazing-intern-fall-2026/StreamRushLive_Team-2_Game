@@ -31,6 +31,8 @@ namespace SteamRush.Track
         [SerializeField] private float _baseSpeed = 10f;
 
         [Header("Speed Ramp")]
+        [Tooltip("Bật/tắt tăng tốc dần theo thời gian. Mặc định = false để tốc độ không tự tăng dần.")]
+        [SerializeField] private bool _enableSpeedRamp = false;
         [Tooltip("Reference benchmark time in seconds (e.g. 60 = 1 minute).")]
         [SerializeField] private float _rampReferenceSeconds = 60f;
         [Tooltip("Target speed multiplier at benchmark time (e.g. 1.2 = +20%).")]
@@ -78,14 +80,14 @@ namespace SteamRush.Track
         // ============================================================
         // COMMAND OVERRIDE (GDD v1.3 - lệnh chat fast/slow)
         // ============================================================
-        [Header("Command Override (Chat fast/slow - GDD v1.3)")]
+        [Header("Command Override (Chat fast sprint - GDD v1.3)")]
         [Tooltip("Tốc độ tăng/giảm mỗi giây khi đang tiến tới mục tiêu Command Override.")]
-        [SerializeField] private float _commandOverrideAccelRate = 6f;
+        [SerializeField] private float _commandOverrideAccelRate = 24f;
 
         // ============================================================
         // STATE
         // ============================================================
-        private enum SpeedState { Normal, SlideTap, SlideHold, Sprint, Recovery, CommandOverride }
+        private enum SpeedState { Normal, SlideTap, SlideHold, Sprint, Recovery, CommandOverride, ReverseKnockback }
         private SpeedState _state = SpeedState.Normal;
 
         private float _rampIncreasePerSecond;
@@ -96,6 +98,11 @@ namespace SteamRush.Track
         private float _recoveryElapsed;
         private float _recoveryTotalDuration;
         private float _recoverySpeedAtImpact;
+
+        // Reverse Knockback state (GDD v1.2 Mục 4: Xung cuộn ngược thế giới đẩy lùi Runner)
+        private float _reverseKnockbackElapsed;
+        private float _reverseKnockbackDuration = 0.5f;
+        private float _reverseKnockbackPeakSpeed = -8f;
 
         // Command Override state riêng (GDD v1.3)
         private float _commandOverrideTimer;
@@ -111,6 +118,7 @@ namespace SteamRush.Track
         public bool IsSliding => _state == SpeedState.SlideTap || _state == SpeedState.SlideHold;
         public bool IsSprinting => _state == SpeedState.Sprint;
         public bool IsRecovering => _state == SpeedState.Recovery;
+        public bool IsReverseKnockingBack => _state == SpeedState.ReverseKnockback;
         public bool IsCommandOverrideActive => _state == SpeedState.CommandOverride;
 
         /// <summary>
@@ -140,7 +148,9 @@ namespace SteamRush.Track
             float dt = Time.deltaTime;
 
             _elapsedTime += dt;
-            float normalTargetSpeed = _baseSpeed * (1f + _rampIncreasePerSecond * _elapsedTime);
+            float normalTargetSpeed = _enableSpeedRamp
+                ? _baseSpeed * (1f + _rampIncreasePerSecond * _elapsedTime)
+                : _baseSpeed;
 
             switch (_state)
             {
@@ -162,6 +172,10 @@ namespace SteamRush.Track
 
                 case SpeedState.CommandOverride:
                     UpdateCommandOverride(dt, normalTargetSpeed);
+                    break;
+
+                case SpeedState.ReverseKnockback:
+                    UpdateReverseKnockback(dt, normalTargetSpeed);
                     break;
 
                 case SpeedState.Normal:
@@ -240,6 +254,29 @@ namespace SteamRush.Track
             if (_commandOverrideTimer <= 0f)
             {
                 _state = SpeedState.Normal;
+            }
+        }
+
+        /// <summary>
+        /// GDD v1.2 Mục 4: Xung cuộn ngược thế giới theo hàm Sine (CurrentSpeed < 0)
+        /// Mặt đường, vỉa hè và chướng ngại vật trôi giật lùi về phía sau (+X).
+        /// Hết thời lượng sẽ hãm về 0 rồi mượt mà lấy lại tốc độ qua TriggerRecovery.
+        /// </summary>
+        private void UpdateReverseKnockback(float dt, float normalTargetSpeed)
+        {
+            _reverseKnockbackElapsed += dt;
+            float progress = Mathf.Clamp01(_reverseKnockbackElapsed / _reverseKnockbackDuration);
+
+            if (progress < 1f)
+            {
+                // Hàm Sine nửa chu kỳ (0 -> 1 -> 0): từ 0 vút lên tốc độ giật lùi cao nhất rồi hãm lại về 0
+                CurrentSpeed = _reverseKnockbackPeakSpeed * Mathf.Sin(progress * Mathf.PI);
+            }
+            else
+            {
+                CurrentSpeed = 0f;
+                // Chuyển sang Recovery để hồi phục mượt mà từ 0 -> tốc độ bình thường
+                TriggerRecovery(0.4f);
             }
         }
 
@@ -326,6 +363,33 @@ namespace SteamRush.Track
             _commandOverrideTargetSpeed = targetSpeed;
             _commandOverrideTimer = duration;
             _state = SpeedState.CommandOverride;
+        }
+
+        /// <summary>
+        /// Hủy lệnh Command Override sớm (khi hết năng lượng hoặc muốn trở về bình thường tức thì).
+        /// </summary>
+        public void CancelCommandSpeed()
+        {
+            if (_state == SpeedState.CommandOverride)
+            {
+                _state = SpeedState.Normal;
+                _commandOverrideTimer = 0f;
+            }
+        }
+
+        /// <summary>
+        /// GDD v1.2 Mục 4: Kích hoạt xung cuộn ngược thế giới khi va chạm vật cản lớn.
+        /// Toàn bộ mặt đường, vỉa hè và tòa nhà sẽ trôi ngược hướng (+X) trong một khoảng thời gian ngắn
+        /// theo hàm Sine, tạo cảm giác Runner bị đẩy/kéo giật lùi về vị trí cũ trên cung đường.
+        /// </summary>
+        /// <param name="peakReverseSpeed">Tốc độ giật lùi cực đại (mặc định -8.5 m/s, giá trị âm).</param>
+        /// <param name="duration">Thời lượng giật lùi (mặc định 0.5s).</param>
+        public void TriggerReverseWorldKnockback(float peakReverseSpeed = -8.5f, float duration = 0.5f)
+        {
+            _reverseKnockbackElapsed = 0f;
+            _reverseKnockbackDuration = Mathf.Max(0.1f, duration);
+            _reverseKnockbackPeakSpeed = -Mathf.Abs(peakReverseSpeed);
+            _state = SpeedState.ReverseKnockback;
         }
     }
 }

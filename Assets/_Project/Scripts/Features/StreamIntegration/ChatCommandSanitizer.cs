@@ -9,19 +9,39 @@ namespace SteamRush.Features.StreamIntegration
     public class ChatCommandSanitizer
     {
         private static readonly char[] _separatorChars = { ',', '.', '!', '-', '/' };
-        private static readonly HashSet<string> _validCommands = new HashSet<string> { "left", "right", "fast", "slow" };
+        private static readonly Dictionary<string, string> _commandAliases = new Dictionary<string, string>
+        {
+            { "left", "left" },
+            { "l", "left" },
+            { "a", "left" },
+            { "trai", "left" },
+            { "right", "right" },
+            { "r", "right" },
+            { "d", "right" },
+            { "phai", "right" },
+            { "fast", "fast" },
+            { "f", "fast" },
+            { "w", "fast" },
+            { "1", "1" },
+            { "lan1", "1" },
+            { "lane1", "1" },
+            { "2", "2" },
+            { "lan2", "2" },
+            { "lane2", "2" },
+            { "3", "3" },
+            { "lan3", "3" },
+            { "lane3", "3" }
+        };
         private const int _maxCommands = 3;
 
         // Thay cac ky tu phan cach thanh khoang trang, lowercase toan bo, roi boc toi da 3 lenh
-        // hop le (left/right/fast/slow) theo dung thu tu xuat hien trong chuoi goc. Lenh la (khong
-        // nam trong danh sach hop le) bi bo qua hoan toan, khong tinh vao gioi han 3 lenh.
+        // hop le (left/right/fast va cac alias a/d/l/r/w) theo dung thu tu xuat hien trong chuoi goc.
         public List<string> SanitizeAndParse(string rawInput)
         {
             List<string> parsedCommands = new List<string>();
 
             if (string.IsNullOrEmpty(rawInput))
             {
-                Debug.Log("[ChatCommandSanitizer] Lenh da loc: (rong)");
                 return parsedCommands;
             }
 
@@ -51,13 +71,12 @@ namespace SteamRush.Features.StreamIntegration
                     break;
                 }
 
-                if (_validCommands.Contains(token))
+                if (_commandAliases.TryGetValue(token, out string canonicalCommand))
                 {
-                    parsedCommands.Add(token);
+                    parsedCommands.Add(canonicalCommand);
                 }
             }
 
-            Debug.Log($"[ChatCommandSanitizer] Lenh da loc: {string.Join(", ", parsedCommands)}");
             return parsedCommands;
         }
     }

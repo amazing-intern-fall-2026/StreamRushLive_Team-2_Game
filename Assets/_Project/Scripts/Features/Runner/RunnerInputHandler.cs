@@ -2,6 +2,7 @@ namespace SteamRush.Features.Runner
 {
     using UnityEngine;
     using UnityEngine.InputSystem;
+    using UnityEngine.EventSystems;
     using SteamRush.Track;
 
     /// Chịu trách nhiệm DUY NHẤT: đọc Input (New Input System) và gọi các hàm public tương ứng
@@ -49,6 +50,12 @@ namespace SteamRush.Features.Runner
         private void Update()
         {
             if (Keyboard.current == null) return;
+
+            // Bỏ qua input khi người chơi đang tập trung gõ bàn phím trong UI InputField
+            if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null)
+            {
+                return;
+            }
 
             HandleJump();
             HandleSlideAndDuck();

@@ -22,6 +22,10 @@ namespace SteamRush.Features.StreamIntegration
     {
         [SerializeField] private int _antiCarThreshold = 500;
         [SerializeField] private int _antiCarCost = 300;
+        [Tooltip("Chi phí năng lượng phe Anti để thả xe cản đường theo làn chỉ định (1, 2, 3). Mặc định = 100.")]
+        [SerializeField] private int _antiCarLaneCost = 100;
+        [Tooltip("Chi phí năng lượng phe Fan để thả vật phẩm hỗ trợ (khiên/buff) theo làn chỉ định (1, 2, 3). Mặc định = 50.")]
+        [SerializeField] private int _fanItemLaneCost = 50;
         [SerializeField] private FactionType _defaultFaction = FactionType.Fan;
 
         [Serializable] public class FactionValuesChangedEvent : UnityEvent<int, int> { }
@@ -35,11 +39,27 @@ namespace SteamRush.Features.StreamIntegration
 
         private readonly Dictionary<string, FactionType> _userFactions = new Dictionary<string, FactionType>();
 
+        [SerializeField] private int _initialFanLikes = 100;
+        [SerializeField] private int _initialAntiLikes = 200;
+
         private int _fanLikes;
         private int _antiLikes;
 
         public int FanLikes => _fanLikes;
         public int AntiLikes => _antiLikes;
+        public int AntiCarLaneCost => _antiCarLaneCost;
+        public int FanItemLaneCost => _fanItemLaneCost;
+
+        private void Awake()
+        {
+            _fanLikes = _initialFanLikes > 0 ? _initialFanLikes : 100;
+            _antiLikes = _initialAntiLikes;
+        }
+
+        private void Start()
+        {
+            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+        }
 
         // Doc phe hien tai cua 1 nguoi dung - chua tung xuat hien thi mac dinh _defaultFaction.
         public FactionType GetFaction(string userId)
@@ -69,7 +89,7 @@ namespace SteamRush.Features.StreamIntegration
             _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
         }
 
-        // Doan 2: diem debug bat buoc theo task - bao du tim Anti TRUOC khi ban event yeu cau sinh xe.
+        // Bắn event yêu cầu sinh xe cản đường khi phe Anti tích đủ tim
         private void CheckAntiCarThreshold()
         {
             if (_antiLikes < _antiCarThreshold)
@@ -84,22 +104,19 @@ namespace SteamRush.Features.StreamIntegration
             _antiLikes -= _antiCarCost;
         }
 
-        // GDD v1.3 muc 4: Fan Like sac "Nang Luong" dung cho lenh fast. Ben thuc thi lenh
-        // (Tu, S1-22, ChatLaneRunnerController - chua ton tai) se goi ham nay truoc/trong luc
-        // fast dang chay de tru dan nang luong; false = khong du nang luong, ben goi tu quyet
-        // dinh tu choi hoac ket thuc fast som (xem GDD: "can canh se ve lai toc do thuong khi
-        // can nang luong"). Khong dung EventBus vi day la hoi-dap 2 chieu (can gia tri tra ve
-        // ngay), khac voi cac tin hieu 1 chieu (RequestCarSpawnEvent, PlayerDeathEvent).
+        // Fan Like sạc Năng Lượng dùng cho lệnh fast hoặc thả vật phẩm bảo vệ.
+        // ChatLaneRunnerController gọi hàm này để tiêu hao năng lượng.
         public bool TryConsumeFanEnergy(int amount)
         {
-            if (_fanLikes < amount)
+            if (_fanLikes <= 0)
             {
                 return false;
             }
 
-            _fanLikes -= amount;
+            int toDeduct = Mathf.Min(amount, _fanLikes);
+            _fanLikes -= toDeduct;
             _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
-            return true;
+            return _fanLikes > 0;
         }
 
         // Doi phe qua chat: #FAN/#Blue -> Fan, #ANTI/#Red -> Anti (khong phan biet hoa thuong).
@@ -138,7 +155,60 @@ namespace SteamRush.Features.StreamIntegration
             SetFaction(userId, isTrapGift ? FactionType.Anti : FactionType.Fan);
         }
 
-        private void SetFaction(string userId, FactionType faction)
+        // Phe Anti nhắn 1, 2, 3 để thả xe cản đường trên làn mong muốn, giá 100 năng lượng / xe.
+        public bool TrySpawnAntiObstacleCar(string userId, int laneIndex)
+        {
+            if (!_followerGate.CanSendCommand(userId))
+            {
+                return false;
+            }
+
+            if (_antiLikes < _antiCarLaneCost)
+            {
+                Debug.LogWarning($"[FactionTugOfWarManager] Phe Anti không đủ năng lượng! Cần {_antiCarLaneCost}, hiện có {_antiLikes}.");
+                return false;
+            }
+
+            _antiLikes -= _antiCarLaneCost;
+            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+
+            Debug.Log($"[FactionTugOfWarManager] Phe Anti ({userId}) tiêu hao {_antiCarLaneCost} năng lượng -> Spawn xe cản đường trên Làn {laneIndex}!");
+            EventBus.Publish(new RequestCarSpawnEvent(laneIndex));
+            return true;
+        }
+
+        // Phe Fan nhắn fan 1, fan 2, fan 3 hoặc #shield/#buff để thả item hỗ trợ Runner trên làn mong muốn
+        public bool TrySpawnFanItem(string userId, int laneIndex, bool isShield = false)
+        {
+            if (!_followerGate.CanSendCommand(userId))
+            {
+                return false;
+            }
+
+            if (_fanLikes < _fanItemLaneCost)
+            {
+                Debug.LogWarning($"[FactionTugOfWarManager] Phe Fan không đủ năng lượng! Cần {_fanItemLaneCost}, hiện có {_fanLikes}.");
+                return false;
+            }
+
+            var spawner = FindFirstObjectByType<StreamRushLive.Features.Spawning.SingleObstacleSpawner>();
+            if (spawner == null)
+            {
+                Debug.LogWarning("[FactionTugOfWarManager] Không tìm thấy SingleObstacleSpawner để thả item.");
+                return false;
+            }
+
+            bool spawned = spawner.TriggerSpawnFanItem(laneIndex, isShield);
+            if (!spawned) return false;
+
+            _fanLikes -= _fanItemLaneCost;
+            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+
+            Debug.Log($"[FactionTugOfWarManager] Phe Fan ({userId}) tiêu hao {_fanItemLaneCost} năng lượng -> Thả {(isShield ? "Khiên" : "Bình Năng Lượng")} trên Làn {laneIndex}!");
+            return true;
+        }
+
+        public void SetFaction(string userId, FactionType faction)
         {
             _userFactions[userId] = faction;
         }

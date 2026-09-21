@@ -22,11 +22,29 @@ namespace StreamRushLive.Features.Spawning
 
         public override void OnCollected(GameObject collector)
         {
-            // 1. Hồi phục năng lượng trong EnergySystem
+            // 1. Hồi phục năng lượng trong EnergySystem (nếu có trong scene 1 làn)
             EnergySystem energy = FindFirstObjectByType<EnergySystem>();
             if (energy != null)
             {
                 energy.AddEnergy(energyRecoverAmount);
+            }
+            else
+            {
+                // Fallback cho Scene 3-Lane Chat Runner: nạp năng lượng cho Phe Fan
+                var factionManager = FindFirstObjectByType<SteamRush.Features.StreamIntegration.FactionTugOfWarManager>();
+                if (factionManager != null)
+                {
+                    for (int i = 0; i < (int)energyRecoverAmount; i++)
+                    {
+                        factionManager.OnLikeReceived("buff_pickup");
+                    }
+                }
+
+                var runner = FindFirstObjectByType<SteamRush.Features.Runner.ChatLaneRunnerController>();
+                if (runner != null)
+                {
+                    runner.ExecuteSingleCommand("fast");
+                }
             }
 
             // 2. Hiển thị thông báo trên HUD

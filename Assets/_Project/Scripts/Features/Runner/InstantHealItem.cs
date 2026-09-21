@@ -15,9 +15,9 @@ namespace StreamRushLive.Features.Spawning
     /// </summary>
     public class InstantHealItem : MonoBehaviour
     {
-        [Header("Heal Settings")]
-        [Tooltip("Số tim hồi mỗi lần nhận quà hồi máu.")]
-        [SerializeField] private int healAmount = 1;
+        [Header("Heal / Energy Settings")]
+        [Tooltip("Lượng năng lượng hồi mỗi lần nhận quà hồi máu.")]
+        [SerializeField] private float energyAmount = 20f;
 
         [Tooltip("Thời gian hiển thị hiệu ứng ánh sáng xanh lá.")]
         [SerializeField] private float effectDuration = 0.5f;
@@ -26,18 +26,10 @@ namespace StreamRushLive.Features.Spawning
         [Tooltip("GameObject chứa hiệu ứng ánh sáng xanh lá.")]
         [SerializeField] private GameObject healEffect;
 
-        private RunnerHealthSystem _healthSystem;
         private Coroutine _effectCoroutine;
 
         private void Awake()
         {
-            _healthSystem = GetComponent<RunnerHealthSystem>();
-
-            if (_healthSystem == null)
-            {
-                _healthSystem = GetComponentInParent<RunnerHealthSystem>();
-            }
-
             if (healEffect != null)
             {
                 healEffect.SetActive(false);
@@ -45,35 +37,30 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Kích hoạt hộp cứu thương.
-        /// Hàm này được MockChatConsole gọi khi giả lập Donate Heal.
+        /// Kích hoạt bình hồi phục năng lượng (GDD v1.2).
+        /// Hàm này được MockChatConsole gọi khi giả lập Donate Heal/Energy.
         /// </summary>
         public void ActivateHeal()
         {
-            if (_healthSystem == null)
+            EnergySystem energy = FindFirstObjectByType<EnergySystem>();
+            if (energy != null)
             {
-                _healthSystem = GetComponent<RunnerHealthSystem>();
-
-                if (_healthSystem == null)
+                energy.AddEnergy(energyAmount);
+            }
+            else
+            {
+                SteamRush.Features.StreamIntegration.FactionTugOfWarManager faction =
+                    FindFirstObjectByType<SteamRush.Features.StreamIntegration.FactionTugOfWarManager>();
+                if (faction != null)
                 {
-                    _healthSystem = GetComponentInParent<RunnerHealthSystem>();
+                    for (int i = 0; i < Mathf.RoundToInt(energyAmount); i++)
+                    {
+                        faction.OnLikeReceived("viewer_heal");
+                    }
                 }
             }
 
-            if (_healthSystem == null)
-            {
-                Debug.LogWarning(
-                    "[InstantHealItem] Không tìm thấy RunnerHealthSystem trên Runner."
-                );
-                return;
-            }
-
-            // Hồi ngay lập tức 1 tim.
-            _healthSystem.Heal(healAmount);
-
-            Debug.Log(
-                $"[InstantHealItem] Donate Heal → hồi {healAmount} tim."
-            );
+            Debug.Log($"[InstantHealItem] Donate Heal -> hồi +{energyAmount}% Năng lượng.");
 
             // Hiển thị hiệu ứng ánh sáng xanh lá.
             PlayHealEffect();

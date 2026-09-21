@@ -1,8 +1,11 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
 using StreamRushLive.Features.Spawning;
+using SteamRush.Features.StreamIntegration;
 
 namespace SteamRush.Features.Runner
 {
@@ -14,30 +17,60 @@ namespace SteamRush.Features.Runner
         [Header("Runner Components")]
         [SerializeField] private RunnerItemEffects itemEffects;
         [SerializeField] private InstantHealItem instantHealItem;
+        [SerializeField] private ChatLaneRunnerController chatLaneRunner;
+
+        [Header("Stream Integration Managers")]
+        [SerializeField] private FactionTugOfWarManager factionManager;
+        [SerializeField] private ChatRunnerQueueManager queueManager;
+        [SerializeField] private SteamRush.Features.UI.HUDManager hudManager;
+        [SerializeField] private SingleObstacleSpawner obstacleSpawner;
 
         [Header("Mock Settings")]
         [SerializeField] private float shieldDuration = 20f;
+
+        private readonly ChatCommandSanitizer _sanitizer = new ChatCommandSanitizer();
 
         private void Awake()
         {
             if (itemEffects == null)
             {
                 itemEffects = GetComponent<RunnerItemEffects>();
-
                 if (itemEffects == null)
-                {
                     itemEffects = GetComponentInParent<RunnerItemEffects>();
-                }
             }
 
             if (instantHealItem == null)
             {
                 instantHealItem = GetComponent<InstantHealItem>();
-
                 if (instantHealItem == null)
-                {
                     instantHealItem = GetComponentInParent<InstantHealItem>();
-                }
+            }
+
+            if (chatLaneRunner == null)
+            {
+                chatLaneRunner = GetComponent<ChatLaneRunnerController>();
+                if (chatLaneRunner == null)
+                    chatLaneRunner = GetComponentInParent<ChatLaneRunnerController>();
+            }
+
+            if (factionManager == null)
+            {
+                factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
+            }
+
+            if (queueManager == null)
+            {
+                queueManager = FindFirstObjectByType<ChatRunnerQueueManager>();
+            }
+
+            if (hudManager == null)
+            {
+                hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+            }
+
+            if (obstacleSpawner == null)
+            {
+                obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
             }
 
             if (chatInputField != null)
@@ -77,11 +110,129 @@ namespace SteamRush.Features.Runner
 
             if (Keyboard.current.f5Key.wasPressedThisFrame)
                 MockNewFollower();
+
+            if (Keyboard.current.escapeKey.wasPressedThisFrame)
+            {
+                if (chatInputField != null && chatInputField.isFocused)
+                {
+                    chatInputField.DeactivateInputField();
+                    if (EventSystem.current != null)
+                    {
+                        EventSystem.current.SetSelectedGameObject(null);
+                    }
+                }
+            }
+
+            if (Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.numpadEnterKey.wasPressedThisFrame)
+            {
+                if (chatInputField != null)
+                {
+                    if (chatInputField.isFocused)
+                    {
+                        // Người dùng đang nhập trong ô chat và bấm Enter -> Thực thi ngay lập tức
+                        string text = chatInputField.text;
+                        if (!string.IsNullOrWhiteSpace(text))
+                        {
+                            OnChatSubmitted(text);
+                        }
+                        else
+                        {
+                            ClearInputField();
+                        }
+                    }
+                    else
+                    {
+                        // Người dùng chưa focus ô chat -> bấm Enter để mở khung chat
+                        chatInputField.ActivateInputField();
+                    }
+                }
+            }
+        }
+
+        private int _lastSubmittedFrame = -1;
+        private int _mockFollowerIndex = 0;
+        private string _lastActiveFollowerName = "";
+        private static readonly string[] MockFollowerList = new string[]
+        {
+            "Viewer_Bao",
+            "Viewer_Chi",
+            "Top1_Dung",
+            "Mod_Giang",
+            "Gamer_Huy"
+        };
+
+        private string GetOrRotateFollowerName()
+        {
+            string name = MockFollowerList[_mockFollowerIndex % MockFollowerList.Length];
+            _mockFollowerIndex++;
+            return name;
+        }
+
+        // Tách chuỗi chat thành (tên follower, nội dung lệnh)
+        // Hỗ trợ: "Viewer_Chi #fan", "Bao: #anti", "Top1_Dung: 1", hoặc "#fan" (tự động gán tên follower rõ ràng)
+        private (string followerName, string command) ParseFollowerAndInput(string rawInput)
+        {
+            string trimmed = rawInput.Trim();
+
+            // TH 1: Có dấu ':' như "Viewer_Chi: #fan" hoặc "Bao: anti 2"
+            int colonIdx = trimmed.IndexOf(':');
+            if (colonIdx > 0 && colonIdx < trimmed.Length - 1)
+            {
+                string name = trimmed.Substring(0, colonIdx).Trim();
+                string cmd = trimmed.Substring(colonIdx + 1).Trim();
+                if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(cmd))
+                {
+                    _lastActiveFollowerName = name;
+                    return (name, cmd);
+                }
+            }
+
+            // TH 2: Dấu cách phân cách tên và lệnh, ví dụ "Viewer_Chi #fan" hoặc "Top1_Dung #anti"
+            int firstSpace = trimmed.IndexOf(' ');
+            if (firstSpace > 0)
+            {
+                string firstWord = trimmed.Substring(0, firstSpace).Trim();
+                string rest = trimmed.Substring(firstSpace + 1).Trim();
+                string firstLower = firstWord.ToLowerInvariant();
+
+                bool isFirstWordCommand = firstLower == "#fan" || firstLower == "#anti" || firstLower == "anti" ||
+                                          firstLower == "#blue" || firstLower == "#red" ||
+                                          firstLower == "left" || firstLower == "right" || firstLower == "fast" ||
+                                          firstLower == "1" || firstLower == "2" || firstLower == "3";
+
+                if (!isFirstWordCommand && !string.IsNullOrEmpty(rest))
+                {
+                    _lastActiveFollowerName = firstWord;
+                    return (firstWord, rest);
+                }
+            }
+
+            // TH 3: Người dùng chỉ gõ lệnh trực tiếp (ví dụ "#fan", "#anti", "1", "fast")
+            // Nếu là lệnh đổi phe (#fan/#anti) -> xoay vòng sang một follower mới để giả lập nhiều khán giả khác nhau tham gia
+            string cmdLower = trimmed.ToLowerInvariant();
+            if (cmdLower == "#fan" || cmdLower == "#blue" || cmdLower == "#anti" || cmdLower == "#red")
+            {
+                string newFollower = GetOrRotateFollowerName();
+                _lastActiveFollowerName = newFollower;
+                return (newFollower, trimmed);
+            }
+
+            // Còn lại nếu đã có follower gần nhất thì dùng, chưa có thì lấy từ danh sách
+            if (string.IsNullOrEmpty(_lastActiveFollowerName))
+            {
+                _lastActiveFollowerName = GetOrRotateFollowerName();
+            }
+
+            return (_lastActiveFollowerName, trimmed);
         }
 
         private void OnChatSubmitted(string rawInput)
         {
-            Debug.Log($"[MockChatConsole] Raw chat: \"{rawInput}\"");
+            if (Time.frameCount == _lastSubmittedFrame)
+            {
+                return;
+            }
+            _lastSubmittedFrame = Time.frameCount;
 
             if (string.IsNullOrWhiteSpace(rawInput))
             {
@@ -89,8 +240,153 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            // ChatCommandSanitizer sẽ được tích hợp ở bước sau.
-            // Hiện tại chỉ nhận và log raw chat để kiểm tra InputField.
+            if (factionManager == null) factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
+            if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+
+            var (followerName, command) = ParseFollowerAndInput(rawInput);
+            string trimmedCmd = command.Trim().ToLowerInvariant();
+
+            // 1. Kiểm tra lệnh đổi phe: #fan / #anti / #blue / #red (hiển thị rõ tên Follower)
+            if (trimmedCmd == "#fan" || trimmedCmd == "#blue")
+            {
+                factionManager?.SetFaction(followerName, FactionType.Fan);
+                factionManager?.SetFaction("runner_player", FactionType.Fan);
+                hudManager?.ShowStatusPopup($"[{followerName}] đã gia nhập phe FAN! (Ủng hộ Runner)", true);
+                ClearInputField();
+                return;
+            }
+            else if (trimmedCmd == "#anti" || trimmedCmd == "#red")
+            {
+                factionManager?.SetFaction(followerName, FactionType.Anti);
+                factionManager?.SetFaction("runner_player", FactionType.Anti);
+                hudManager?.ShowStatusPopup($"[{followerName}] đã gia nhập phe ANTI! (Cản đường Runner)", false);
+                ClearInputField();
+                return;
+            }
+
+            // 2. Kiểm tra lệnh spawn xe cản đường của phe Anti (100 năng lượng / xe):
+            // TH A: Cú pháp trực tiếp: "#anti 1", "anti 1", "#anti 2", "anti 2", "#anti 3", "anti 3", "anti1", "anti2", "anti3"
+            int antiLane = -1;
+            if (trimmedCmd.StartsWith("#anti") || trimmedCmd.StartsWith("anti"))
+            {
+                string rest = trimmedCmd.Replace("#anti", "").Replace("anti", "").Trim();
+                if (rest == "1" || rest == "lane 1" || rest == "trai" || rest == "left") antiLane = 1;
+                else if (rest == "2" || rest == "lane 2" || rest == "giua" || rest == "mid" || rest == "center") antiLane = 2;
+                else if (rest == "3" || rest == "lane 3" || rest == "phai" || rest == "right") antiLane = 3;
+            }
+            // TH B: Follower đã ở phe Anti và gõ "1", "2", "3"
+            else if (factionManager != null && (factionManager.GetFaction(followerName) == FactionType.Anti || factionManager.GetFaction("runner_player") == FactionType.Anti))
+            {
+                if (trimmedCmd == "1" || trimmedCmd == "left" || trimmedCmd == "trai") antiLane = 1;
+                else if (trimmedCmd == "2" || trimmedCmd == "center" || trimmedCmd == "mid" || trimmedCmd == "giua") antiLane = 2;
+                else if (trimmedCmd == "3" || trimmedCmd == "right" || trimmedCmd == "phai") antiLane = 3;
+            }
+
+            if (antiLane != -1)
+            {
+                var obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
+                if (obstacleSpawner != null)
+                {
+                    if (!obstacleSpawner.CanSpawnObstacle())
+                    {
+                        hudManager?.ShowStatusPopup($"[{followerName}] (Phe Anti): Đang có tối đa 2 xe cản đường cùng lúc! Hãy đợi xe trước vượt qua.", false);
+                        ClearInputField();
+                        return;
+                    }
+
+                    if (!obstacleSpawner.CanSpawnObstacleOnLane(antiLane))
+                    {
+                        string occupiedLaneName = antiLane == 1 ? "1 (Trái)" : (antiLane == 2 ? "2 (Giữa)" : "3 (Phải)");
+                        hudManager?.ShowStatusPopup($"[{followerName}] (Phe Anti): Làn {occupiedLaneName} đang có vật cản cản đường!", false);
+                        ClearInputField();
+                        return;
+                    }
+                }
+
+                if (factionManager != null)
+                {
+                    bool success = factionManager.TrySpawnAntiObstacleCar(followerName, antiLane);
+                    if (success)
+                    {
+                        string laneName = antiLane == 1 ? "Trái (1)" : (antiLane == 2 ? "Giữa (2)" : "Phải (3)");
+                        hudManager?.ShowStatusPopup($"[{followerName}] (Phe Anti) thả xe Làn {laneName}! (-{factionManager.AntiCarLaneCost} Anti)", false);
+                    }
+                    else
+                    {
+                        hudManager?.ShowStatusPopup($"[{followerName}] (Phe Anti) không đủ 100 năng lượng! (Hiện có {factionManager.AntiLikes})", false);
+                    }
+                }
+                ClearInputField();
+                return;
+            }
+
+            // 2.5 Kiểm tra lệnh spawn item hỗ trợ của phe Fan (50 năng lượng / item):
+            // Cú pháp: "#fan 1", "fan 1", "#fan 2", "fan 2", "#fan 3", "fan 3", "fan1", "fan2", "fan3",
+            //          "#shield 1", "shield 1", "#buff 1", "buff 1", "#item 1", "item 1"...
+            int fanLane = -1;
+            bool isFanShield = false;
+
+            if (trimmedCmd.StartsWith("#fan") || trimmedCmd.StartsWith("fan"))
+            {
+                string rest = trimmedCmd.Replace("#fan", "").Replace("fan", "").Trim();
+                if (rest == "1" || rest == "lane 1" || rest == "trai" || rest == "left") fanLane = 1;
+                else if (rest == "2" || rest == "lane 2" || rest == "giua" || rest == "mid" || rest == "center") fanLane = 2;
+                else if (rest == "3" || rest == "lane 3" || rest == "phai" || rest == "right") fanLane = 3;
+            }
+            else if (trimmedCmd.StartsWith("#shield") || trimmedCmd.StartsWith("shield") || trimmedCmd.StartsWith("khien"))
+            {
+                isFanShield = true;
+                string rest = trimmedCmd.Replace("#shield", "").Replace("shield", "").Replace("khien", "").Trim();
+                if (rest == "1" || rest == "lane 1" || rest == "trai" || rest == "left") fanLane = 1;
+                else if (rest == "2" || rest == "lane 2" || rest == "giua" || rest == "mid" || rest == "center") fanLane = 2;
+                else if (rest == "3" || rest == "lane 3" || rest == "phai" || rest == "right") fanLane = 3;
+                else fanLane = 2; // mặc định làn giữa
+            }
+            else if (trimmedCmd.StartsWith("#buff") || trimmedCmd.StartsWith("buff") || trimmedCmd.StartsWith("#item") || trimmedCmd.StartsWith("item"))
+            {
+                string rest = trimmedCmd.Replace("#buff", "").Replace("buff", "").Replace("#item", "").Replace("item", "").Trim();
+                if (rest == "1" || rest == "lane 1" || rest == "trai" || rest == "left") fanLane = 1;
+                else if (rest == "2" || rest == "lane 2" || rest == "giua" || rest == "mid" || rest == "center") fanLane = 2;
+                else if (rest == "3" || rest == "lane 3" || rest == "phai" || rest == "right") fanLane = 3;
+                else fanLane = 2;
+            }
+
+            if (fanLane != -1)
+            {
+                if (factionManager != null)
+                {
+                    bool success = factionManager.TrySpawnFanItem(followerName, fanLane, isFanShield);
+                    if (success)
+                    {
+                        string laneName = fanLane == 1 ? "Trái (1)" : (fanLane == 2 ? "Giữa (2)" : "Phải (3)");
+                        string itemName = isFanShield ? "Khiên Bảo Vệ" : "Bình Năng Lượng";
+                        hudManager?.ShowStatusPopup($"[{followerName}] (Phe Fan) thả {itemName} Làn {laneName}! (-{factionManager.FanItemLaneCost} Fan)", true);
+                    }
+                    else
+                    {
+                        hudManager?.ShowStatusPopup($"[{followerName}] (Phe Fan) không đủ {factionManager.FanItemLaneCost} năng lượng! (Hiện có {factionManager.FanLikes})", true);
+                    }
+                }
+                ClearInputField();
+                return;
+            }
+
+            // 3. Lọc và thực thi chuỗi lệnh di chuyển (left, right, fast, 1, 2, 3...) cho Runner (phe Fan)
+            List<string> commands = _sanitizer.SanitizeAndParse(command);
+            if (commands != null && commands.Count > 0)
+            {
+                if (chatLaneRunner == null)
+                    chatLaneRunner = GetComponent<ChatLaneRunnerController>() ?? GetComponentInParent<ChatLaneRunnerController>() ?? FindFirstObjectByType<ChatLaneRunnerController>();
+
+                if (chatLaneRunner != null)
+                {
+                    chatLaneRunner.ExecuteCommands(commands);
+                }
+                else
+                {
+                    Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatLaneRunnerController để thực thi lệnh!");
+                }
+            }
 
             ClearInputField();
         }
@@ -99,47 +395,101 @@ namespace SteamRush.Features.Runner
         {
             if (itemEffects == null)
             {
-                Debug.LogWarning(
-                    "[MockChatConsole] Không tìm thấy RunnerItemEffects trên Runner."
-                );
+                itemEffects = GetComponent<RunnerItemEffects>() ?? GetComponentInParent<RunnerItemEffects>() ?? FindFirstObjectByType<RunnerItemEffects>();
+            }
+
+            if (itemEffects == null)
+            {
+                Debug.LogWarning("[MockChatConsole] Không tìm thấy RunnerItemEffects trên Runner.");
                 return;
             }
 
             itemEffects.ActivateShield(shieldDuration);
-
-            Debug.Log(
-                $"[MockChatConsole] F1 -> Donate Shield. Shield hoạt động {shieldDuration}s."
-            );
+            if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+            hudManager?.ShowStatusPopup($"[Khán giả] tặng Khiên Bảo Vệ ({shieldDuration}s)!", true);
+            Debug.Log($"[MockChatConsole] F1 -> Donate Shield. Shield hoạt động {shieldDuration}s.");
         }
 
         private void MockDonateHeal()
         {
             if (instantHealItem == null)
             {
-                Debug.LogWarning(
-                    "[MockChatConsole] Không tìm thấy InstantHealItem trên Runner."
-                );
+                instantHealItem = GetComponent<InstantHealItem>() ?? GetComponentInParent<InstantHealItem>() ?? FindFirstObjectByType<InstantHealItem>();
+            }
+
+            if (instantHealItem == null)
+            {
+                Debug.LogWarning("[MockChatConsole] Không tìm thấy InstantHealItem trên Runner.");
                 return;
             }
 
             instantHealItem.ActivateHeal();
-
-            Debug.Log("[MockChatConsole] F2 -> Donate Instant Heal.");
+            if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+            hudManager?.ShowStatusPopup("[Khán giả] tặng Bình Năng Lượng (+20%)!", true);
+            Debug.Log("[MockChatConsole] F2 -> Donate Energy Potion (+20%).");
         }
 
         private void MockFanLikes()
         {
-            Debug.Log("[MockChatConsole] F3 -> +20 tim Fan.");
+            if (factionManager == null)
+                factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
+
+            if (factionManager != null)
+            {
+                factionManager.OnChatCommand("viewer_fan", "#fan");
+                for (int i = 0; i < 50; i++)
+                {
+                    factionManager.OnLikeReceived("viewer_fan");
+                }
+                if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                hudManager?.ShowStatusPopup($"[Viewer_Fan] nạp +50 tim cho phe FAN! (Tổng: {factionManager.FanLikes})", true);
+                Debug.Log($"[MockChatConsole] F3 -> +50 Fan Likes! (Total: {factionManager.FanLikes})");
+            }
+            else
+            {
+                Debug.LogWarning("[MockChatConsole] Không tìm thấy FactionTugOfWarManager.");
+            }
         }
 
         private void MockAntiLikes()
         {
-            Debug.Log("[MockChatConsole] F4 -> +50 tim Anti.");
+            if (factionManager == null)
+                factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
+
+            if (factionManager != null)
+            {
+                factionManager.OnChatCommand("viewer_anti", "#anti");
+                for (int i = 0; i < 100; i++)
+                {
+                    factionManager.OnLikeReceived("viewer_anti");
+                }
+                if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                hudManager?.ShowStatusPopup($"[Viewer_Anti] nạp +100 tim cho phe ANTI! (Tổng: {factionManager.AntiLikes})", false);
+                Debug.Log($"[MockChatConsole] F4 -> +100 Anti Likes! (Total: {factionManager.AntiLikes})");
+            }
+            else
+            {
+                Debug.LogWarning("[MockChatConsole] Không tìm thấy FactionTugOfWarManager.");
+            }
         }
 
         private void MockNewFollower()
         {
-            Debug.Log("[MockChatConsole] F5 -> Thêm follower mới.");
+            if (queueManager == null)
+                queueManager = FindFirstObjectByType<ChatRunnerQueueManager>();
+
+            if (queueManager != null)
+            {
+                string newId = "Follower_" + Random.Range(100, 999);
+                queueManager.TryEnqueueFollower(newId);
+                if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                hudManager?.ShowStatusPopup($"[{newId}] vừa Follow kênh và vào hàng đợi!", true);
+                Debug.Log($"[MockChatConsole] F5 -> Enqueued new follower: {newId}");
+            }
+            else
+            {
+                Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatRunnerQueueManager.");
+            }
         }
 
         private void ClearInputField()
@@ -150,7 +500,11 @@ namespace SteamRush.Features.Runner
             }
 
             chatInputField.text = "";
-            chatInputField.ActivateInputField();
+            chatInputField.DeactivateInputField();
+            if (EventSystem.current != null)
+            {
+                EventSystem.current.SetSelectedGameObject(null);
+            }
         }
     }
 }
