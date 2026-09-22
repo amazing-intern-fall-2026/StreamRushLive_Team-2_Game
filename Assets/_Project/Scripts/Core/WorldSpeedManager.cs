@@ -23,9 +23,6 @@ namespace SteamRush.Track
     {
         public static WorldSpeedManager Instance { get; private set; }
 
-        // ============================================================
-        // BASE SPEED / RAMP
-        // ============================================================
         [Header("Base Speed")]
         [Tooltip("Tốc độ cuộn mặc định khi không Slide / không Sprint. GDD v1.2 = 10.0 m/s.")]
         [SerializeField] private float _baseSpeed = 10f;
@@ -38,9 +35,6 @@ namespace SteamRush.Track
         [Tooltip("Target speed multiplier at benchmark time (e.g. 1.2 = +20%).")]
         [SerializeField] private float _rampReferenceMultiplier = 1.2f;
 
-        // ============================================================
-        // SLIDE / ACTIVE WORLD DECELERATION 
-        // ============================================================
         [Header("Slide - Tap")]
         [Tooltip("Thời lượng hiệu ứng khi NHẤP NHẢ (giây). GDD v1.2 = 0.8s.")]
         [SerializeField] private float _slideTapDuration = 0.8f;
@@ -55,9 +49,6 @@ namespace SteamRush.Track
         [Tooltip("Tốc độ tăng mượt khi quay lại bình thường (nhả Slide, hết Tap, ramp bình thường).")]
         [SerializeField] private float _normalAccelRate = 8f;
 
-        // ============================================================
-        // SPRINT 
-        // ============================================================
         [Header("Sprint")]
         [Tooltip("Tốc độ tối đa khi Sprint. GDD v1.2 = 18.0 m/s.")]
         [SerializeField] private float _sprintMaxSpeed = 18f;
@@ -68,25 +59,16 @@ namespace SteamRush.Track
         [Tooltip("Ngưỡng % Energy (0-1) để khóa Sprint. GDD = 10% -> 0.1.")]
         [SerializeField, Range(0f, 1f)] private float _sprintEnergyLockThreshold = 0.1f;
 
-        // ============================================================
-        // COLLISION RECOVERY 
-        // ============================================================
         [Header("Collision Recovery")]
         [Tooltip("Thời gian giảm về 0 m/s ngay khi va chạm. GDD v1.2 = 0.3-0.5s.")]
         [SerializeField] private float _recoveryDecelDuration = 0.4f;
         [Tooltip("Thời gian hồi phục mặc định nếu obstacle không truyền riêng (giây).")]
         [SerializeField] private float _defaultRecoveryTotalDuration = 1.2f;
 
-        // ============================================================
-        // COMMAND OVERRIDE (GDD v1.3 - lệnh chat fast/slow)
-        // ============================================================
         [Header("Command Override (Chat fast sprint - GDD v1.3)")]
         [Tooltip("Tốc độ tăng/giảm mỗi giây khi đang tiến tới mục tiêu Command Override.")]
         [SerializeField] private float _commandOverrideAccelRate = 24f;
 
-        // ============================================================
-        // STATE
-        // ============================================================
         private enum SpeedState { Normal, SlideTap, SlideHold, Sprint, Recovery, CommandOverride, ReverseKnockback }
         private SpeedState _state = SpeedState.Normal;
 
@@ -280,9 +262,7 @@ namespace SteamRush.Track
             }
         }
 
-        // ============================================================
-        // PUBLIC INPUT API — gọi từ RunnerInputHandler (GDD v1.2)
-        // ============================================================
+        // --- PUBLIC INPUT API (RunnerInputHandler) ---
 
         /// <summary>Gọi khi người chơi NHẤP NHẢ phím Slide (Ctrl / S / ↓).</summary>
         public void BeginSlideTap()
@@ -346,9 +326,7 @@ namespace SteamRush.Track
             _state = SpeedState.Recovery;
         }
 
-        // ============================================================
-        // PUBLIC INPUT API — gọi từ ChatLaneRunnerController (GDD v1.3)
-        // ============================================================
+        // --- COMMAND OVERRIDE API (Chat fast/slow) ---
 
         /// <summary>
         /// GDD v1.3 mục 5.2: lệnh chat "fast" hoặc "slow". Ép CurrentSpeed tiến dần về

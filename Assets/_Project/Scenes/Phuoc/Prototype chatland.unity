@@ -8061,7 +8061,6 @@ GameObject:
   - component: {fileID: 845593089}
   - component: {fileID: 845593088}
   - component: {fileID: 845593087}
-  - component: {fileID: 845593086}
   - component: {fileID: 845593085}
   - component: {fileID: 845593084}
   - component: {fileID: 845593090}
@@ -8102,22 +8101,6 @@ MonoBehaviour:
   _factionUI: {fileID: 1995482025}
   _queueManager: {fileID: 845593087}
   _waitingPanel: {fileID: 1995482024}
---- !u!114 &845593086
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 845593083}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5a262b16cb5624b43847aeeece187781, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.CheckpointManager
-  _runnerTransform: {fileID: 913794228}
-  _worldSpeedManager: {fileID: 1580461031}
-  _checkpointIntervalMeters: 200
-  _heartCount: 3
 --- !u!114 &845593087
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9232,7 +9215,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 440500, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 9.55
+      value: 13.55
       objectReference: {fileID: 0}
     - target: {fileID: 440500, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
       propertyPath: m_LocalPosition.y
@@ -9240,7 +9223,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 440500, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: -0.00000047683713
       objectReference: {fileID: 0}
     - target: {fileID: 440500, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
       propertyPath: m_LocalRotation.w
@@ -9298,16 +9281,7 @@ PrefabInstance:
       addedObject: {fileID: 913794240}
     - targetCorrespondingSourceObject: {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 913794239}
-    - targetCorrespondingSourceObject: {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 913794238}
-    - targetCorrespondingSourceObject: {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 913794237}
-    - targetCorrespondingSourceObject: {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 913794236}
     - targetCorrespondingSourceObject: {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
       insertIndex: -1
       addedObject: {fileID: 913794235}
@@ -9339,7 +9313,6 @@ MonoBehaviour:
   _energyPenaltyPercent: 25
   _defaultDistancePenalty: 10
   _invulnerabilityDuration: 0.8
-  _defaultWorldRecoveryDuration: 1.2
 --- !u!114 &913794230
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9439,41 +9412,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.MockChatConsole
   chatInputField: {fileID: 2001878230}
   itemEffects: {fileID: 913794238}
-  instantHealItem: {fileID: 913794237}
   chatLaneRunner: {fileID: 913794240}
   factionManager: {fileID: 845593088}
   queueManager: {fileID: 845593087}
   hudManager: {fileID: 845593090}
   obstacleSpawner: {fileID: 819347502}
   shieldDuration: 20
---- !u!114 &913794236
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 913794227}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c786118dcfe2aa54e93ab609839c6240, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.ChatRunnerDeathAdapter
-  _healthSystem: {fileID: 0}
---- !u!114 &913794237
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 913794227}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 66f32a6657d877a4ca007230c5e97f7f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::StreamRushLive.Features.Spawning.InstantHealItem
-  energyAmount: 20
-  effectDuration: 0.5
-  healEffect: {fileID: 0}
 --- !u!114 &913794238
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9489,22 +9433,6 @@ MonoBehaviour:
   shieldActive: 0
   highJumpActive: 0
   currentJumpForceMultiplier: 1
---- !u!114 &913794239
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 913794227}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6cf39070dcbb84040a16252202cd2944, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.RunnerHealthSystem
-  maxHealth: 3
-  currentHealth: 0
-  invulnerabilityDuration: 2
-  blinkInterval: 0.15
 --- !u!114 &913794240
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14627,7 +14555,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 200
-  field of view: 60
+  field of view: 74.2
   orthographic: 0
   orthographic size: 5
   m_Depth: 0
@@ -14654,7 +14582,7 @@ Transform:
   m_GameObject: {fileID: 1574763928}
   serializedVersion: 2
   m_LocalRotation: {x: 0.09841025, y: 0.7002253, z: -0.09841025, w: 0.7002253}
-  m_LocalPosition: {x: 4.8, y: 2.8, z: 0}
+  m_LocalPosition: {x: 5.1, y: 3.84, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -17512,8 +17440,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
   m_AnchorMax: {x: 0.5, y: 0}
-  m_AnchoredPosition: {x: 0, y: 30}
-  m_SizeDelta: {x: 1360, y: 52}
+  m_AnchoredPosition: {x: 0, y: 15}
+  m_SizeDelta: {x: 780, y: 80}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &1881623663
 MonoBehaviour:
@@ -19668,7 +19596,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2735318495113564723, guid: 5fc5fb25307be4b4397cd571b5477fd6, type: 3}
       propertyPath: m_text
-      value: "Nh\u1EADp l\u1EC7nh chat (left, right, fast, slow)..."
+      value: "Nh\u1EADp l\u1EC7nh chat (1, 2, 3, fast, #fan, #anti)..."
       objectReference: {fileID: 0}
     - target: {fileID: 2735318495113564723, guid: 5fc5fb25307be4b4397cd571b5477fd6, type: 3}
       propertyPath: m_fontSize
@@ -19712,11 +19640,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8490593655832896995, guid: 5fc5fb25307be4b4397cd571b5477fd6, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 480
+      value: 780
       objectReference: {fileID: 0}
     - target: {fileID: 8490593655832896995, guid: 5fc5fb25307be4b4397cd571b5477fd6, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 44
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 8490593655832896995, guid: 5fc5fb25307be4b4397cd571b5477fd6, type: 3}
       propertyPath: m_LocalPosition.x
@@ -19752,7 +19680,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8490593655832896995, guid: 5fc5fb25307be4b4397cd571b5477fd6, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 86
+      value: 100
       objectReference: {fileID: 0}
     - target: {fileID: 8490593655832896995, guid: 5fc5fb25307be4b4397cd571b5477fd6, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -21702,10 +21630,10 @@ SceneRoots:
   - {fileID: 1580461032}
   - {fileID: 1574763931}
   - {fileID: 1633554211}
-  - {fileID: 845593089}
-  - {fileID: 819347503}
   - {fileID: 1941919669}
   - {fileID: 264805162}
   - {fileID: 913794226}
   - {fileID: 47450246326265283}
   - {fileID: 1987742612}
+  - {fileID: 845593089}
+  - {fileID: 819347503}

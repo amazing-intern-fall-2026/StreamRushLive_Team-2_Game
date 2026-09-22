@@ -211,9 +211,7 @@ namespace SteamRush.Features.Runner
             _rb.MovePosition(new Vector3(newX, pos.y, newZ));
         }
 
-        // ============================================================
-        // PUBLIC API — gọi từ bộ lọc chat (chưa nối) hoặc HandleDebugKeys
-        // ============================================================
+        // --- PUBLIC COMMAND API ---
 
         /// <summary>
         /// Nhận 1 chuỗi tối đa 3 lệnh từ 1 comment chat (GDD mục 5.2 "Command Queue FIFO").

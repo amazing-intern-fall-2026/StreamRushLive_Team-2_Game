@@ -12,12 +12,6 @@ namespace StreamRushLive.Features.Spawning
     /// Hỗ trợ spawn tại vị trí truyền vào hoặc lấy trực tiếp tại vị trí của GameObject Spawner (hoặc SpawnPoint).
     /// Tự động gắn MovingWorldObject để vật thể trôi theo thế giới.
     /// </summary>
-    // ================================================================
-    // [DHUY] Bổ sung: Obstacle Queue (Safe Distance) — xem chi tiết ở
-    // các block code có comment "// [DHUY - ADDED]" bên dưới.
-    // Mục đích: đảm bảo khoảng cách tối thiểu 15m giữa 2 obstacle liên
-    // tiếp được spawn, theo yêu cầu task "Spawner Safe Distance".
-    // ================================================================
     public class Spawner : MonoBehaviour
     {
         [Header("Obstacle Prefabs (Lists - Random Spawn)")]
@@ -122,12 +116,7 @@ namespace StreamRushLive.Features.Spawning
         }
         // [DHUY - ADDED] ---- Kết thúc Update() ----
 
-        // ==========================================
-        // [DHUY - ADDED] OBSTACLE QUEUE (SAFE DISTANCE)
-        // Toàn bộ region này là code mới, phục vụ đúng yêu cầu task
-        // "Spawner Safe Distance": đảm bảo 2 obstacle liên tiếp trên
-        // đường cách nhau tối thiểu minSafeDistance (mặc định 15m).
-        // ==========================================
+        // Obstacle Queue (Safe Distance)
 
         /// <summary>
         /// [DHUY - ADDED] Đưa 1 loại obstacle vào hàng chờ, sẽ được spawn khi đủ khoảng cách an toàn.
@@ -182,9 +171,7 @@ namespace StreamRushLive.Features.Spawning
         }
         // [DHUY - ADDED] ---- Kết thúc region Obstacle Queue ----
 
-        // ==========================================
-        // SPAWN HỆ THỐNG OBSTACLE (VẬT CẢN)
-        // ==========================================
+        // Obstacle Spawning
 
         /// <summary>
         /// Spawn vật cản tại vị trí GameObject Spawner (hoặc SpawnPoint).
@@ -220,9 +207,7 @@ namespace StreamRushLive.Features.Spawning
             return instance;
         }
 
-        // ==========================================
-        // SPAWN HỆ THỐNG ITEM (VẬT PHẨM)
-        // ==========================================
+        // Item Spawning
 
         /// <summary>
         /// Spawn vật phẩm tại vị trí GameObject Spawner (hoặc SpawnPoint).
@@ -258,9 +243,7 @@ namespace StreamRushLive.Features.Spawning
             return instance;
         }
 
-        // ==========================================
-        // TƯƠNG THÍCH NGƯỢC (SPAWNTYPE & HÀM TIỆN ÍCH)
-        // ==========================================
+        // Legacy SpawnType Compatibility
 
         public GameObject Spawn(SpawnType spawnType)
         {
@@ -316,9 +299,7 @@ namespace StreamRushLive.Features.Spawning
             return SpawnItem(randomType);
         }
 
-        // ==========================================
-        // HELPER FUNCTIONS
-        // ==========================================
+        // Helper Functions
 
         private GameObject InstantiatePrefab(GameObject prefab, Vector3 position)
         {

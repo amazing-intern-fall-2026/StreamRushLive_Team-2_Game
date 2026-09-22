@@ -59,19 +59,19 @@ namespace SteamRush.Features.UI
                 float legMax = _queueManager.LegDistanceMeters;
                 float speed = _speedManager != null ? _speedManager.CurrentSpeed : 0f;
 
-                string statusText = _queueManager.IsWaitingForFollower ? "<color=#FF4444>[CHO FOLLOWER]</color>" : "<color=#44FF44>[RUNNING]</color>";
+                string statusText = _queueManager.IsWaitingForFollower ? "<color=#FF4444>[CHỜ FOLLOWER]</color>" : "<color=#44FF44>[CHẠY]</color>";
                 string speedTag = "";
                 if (speed > 10.0f)
                 {
-                    speedTag = " <color=#FF4500><b>[TURBO FAST!]</b></color>";
+                    speedTag = " <color=#FF4500><b>[BỨT TỐC!]</b></color>";
                 }
 
-                _runnerInfoLabel.text = $"<b>{statusText} Runner:</b> <color=#FFD700>{runner}</color>  |  <b>Hang doi:</b> {queue}  |  <b>Chang:</b> {progress:F0}/{legMax:F0}m  |  <b>Toc do:</b> {speed:F1} m/s{speedTag}";
+                _runnerInfoLabel.text = $"<b>{statusText}</b> <color=#FFD700>{runner}</color> | <b>Đợi:</b> {queue} | <b>Chặng:</b> {progress:F0}/{legMax:F0}m | <b>Tốc độ:</b> {speed:F1} m/s{speedTag}";
             }
 
             if (_controlsGuideLabel != null)
             {
-                _controlsGuideLabel.text = "<b>[CHAT]</b> <color=#80D0FF>1/2/3</color> (làn), <color=#FFA500>fast</color>, <color=#00BFFF>#fan</color> | <color=#FF6347>#anti 1/2/3</color> (Thả xe: 100 Anti)   |   <b>[PHÍM TEST]</b> F1: Khiên | F2: Hồi máu | F3: +50 Fan | F4: +100 Anti | F5: +Follower";
+                _controlsGuideLabel.text = "<b>Lệnh chat:</b> <color=#80D0FF>1/2/3</color> (làn) - <color=#FFA500>fast</color> - <color=#00BFFF>#fan</color> - <color=#FF6347>#anti</color> (500 tim thả xe) | <b>[F1-F5]</b> Test Quà";
             }
         }
     }

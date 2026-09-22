@@ -52,16 +52,14 @@ namespace SteamRush.Core
         }
     }
 
-    // Ban khi Runner het tim. RunnerHealthSystem.cs (Truong, Jira S1-24) se KHONG tu publish
-    // event nay - ho chi co "public event Action OnPlayerDeath" rieng theo dung task cua ho,
-    // khong doi gi ca. Se co 1 adapter rieng (thuoc module Runner, KHONG dung toi
-    // RunnerHealthSystem.cs) subscribe truc tiep vao OnPlayerDeath cua ho roi publish lai event
-    // nay qua EventBus - viet sau khi S1-24 merge xong.
+    // Event phát khi Runner chết (đã bãi bỏ theo chuẩn GDD v0.3 / v1.2 Không máu - giữ lại để tương thích ngược nếu cần).
+    [System.Obsolete("GDD v0.3 / v1.2 đã loại bỏ hoàn toàn cơ chế máu/tim. Runner không chết vì va chạm.")]
     public readonly struct PlayerDeathEvent
     {
     }
 
-    // Yeu cau hoi tim ve gia tri chi dinh (module HP/Heart se subscribe de xu ly thuc te).
+    // Yêu cầu hồi tim (đã bãi bỏ theo chuẩn GDD v0.3 / v1.2).
+    [System.Obsolete("GDD v0.3 / v1.2 đã loại bỏ hoàn toàn cơ chế máu/tim.")]
     public readonly struct RestoreHeartsRequestEvent
     {
         public readonly int HeartCount;

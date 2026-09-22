@@ -89,10 +89,7 @@ namespace SteamRush.Features.Runner
 
         private void HandleInteraction(GameObject obj)
         {
-            // =========================================================
-            // 1. HYPER DASH
-            // =========================================================
-
+            // 1. Hyper Dash
             if (_isHyperDashActive)
             {
                 ObstacleBase hyperDashObstacle =
@@ -114,10 +111,7 @@ namespace SteamRush.Features.Runner
                 }
             }
 
-            // =========================================================
-            // 2. ITEM
-            // =========================================================
-
+            // 2. Item
             ItemBase item = obj.GetComponentInParent<ItemBase>();
 
             if (item != null)
@@ -143,10 +137,7 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            // =========================================================
-            // 3. OBSTACLE
-            // =========================================================
-
+            // 3. Obstacle
             if (_isHandlingHit)
             {
                 return;

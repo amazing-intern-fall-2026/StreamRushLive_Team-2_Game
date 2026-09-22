@@ -16,7 +16,6 @@ namespace SteamRush.Features.Runner
 
         [Header("Runner Components")]
         [SerializeField] private RunnerItemEffects itemEffects;
-        [SerializeField] private InstantHealItem instantHealItem;
         [SerializeField] private ChatLaneRunnerController chatLaneRunner;
 
         [Header("Stream Integration Managers")]
@@ -30,6 +29,14 @@ namespace SteamRush.Features.Runner
 
         private readonly ChatCommandSanitizer _sanitizer = new ChatCommandSanitizer();
 
+        [Header("Debug UI Layout & Toggle")]
+        [SerializeField] private GameObject debugPanelContainer;
+        [SerializeField] private Button toggleDebugButton;
+        [SerializeField] private TMP_Text toggleButtonText;
+        [SerializeField] private bool isDebugUIVisible = true;
+
+        private GameObject _quickHelpBarObj;
+
         private void Awake()
         {
             if (itemEffects == null)
@@ -37,13 +44,6 @@ namespace SteamRush.Features.Runner
                 itemEffects = GetComponent<RunnerItemEffects>();
                 if (itemEffects == null)
                     itemEffects = GetComponentInParent<RunnerItemEffects>();
-            }
-
-            if (instantHealItem == null)
-            {
-                instantHealItem = GetComponent<InstantHealItem>();
-                if (instantHealItem == null)
-                    instantHealItem = GetComponentInParent<InstantHealItem>();
             }
 
             if (chatLaneRunner == null)
@@ -81,6 +81,147 @@ namespace SteamRush.Features.Runner
             {
                 Debug.LogWarning("[MockChatConsole] Chưa gán Chat Input Field!");
             }
+
+            SetupVerticalDebugUI();
+        }
+
+        private void SetupVerticalDebugUI()
+        {
+            var statusUI = FindFirstObjectByType<SteamRush.Features.UI.ChatRunnerStatusUI>();
+            if (statusUI != null)
+            {
+                _quickHelpBarObj = statusUI.gameObject;
+            }
+
+            // 1. Cân chỉnh RectTransform phù hợp với màn hình dọc 1080x1920 (Portrait)
+            if (chatInputField != null)
+            {
+                RectTransform inputRect = chatInputField.GetComponent<RectTransform>();
+                if (inputRect != null)
+                {
+                    inputRect.anchorMin = new Vector2(0.5f, 0f);
+                    inputRect.anchorMax = new Vector2(0.5f, 0f);
+                    inputRect.pivot = new Vector2(0.5f, 0f);
+                    inputRect.sizeDelta = new Vector2(780f, 50f);
+                    inputRect.anchoredPosition = new Vector2(0f, 100f);
+                }
+            }
+
+            if (_quickHelpBarObj != null)
+            {
+                RectTransform barRect = _quickHelpBarObj.GetComponent<RectTransform>();
+                if (barRect != null)
+                {
+                    barRect.anchorMin = new Vector2(0.5f, 0f);
+                    barRect.anchorMax = new Vector2(0.5f, 0f);
+                    barRect.pivot = new Vector2(0.5f, 0f);
+                    barRect.sizeDelta = new Vector2(780f, 80f);
+                    barRect.anchoredPosition = new Vector2(0f, 15f);
+                }
+            }
+
+            // 2. Tạo hoặc liên kết Nút Bật/Tắt UI Debug nếu chưa có
+            if (toggleDebugButton == null)
+            {
+                Canvas canvas = chatInputField != null ? chatInputField.GetComponentInParent<Canvas>() : FindFirstObjectByType<Canvas>();
+                if (canvas != null)
+                {
+                    Transform existingBtn = canvas.transform.Find("Btn_ToggleDebug");
+                    if (existingBtn != null)
+                    {
+                        toggleDebugButton = existingBtn.GetComponent<Button>();
+                        toggleButtonText = existingBtn.GetComponentInChildren<TMP_Text>();
+                    }
+                    else
+                    {
+                        CreateToggleDebugButton(canvas.transform);
+                    }
+                }
+            }
+
+            if (toggleDebugButton != null)
+            {
+                toggleDebugButton.onClick.RemoveListener(ToggleDebugUI);
+                toggleDebugButton.onClick.AddListener(ToggleDebugUI);
+            }
+
+            UpdateDebugUIVisibility();
+        }
+
+        private void CreateToggleDebugButton(Transform canvasTransform)
+        {
+            GameObject btnObj = new GameObject("Btn_ToggleDebug", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            btnObj.transform.SetParent(canvasTransform, false);
+
+            RectTransform rect = btnObj.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(1f, 0f);
+            rect.anchorMax = new Vector2(1f, 0f);
+            rect.pivot = new Vector2(1f, 0f);
+            rect.sizeDelta = new Vector2(130f, 36f);
+            rect.anchoredPosition = new Vector2(-20f, 155f);
+
+            Image img = btnObj.GetComponent<Image>();
+            img.color = new Color(0.08f, 0.12f, 0.2f, 0.88f);
+
+            toggleDebugButton = btnObj.GetComponent<Button>();
+            ColorBlock cb = toggleDebugButton.colors;
+            cb.normalColor = Color.white;
+            cb.highlightedColor = new Color(0.2f, 0.8f, 1f, 1f);
+            cb.pressedColor = new Color(0f, 0.6f, 0.9f, 1f);
+            toggleDebugButton.colors = cb;
+
+            GameObject textObj = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+            textObj.transform.SetParent(btnObj.transform, false);
+
+            RectTransform textRect = textObj.GetComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.sizeDelta = Vector2.zero;
+
+            toggleButtonText = textObj.GetComponent<TextMeshProUGUI>();
+            toggleButtonText.text = "💬 Debug [F12]";
+            toggleButtonText.fontSize = 14;
+            toggleButtonText.alignment = TextAlignmentOptions.Center;
+            toggleButtonText.color = new Color(0.5f, 0.85f, 1f, 1f);
+        }
+
+        public void ToggleDebugUI()
+        {
+            isDebugUIVisible = !isDebugUIVisible;
+            UpdateDebugUIVisibility();
+        }
+
+        private void UpdateDebugUIVisibility()
+        {
+            if (chatInputField != null)
+            {
+                chatInputField.gameObject.SetActive(isDebugUIVisible);
+            }
+
+            if (_quickHelpBarObj != null)
+            {
+                _quickHelpBarObj.SetActive(isDebugUIVisible);
+            }
+
+            if (debugPanelContainer != null)
+            {
+                debugPanelContainer.SetActive(isDebugUIVisible);
+            }
+
+            if (toggleDebugButton != null)
+            {
+                RectTransform btnRect = toggleDebugButton.GetComponent<RectTransform>();
+                if (btnRect != null)
+                {
+                    // Khi thanh debug mở: Đẩy nút lên trên (Y: 155). Khi đóng: Nút hạ xuống góc dưới (Y: 20) gọn gàng
+                    btnRect.anchoredPosition = new Vector2(-20f, isDebugUIVisible ? 155f : 20f);
+                }
+            }
+
+            if (toggleButtonText != null)
+            {
+                toggleButtonText.text = isDebugUIVisible ? "❌ Ẩn Debug" : "💬 Debug [F12]";
+            }
         }
 
         private void OnDestroy()
@@ -89,12 +230,23 @@ namespace SteamRush.Features.Runner
             {
                 chatInputField.onSubmit.RemoveListener(OnChatSubmitted);
             }
+
+            if (toggleDebugButton != null)
+            {
+                toggleDebugButton.onClick.RemoveListener(ToggleDebugUI);
+            }
         }
 
         private void Update()
         {
             if (Keyboard.current == null)
                 return;
+
+            // Phím tắt F12 hoặc ` (Backquote/tilde) để bật/tắt toàn bộ khung Debug
+            if (Keyboard.current.f12Key.wasPressedThisFrame || Keyboard.current.backquoteKey.wasPressedThisFrame)
+            {
+                ToggleDebugUI();
+            }
 
             if (Keyboard.current.f1Key.wasPressedThisFrame)
                 MockDonateShield();
@@ -142,7 +294,11 @@ namespace SteamRush.Features.Runner
                     }
                     else
                     {
-                        // Người dùng chưa focus ô chat -> bấm Enter để mở khung chat
+                        // Nếu đang ẩn mà bấm Enter -> Tự động bật khung debug lên và focus
+                        if (!isDebugUIVisible)
+                        {
+                            ToggleDebugUI();
+                        }
                         chatInputField.ActivateInputField();
                     }
                 }
@@ -412,18 +568,12 @@ namespace SteamRush.Features.Runner
 
         private void MockDonateHeal()
         {
-            if (instantHealItem == null)
+            var energy = FindFirstObjectByType<EnergySystem>();
+            if (energy != null)
             {
-                instantHealItem = GetComponent<InstantHealItem>() ?? GetComponentInParent<InstantHealItem>() ?? FindFirstObjectByType<InstantHealItem>();
+                energy.AddEnergy(20f);
             }
 
-            if (instantHealItem == null)
-            {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy InstantHealItem trên Runner.");
-                return;
-            }
-
-            instantHealItem.ActivateHeal();
             if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
             hudManager?.ShowStatusPopup("[Khán giả] tặng Bình Năng Lượng (+20%)!", true);
             Debug.Log("[MockChatConsole] F2 -> Donate Energy Potion (+20%).");
