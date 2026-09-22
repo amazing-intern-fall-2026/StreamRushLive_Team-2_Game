@@ -2662,6 +2662,7 @@ MonoBehaviour:
   textEffect: {fileID: 1252881791}
   floatDistance: 40
   duration: 1.2
+  holdDuration: 2.5
   noWrap: 1
   showIcon: 0
 --- !u!225 &599755064
@@ -2979,7 +2980,7 @@ MonoBehaviour:
   _obstacleTag: Obstacle
   _hitStopDuration: 0.15
   _energyPenaltyPercent: 25
-  _defaultWorldRecoveryDuration: 1.2
+  _defaultDistancePenalty: 10
   _invulnerabilityDuration: 0.8
 --- !u!114 &650010906
 MonoBehaviour:
@@ -3016,6 +3017,8 @@ MonoBehaviour:
   _groundCheckDistance: 0.25
   _autoApplyForgivingHitbox: 1
   _hitboxToleranceRatio: 0.85
+  _knockbackDistance: 1.8
+  _knockbackDuration: 0.45
 --- !u!54 &650010908
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -5053,6 +5056,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StreamRushLive.Features.Spawning.SingleObstacleSpawner
   urbanCarPrefab: {fileID: 1021824776044406749, guid: b03d1e74540ebeb41a40ac036ac5ad68, type: 3}
+  vehiclePrefabs: []
+  carDrivingSpeed: 6.5
+  shieldItemPrefab: {fileID: 4142973673762590350, guid: 5936c31fd1d2cce4094bc3f1c47dc418, type: 3}
+  energyBuffItemPrefab: {fileID: 1238612675515126827, guid: 6a6946e5d28b408479b33e3bb670058f, type: 3}
   laserIndicatorPrefab: {fileID: 1032388337236806535, guid: d5ac3a8b980aeeb48a3b0441733a7813, type: 3}
   playerReference: {fileID: 8902215382885991207, guid: 3451dca3ac001304faa05ed7e03c700c, type: 3}
   worldSpeedManager: {fileID: 1410114198}
@@ -5062,6 +5069,7 @@ MonoBehaviour:
   spawnDistanceAhead: 25
   laserWarningDuration: 3.5
   laserBlinkInterval: 0.15
+  maxConcurrentObstacles: 2
 --- !u!4 &1376198184
 Transform:
   m_ObjectHideFlags: 0
@@ -5169,6 +5177,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Track.WorldSpeedManager
   _baseSpeed: 10
+  _enableSpeedRamp: 0
   _rampReferenceSeconds: 60
   _rampReferenceMultiplier: 1.2
   _slideTapDuration: 0.8
@@ -5181,6 +5190,7 @@ MonoBehaviour:
   _sprintEnergyLockThreshold: 0.1
   _recoveryDecelDuration: 0.4
   _defaultRecoveryTotalDuration: 1.2
+  _commandOverrideAccelRate: 24
 --- !u!4 &1410114200
 Transform:
   m_ObjectHideFlags: 0
@@ -6801,6 +6811,7 @@ MonoBehaviour:
   faceCamera: 1
   fixedRotation: {x: 0, y: 0, z: 0}
   rotationOffset: {x: 0, y: 0, z: 0}
+  target: {fileID: 0}
 --- !u!114 &1875222162
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6926,6 +6937,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.UI.Views.StatusPopupSpawner
   popupTemplate: {fileID: 599755063}
+  normalDuration: 3
+  normalHoldDuration: 2.2
+  fastDuration: 1.8
+  fastHoldDuration: 1.2
+  interPopupDelay: 0.15
+  maxQueueSize: 25
 --- !u!1001 &1883960002
 PrefabInstance:
   m_ObjectHideFlags: 0
