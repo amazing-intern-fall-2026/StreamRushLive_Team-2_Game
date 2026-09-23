@@ -65,6 +65,15 @@ namespace StreamRushLive.Features.Spawning
         [Tooltip("Số lượng chướng ngại vật (laser cảnh báo + xe) tối đa cùng lúc trên đường chạy. Mặc định là 2 để luôn đảm bảo có ít nhất 1 làn trống cho Runner né.")]
         [SerializeField] private int maxConcurrentObstacles = 2;
 
+        [Header("Unlimited Mode (Anti Faction Gift - F7)")]
+        [Tooltip("Thời lượng chế độ thả xe không giới hạn khi kích hoạt (giây).")]
+        [SerializeField] private float unlimitedModeDuration = 60f;
+
+        private bool _isUnlimitedModeActive;
+        private Coroutine _unlimitedModeCoroutine;
+
+        public bool IsUnlimitedModeActive => _isUnlimitedModeActive;
+
         private class ActiveObstacle
         {
             public int LaneIndex;
@@ -121,13 +130,13 @@ namespace StreamRushLive.Features.Spawning
         public bool CanSpawnObstacle()
         {
             CleanupInactiveObstacles();
-            return _activeObstacles.Count < maxConcurrentObstacles;
+            return _isUnlimitedModeActive || _activeObstacles.Count < maxConcurrentObstacles;
         }
 
         public bool CanSpawnObstacleOnLane(int laneIndex)
         {
             CleanupInactiveObstacles();
-            if (_activeObstacles.Count >= maxConcurrentObstacles)
+            if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
             {
                 return false;
             }
@@ -154,7 +163,7 @@ namespace StreamRushLive.Features.Spawning
         {
             CleanupInactiveObstacles();
 
-            if (_activeObstacles.Count >= maxConcurrentObstacles)
+            if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
             {
                 Debug.LogWarning($"[SingleObstacleSpawner] Đã đạt giới hạn tối đa {maxConcurrentObstacles} chướng ngại vật cùng lúc! Bỏ qua yêu cầu spawn Làn {laneIndex}.");
                 return false;
@@ -179,7 +188,7 @@ namespace StreamRushLive.Features.Spawning
         {
             CleanupInactiveObstacles();
 
-            if (_activeObstacles.Count >= maxConcurrentObstacles)
+            if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
             {
                 Debug.LogWarning($"[SingleObstacleSpawner] Đã đạt giới hạn {maxConcurrentObstacles} chướng ngại vật cùng lúc! Bỏ qua yêu cầu từ Anti-Like.");
                 return false;
@@ -203,6 +212,50 @@ namespace StreamRushLive.Features.Spawning
             int chosenLane = availableLanes[Random.Range(0, availableLanes.Count)];
             return TriggerSpawnCarOnLane(chosenLane);
         }
+
+        /// <summary>
+        /// Kích hoạt chế độ thả xe không giới hạn trong unlimitedModeDuration giây:
+        /// bỏ qua giới hạn số xe tối đa cùng lúc (maxConcurrentObstacles).
+        /// </summary>
+        public void ActivateUnlimitedMode()
+        {
+            if (_unlimitedModeCoroutine != null)
+            {
+                StopCoroutine(_unlimitedModeCoroutine);
+            }
+            _unlimitedModeCoroutine = StartCoroutine(UnlimitedModeRoutine());
+        }
+
+        private IEnumerator UnlimitedModeRoutine()
+        {
+            _isUnlimitedModeActive = true;
+            Debug.Log($"[SingleObstacleSpawner] Unlimited Mode kích hoạt trong {unlimitedModeDuration}s.");
+
+            yield return new WaitForSeconds(unlimitedModeDuration);
+
+            _isUnlimitedModeActive = false;
+            _unlimitedModeCoroutine = null;
+            Debug.Log("[SingleObstacleSpawner] Unlimited Mode kết thúc.");
+        }
+
+        // ===== [Dhuy] BEGIN - Debug phím "0": bật/tắt Unlimited Mode tự do để QA test,
+        // KHÔNG dùng Coroutine 60s như ActivateUnlimitedMode() (dành cho gameplay F7 thật). =====
+        /// <summary>
+        /// [DEBUG] Bật/tắt Unlimited Mode ngay lập tức, không giới hạn thời gian.
+        /// Dùng riêng cho phím tắt test (phím "0"), không phải luồng gameplay chính thức.
+        /// </summary>
+        public void SetUnlimitedModeDebug(bool isActive)
+        {
+            if (_unlimitedModeCoroutine != null)
+            {
+                StopCoroutine(_unlimitedModeCoroutine);
+                _unlimitedModeCoroutine = null;
+            }
+
+            _isUnlimitedModeActive = isActive;
+            Debug.Log($"[SingleObstacleSpawner] [DEBUG] Unlimited Mode = {isActive} (phím 0, không giới hạn thời gian).");
+        }
+        // ===== [Dhuy] END =====
 
         private void SpawnCarOnSelectedLane(int laneIndex, float selectedLane)
         {
