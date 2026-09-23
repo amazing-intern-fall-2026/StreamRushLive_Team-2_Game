@@ -27,6 +27,10 @@ namespace SteamRush.Features.Runner
         [Header("Mock Settings")]
         [SerializeField] private float shieldDuration = 20f;
 
+        [Header("Gift Icons (khu Gift/Donate riêng)")]
+        [SerializeField] private Sprite shieldGiftIcon;
+        [SerializeField] private Sprite energyGiftIcon;
+
         private readonly ChatCommandSanitizer _sanitizer = new ChatCommandSanitizer();
 
         [Header("Debug UI Layout & Toggle")]
@@ -562,7 +566,8 @@ namespace SteamRush.Features.Runner
 
             itemEffects.ActivateShield(shieldDuration);
             if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-            hudManager?.ShowStatusPopup($"[Khán giả] tặng Khiên Bảo Vệ ({shieldDuration}s)!", true);
+            // Donate tu viewer - hien o khu Gift rieng (goc tren-phai), khong phai Top Banner (chi danh cho su kien gameplay).
+            hudManager?.ShowGiftToast("Khán giả", $"Khiên Bảo Vệ ({shieldDuration}s)", shieldGiftIcon, new Color(0.55f, 0.85f, 1f, 1f));
             Debug.Log($"[MockChatConsole] F1 -> Donate Shield. Shield hoạt động {shieldDuration}s.");
         }
 
@@ -575,7 +580,7 @@ namespace SteamRush.Features.Runner
             }
 
             if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-            hudManager?.ShowStatusPopup("[Khán giả] tặng Bình Năng Lượng (+20%)!", true);
+            hudManager?.ShowGiftToast("Khán giả", "Bình Năng Lượng (+20%)", energyGiftIcon, new Color(0.55f, 1f, 0.5f, 1f));
             Debug.Log("[MockChatConsole] F2 -> Donate Energy Potion (+20%).");
         }
 

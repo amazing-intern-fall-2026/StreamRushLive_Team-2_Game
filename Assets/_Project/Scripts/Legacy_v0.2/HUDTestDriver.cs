@@ -77,7 +77,7 @@ namespace SteamRush.MinhHuy
             if (testFakeProgressAndEnergy)
             {
                 fakeKm += Time.deltaTime;
-                hud?.UpdateProgress(fakeKm);
+                hud?.UpdateLegProgress(fakeKm % 100f, 100f);
                 hud?.UpdateEnergy(Mathf.PingPong(Time.time, 1f));
             }
 

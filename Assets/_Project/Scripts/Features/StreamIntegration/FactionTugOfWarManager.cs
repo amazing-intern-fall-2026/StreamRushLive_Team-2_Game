@@ -20,7 +20,7 @@ namespace SteamRush.Features.StreamIntegration
     // Dictionary cua class nay.
     public class FactionTugOfWarManager : MonoBehaviour
     {
-        [SerializeField] private int _antiCarThreshold = 500;
+        [SerializeField] private int _antiCarThreshold = 300;
         [SerializeField] private int _antiCarCost = 300;
         [Tooltip("Chi phí năng lượng phe Anti để thả xe cản đường theo làn chỉ định (1, 2, 3). Mặc định = 100.")]
         [SerializeField] private int _antiCarLaneCost = 100;
