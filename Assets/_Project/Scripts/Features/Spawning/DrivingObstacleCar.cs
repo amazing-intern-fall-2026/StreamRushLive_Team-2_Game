@@ -5,12 +5,35 @@ using SteamRush.Track;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
+    /// Phân cấp xe cản phá theo GDD v1.4 Mục 4.3:
+    /// - SedanCar (Xe Con Húc): Giảm 20% năng lượng, đẩy lùi 100m.
+    /// - PickupTruck (Xe Bán Tải): Giảm 40% năng lượng, đẩy lùi 200m (kèm choáng).
+    /// - HeavyTruck (Xe Tải Hạng Nặng / Xe Bus): Giảm 60% năng lượng, đẩy lùi 400m.
+    /// </summary>
+    public enum VehicleTier
+    {
+        SedanCar,     // Xe Con Húc: -20% NL, -100m cự ly
+        PickupTruck,  // Xe Bán Tải: -40% NL, -200m cự ly
+        HeavyTruck    // Xe Tải Hạng Nặng: -60% NL, -400m cự ly
+    }
+
+    /// <summary>
     /// Điều khiển xe cản đường có tốc độ tự chạy thực tế (Driving Speed)
     /// thay vì chỉ trôi thụ động theo tốc độ thế giới.
     /// Kế thừa ObstacleBase để tương thích hoàn toàn với hệ thống va chạm và khiên.
     /// </summary>
     public class DrivingObstacleCar : ObstacleBase
     {
+        [Header("Vehicle Tier & Penalties (GDD v1.4)")]
+        [Tooltip("Cấp bậc của xe chướng ngại vật.")]
+        [SerializeField] private VehicleTier _vehicleTier = VehicleTier.SedanCar;
+
+        [Tooltip("Cự ly knockback đẩy giật lùi Runner khi va chạm (m).")]
+        [SerializeField] private float _knockbackDistance = 2.0f;
+
+        [Tooltip("Thời gian Runner hồi phục sau cú knockback (giây).")]
+        [SerializeField] private float _knockbackDuration = 0.45f;
+
         [Header("Speed Settings")]
         [Tooltip("Tốc độ xe tự chạy trên mặt đường (m/s) bổ sung vào tốc độ cuộn của thế giới.")]
         [SerializeField] private float _drivingSpeed = 7.0f;
@@ -35,6 +58,10 @@ namespace StreamRushLive.Features.Spawning
         private float _baseY;
         private float _rumbleSeed;
 
+        public VehicleTier Tier => _vehicleTier;
+        public float KnockbackDistance => _knockbackDistance;
+        public float KnockbackDuration => _knockbackDuration;
+
         public float DrivingSpeed
         {
             get => _drivingSpeed;
@@ -48,13 +75,52 @@ namespace StreamRushLive.Features.Spawning
             _despawnXThreshold = despawnXThreshold;
         }
 
+        /// <summary>
+        /// Cấu hình thông số hình phạt của xe theo GDD v1.4 Mục 4.3
+        /// </summary>
+        public void ConfigureTier(VehicleTier tier)
+        {
+            _vehicleTier = tier;
+            switch (tier)
+            {
+                case VehicleTier.SedanCar:
+                    obstacleName = "Xe Con Húc";
+                    obstacleType = ObstacleType.LowBarrier;
+                    energyPenaltyPercent = 20f;       // -20% năng lượng
+                    distancePenaltyMeters = 100f;     // -100m cự ly
+                    hitStopDuration = 0.10f;          // 0.10s khựng nhẹ
+                    _knockbackDistance = 2.0f;
+                    _knockbackDuration = 0.45f;
+                    _drivingSpeed = 7.0f;
+                    break;
+
+                case VehicleTier.PickupTruck:
+                    obstacleName = "Xe Bán Tải";
+                    obstacleType = ObstacleType.LowBarrier;
+                    energyPenaltyPercent = 40f;       // -40% năng lượng
+                    distancePenaltyMeters = 200f;     // -200m cự ly
+                    hitStopDuration = 0.18f;          // 0.18s khựng/choáng
+                    _knockbackDistance = 3.2f;
+                    _knockbackDuration = 0.60f;
+                    _drivingSpeed = 6.2f;
+                    break;
+
+                case VehicleTier.HeavyTruck:
+                    obstacleName = "Xe Tải Hạng Nặng";
+                    obstacleType = ObstacleType.HighBarrier;
+                    energyPenaltyPercent = 60f;       // -60% năng lượng
+                    distancePenaltyMeters = 400f;     // -400m cự ly
+                    hitStopDuration = 0.25f;          // 0.25s cú tông cực mạnh
+                    _knockbackDistance = 4.5f;
+                    _knockbackDuration = 0.75f;
+                    _drivingSpeed = 5.2f;
+                    break;
+            }
+        }
+
         private void Awake()
         {
-            obstacleName = "ObstacleCar";
-            obstacleType = ObstacleType.LowBarrier;
-            energyPenaltyPercent = 25f;
-            hitStopDuration = 0.05f;
-            distancePenaltyMeters = 15f;
+            ConfigureTier(_vehicleTier);
 
             _baseY = transform.position.y;
             _rumbleSeed = Random.Range(0f, 100f);

@@ -262,23 +262,39 @@ namespace SteamRush.Features.Runner
                 }
             }
 
-            // 4. Hiển thị thông báo trạng thái
+            // 4. Hiển thị thông báo trạng thái theo phân cấp xe GDD v1.4
             HUDManager hud = FindFirstObjectByType<HUDManager>();
-            hud?.ShowStatusPopup($"Va chạm xe! (-{finalDistancePenalty:F0}m Cự ly, -{penalty:F0}% NL)", false);
+            if (obstacle is StreamRushLive.Features.Spawning.DrivingObstacleCar drivingCar)
+            {
+                string tierTitle = drivingCar.Tier switch
+                {
+                    StreamRushLive.Features.Spawning.VehicleTier.HeavyTruck => "Xe Tải Hạng Nặng Tông!",
+                    StreamRushLive.Features.Spawning.VehicleTier.PickupTruck => "Xe Bán Tải Húc!",
+                    _ => "Xe Con Húc!"
+                };
+                hud?.ShowStatusPopup($"{tierTitle} (-{finalDistancePenalty:F0}m Cự ly, -{penalty:F0}% NL)", false);
+            }
+            else
+            {
+                hud?.ShowStatusPopup($"Va chạm xe! (-{finalDistancePenalty:F0}m Cự ly, -{penalty:F0}% NL)", false);
+            }
 
             if (_chatLaneRunner == null)
             {
                 _chatLaneRunner = GetComponent<ChatLaneRunnerController>() ?? GetComponentInParent<ChatLaneRunnerController>();
             }
 
-            // 5. Knockback: Đẩy lùi Runner về sau theo trục -X (GDD v1.2)
+            // 5. Knockback: Đẩy lùi Runner về sau theo trục -X (GDD v1.2 & v1.4)
+            float kbDistance = obstacle is StreamRushLive.Features.Spawning.DrivingObstacleCar carObj ? carObj.KnockbackDistance : 2.2f;
+            float kbDuration = obstacle is StreamRushLive.Features.Spawning.DrivingObstacleCar carObj2 ? carObj2.KnockbackDuration : 0.5f;
+
             if (_chatLaneRunner != null)
             {
-                _chatLaneRunner.ApplyKnockback(2.2f, 0.5f);
+                _chatLaneRunner.ApplyKnockback(kbDistance, kbDuration);
             }
             else if (_controller != null)
             {
-                _controller.ApplyKnockback(2.2f, 0.5f);
+                _controller.ApplyKnockback(kbDistance, kbDuration);
             }
 
             // 6. Hit-stop: Đóng băng khung hình ngắn nếu có cấu hình

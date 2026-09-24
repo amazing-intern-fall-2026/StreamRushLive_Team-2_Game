@@ -14,8 +14,18 @@ namespace StreamRushLive.Features.Spawning
         [Tooltip("Prefab xe Urban Street Car (fallback).")]
         [SerializeField] private GameObject urbanCarPrefab;
 
-        [Tooltip("Danh sách các model xe PolygonCity (Sedan, Taxi, Police, Muscle, Van...). Bốc ngẫu nhiên mỗi lần Anti spawn xe.")]
+        [Tooltip("Danh sách các model xe PolygonCity (fallback chung).")]
         [SerializeField] private List<GameObject> vehiclePrefabs = new List<GameObject>();
+
+        [Header("Categorized Tiered Vehicles (GDD v1.4)")]
+        [Tooltip("Xe Con (Tier 1): Giảm 20% năng lượng, đẩy lùi 100m")]
+        [SerializeField] private List<GameObject> sedanCarPrefabs = new List<GameObject>();
+
+        [Tooltip("Xe Bán Tải (Tier 2): Giảm 40% năng lượng, đẩy lùi 200m")]
+        [SerializeField] private List<GameObject> pickupTruckPrefabs = new List<GameObject>();
+
+        [Tooltip("Xe Tải Hạng Nặng (Tier 3): Giảm 60% năng lượng, đẩy lùi 400m")]
+        [SerializeField] private List<GameObject> heavyTruckPrefabs = new List<GameObject>();
 
         [Tooltip("Tốc độ xe tự chạy trên mặt đường (m/s) bổ sung vào tốc độ cuộn của thế giới. Mặc định = 6.5 m/s.")]
         [SerializeField] private float carDrivingSpeed = 6.5f;
@@ -160,7 +170,50 @@ namespace StreamRushLive.Features.Spawning
             return laneOffsetCenter;                         //  0.0f (Làn giữa)
         }
 
-        public bool TriggerSpawnCarOnLane(int laneIndex)
+        /// <summary>
+        /// Sinh xe theo phân cấp cụ thể (GDD v1.4):
+        /// - SedanCar (Xe Con Húc): -20% NL, -100m cự ly
+        /// - PickupTruck (Xe Bán Tải): -40% NL, -200m cự ly
+        /// - HeavyTruck (Xe Tải Hạng Nặng): -60% NL, -400m cự ly
+        /// Nếu không chỉ định làn (laneIndex <= 0), tự động chọn ngẫu nhiên 1 làn hợp lệ.
+        /// </summary>
+        public bool TriggerSpawnCarTier(VehicleTier tier, int laneIndex = -1)
+        {
+            CleanupInactiveObstacles();
+
+            if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
+            {
+                Debug.LogWarning($"[SingleObstacleSpawner] Đã đạt giới hạn tối đa {maxConcurrentObstacles} chướng ngại vật cùng lúc! Bỏ qua yêu cầu spawn {tier}.");
+                return false;
+            }
+
+            int targetLane = laneIndex;
+            if (targetLane <= 0 || targetLane > 3)
+            {
+                List<int> availableLanes = new List<int>();
+                for (int i = 1; i <= 3; i++)
+                {
+                    if (CanSpawnObstacleOnLane(i)) availableLanes.Add(i);
+                }
+                if (availableLanes.Count == 0)
+                {
+                    Debug.LogWarning($"[SingleObstacleSpawner] Không còn làn trống để spawn {tier}.");
+                    return false;
+                }
+                targetLane = availableLanes[Random.Range(0, availableLanes.Count)];
+            }
+            else if (!CanSpawnObstacleOnLane(targetLane))
+            {
+                Debug.LogWarning($"[SingleObstacleSpawner] Làn {targetLane} hiện đang có vật cản! Bỏ qua spawn trùng làn.");
+                return false;
+            }
+
+            float selectedLane = GetLaneOffsetZ(targetLane);
+            SpawnCarOnSelectedLane(targetLane, selectedLane, tier);
+            return true;
+        }
+
+        public bool TriggerSpawnCarOnLane(int laneIndex, VehicleTier? tier = null)
         {
             CleanupInactiveObstacles();
 
@@ -181,11 +234,11 @@ namespace StreamRushLive.Features.Spawning
             }
 
             float selectedLane = GetLaneOffsetZ(laneIndex);
-            SpawnCarOnSelectedLane(laneIndex, selectedLane);
+            SpawnCarOnSelectedLane(laneIndex, selectedLane, tier);
             return true;
         }
 
-        public bool TriggerSpawnCarFromAntiLikes()
+        public bool TriggerSpawnCarFromAntiLikes(VehicleTier? tier = null)
         {
             CleanupInactiveObstacles();
 
@@ -211,7 +264,7 @@ namespace StreamRushLive.Features.Spawning
             }
 
             int chosenLane = availableLanes[Random.Range(0, availableLanes.Count)];
-            return TriggerSpawnCarOnLane(chosenLane);
+            return TriggerSpawnCarOnLane(chosenLane, tier);
         }
 
         /// <summary>
@@ -268,7 +321,7 @@ namespace StreamRushLive.Features.Spawning
         }
         // ===== [Dhuy] END =====
 
-        private void SpawnCarOnSelectedLane(int laneIndex, float selectedLane)
+        private void SpawnCarOnSelectedLane(int laneIndex, float selectedLane, VehicleTier? tier = null)
         {
             if (playerReference == null)
             {
@@ -276,11 +329,13 @@ namespace StreamRushLive.Features.Spawning
                 if (runner != null) playerReference = runner.transform;
             }
 
-            if (playerReference == null || laserIndicatorPrefab == null || urbanCarPrefab == null)
+            if (playerReference == null || laserIndicatorPrefab == null)
             {
-                Debug.LogWarning("[SingleObstacleSpawner] Thiếu Player reference hoặc prefab laser/xe.");
+                Debug.LogWarning("[SingleObstacleSpawner] Thiếu Player reference hoặc prefab laser.");
                 return;
             }
+
+            VehicleTier chosenTier = tier ?? PickRandomTier();
 
             // Đặt laser cảnh báo trên làn được chọn phía trước Runner
             Vector3 warningPosition = new Vector3(
@@ -307,10 +362,18 @@ namespace StreamRushLive.Features.Spawning
             _activeObstacles.Add(obstacle);
 
             // Chạy cảnh báo nhấp nháy 3.5s trước khi sinh xe ở vị trí cách Runner 25m
-            StartCoroutine(BlinkLaserThenSpawnCar(obstacle, laserInstance, selectedLane));
+            StartCoroutine(BlinkLaserThenSpawnCar(obstacle, laserInstance, selectedLane, chosenTier));
         }
 
-        private IEnumerator BlinkLaserThenSpawnCar(ActiveObstacle obstacle, GameObject laserInstance, float selectedLane)
+        private VehicleTier PickRandomTier()
+        {
+            float roll = Random.value;
+            if (roll < 0.50f) return VehicleTier.SedanCar;     // 50% Xe Con
+            if (roll < 0.80f) return VehicleTier.PickupTruck;  // 30% Xe Bán Tải
+            return VehicleTier.HeavyTruck;                     // 20% Xe Tải Nặng
+        }
+
+        private IEnumerator BlinkLaserThenSpawnCar(ActiveObstacle obstacle, GameObject laserInstance, float selectedLane, VehicleTier tier)
         {
             Renderer[] renderers = laserInstance != null ? laserInstance.GetComponentsInChildren<Renderer>(true) : new Renderer[0];
             float elapsed = 0f;
@@ -359,7 +422,7 @@ namespace StreamRushLive.Features.Spawning
                 0.05f,
                 selectedLane);
 
-            GameObject prefabToSpawn = GetCarPrefab();
+            GameObject prefabToSpawn = GetCarPrefab(tier);
             if (prefabToSpawn == null)
             {
                 Debug.LogWarning("[SingleObstacleSpawner] Không tìm thấy prefab xe nào để sinh!");
@@ -374,7 +437,7 @@ namespace StreamRushLive.Features.Spawning
                 carSpawnPosition,
                 spawnRot);
 
-            carInstance.name = $"ObstacleCar_{prefabToSpawn.name}";
+            carInstance.name = $"ObstacleCar_{tier}_{prefabToSpawn.name}";
             try { carInstance.tag = "Obstacle"; } catch { }
 
             // Gán tag "Obstacle" và chuyển toàn bộ collider con sang Trigger
@@ -406,8 +469,29 @@ namespace StreamRushLive.Features.Spawning
                 obstacle.PlayerRef = playerReference;
             }
 
-            InitializeCarMovement(carInstance);
-            Debug.Log($"[SingleObstacleSpawner] Đã sinh xe '{prefabToSpawn.name}' (Tốc độ tự lái: {carDrivingSpeed} m/s) trên làn Z={selectedLane:F1} cách Player {spawnDistanceAhead}m.");
+            InitializeCarMovement(carInstance, tier);
+            Debug.Log($"[SingleObstacleSpawner] Đã sinh [{tier}] '{prefabToSpawn.name}' trên làn Z={selectedLane:F1} cách Player {spawnDistanceAhead}m.");
+        }
+
+        public GameObject GetCarPrefab(VehicleTier tier)
+        {
+            List<GameObject> list = tier switch
+            {
+                VehicleTier.HeavyTruck => heavyTruckPrefabs,
+                VehicleTier.PickupTruck => pickupTruckPrefabs,
+                _ => sedanCarPrefabs
+            };
+
+            if (list != null && list.Count > 0)
+            {
+                var valid = list.FindAll(p => p != null);
+                if (valid.Count > 0)
+                {
+                    return valid[Random.Range(0, valid.Count)];
+                }
+            }
+
+            return GetCarPrefab();
         }
 
         private GameObject GetCarPrefab()
@@ -462,7 +546,7 @@ namespace StreamRushLive.Features.Spawning
             return true;
         }
 
-        private void InitializeCarMovement(GameObject carInstance)
+        private void InitializeCarMovement(GameObject carInstance, VehicleTier tier = VehicleTier.SedanCar)
         {
             var drivingCar = carInstance.GetComponent<DrivingObstacleCar>();
             if (drivingCar == null)
@@ -470,7 +554,8 @@ namespace StreamRushLive.Features.Spawning
                 drivingCar = carInstance.AddComponent<DrivingObstacleCar>();
             }
 
-            drivingCar.Initialize(worldSpeedManager, carDrivingSpeed);
+            drivingCar.ConfigureTier(tier);
+            drivingCar.Initialize(worldSpeedManager, drivingCar.DrivingSpeed);
         }
 
         private void InitializeWorldMovement(GameObject instance)

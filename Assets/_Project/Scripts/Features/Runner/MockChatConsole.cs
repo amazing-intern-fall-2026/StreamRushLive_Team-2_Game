@@ -258,14 +258,25 @@ namespace SteamRush.Features.Runner
             if (Keyboard.current.f2Key.wasPressedThisFrame)
                 MockDonateHeal();
 
+            bool isShift = Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed;
+
             if (Keyboard.current.f3Key.wasPressedThisFrame)
-                MockFanLikes();
+            {
+                if (isShift) MockFanLikes();
+                else MockSpawnSedanCar();
+            }
 
             if (Keyboard.current.f4Key.wasPressedThisFrame)
-                MockAntiLikes();
+            {
+                if (isShift) MockAntiLikes();
+                else MockSpawnPickupTruck();
+            }
 
             if (Keyboard.current.f5Key.wasPressedThisFrame)
-                MockNewFollower();
+            {
+                if (isShift) MockNewFollower();
+                else MockSpawnHeavyTruck();
+            }
 
             if (Keyboard.current.f7Key.wasPressedThisFrame)
                 MockActivateAntiCarUnlimited();
@@ -432,6 +443,26 @@ namespace SteamRush.Features.Runner
                 factionManager?.SetFaction(followerName, FactionType.Anti);
                 factionManager?.SetFaction("runner_player", FactionType.Anti);
                 hudManager?.ShowStatusPopup($"[{followerName}] đã gia nhập phe ANTI! (Cản đường Runner)", false);
+                ClearInputField();
+                return;
+            }
+
+            // Kiểm tra lệnh gọi xe phân cấp GDD v1.4 trực tiếp qua chat
+            if (trimmedCmd == "xecon" || trimmedCmd == "#xecon" || trimmedCmd == "sedan" || trimmedCmd == "#sedan")
+            {
+                MockSpawnSedanCar();
+                ClearInputField();
+                return;
+            }
+            if (trimmedCmd == "xebantai" || trimmedCmd == "#xebantai" || trimmedCmd == "pickup" || trimmedCmd == "#pickup")
+            {
+                MockSpawnPickupTruck();
+                ClearInputField();
+                return;
+            }
+            if (trimmedCmd == "xetai" || trimmedCmd == "#xetai" || trimmedCmd == "truck" || trimmedCmd == "#truck" || trimmedCmd == "bus" || trimmedCmd == "#bus")
+            {
+                MockSpawnHeavyTruck();
                 ClearInputField();
                 return;
             }
@@ -618,6 +649,48 @@ namespace SteamRush.Features.Runner
             else
             {
                 Debug.LogWarning("[MockChatConsole] F2 -> Spawn Energy Buff thất bại (thiếu prefab hoặc Player reference).");
+            }
+        }
+
+        public void MockSpawnSedanCar()
+        {
+            if (obstacleSpawner == null) obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
+            if (obstacleSpawner != null)
+            {
+                bool success = obstacleSpawner.TriggerSpawnCarTier(StreamRushLive.Features.Spawning.VehicleTier.SedanCar);
+                if (success)
+                {
+                    if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                    hudManager?.ShowStatusPopup("[F3 - ANTI] Thả Xe Con Húc! (-20% NL, -100m)", false);
+                }
+            }
+        }
+
+        public void MockSpawnPickupTruck()
+        {
+            if (obstacleSpawner == null) obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
+            if (obstacleSpawner != null)
+            {
+                bool success = obstacleSpawner.TriggerSpawnCarTier(StreamRushLive.Features.Spawning.VehicleTier.PickupTruck);
+                if (success)
+                {
+                    if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                    hudManager?.ShowStatusPopup("[F4 - ANTI] Thả Xe Bán Tải! (-40% NL, -200m)", false);
+                }
+            }
+        }
+
+        public void MockSpawnHeavyTruck()
+        {
+            if (obstacleSpawner == null) obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
+            if (obstacleSpawner != null)
+            {
+                bool success = obstacleSpawner.TriggerSpawnCarTier(StreamRushLive.Features.Spawning.VehicleTier.HeavyTruck);
+                if (success)
+                {
+                    if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                    hudManager?.ShowStatusPopup("[F5 - ANTI] Thả Xe Tải Hạng Nặng! (-60% NL, -400m)", false);
+                }
             }
         }
 
