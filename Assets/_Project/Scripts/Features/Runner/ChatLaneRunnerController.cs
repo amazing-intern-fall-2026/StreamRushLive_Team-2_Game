@@ -61,10 +61,10 @@ namespace SteamRush.Features.Runner
 
         public void ApplyKnockback(float distance = -1f, float duration = -1f)
         {
-            float dist = distance > 0f ? distance : _knockbackDistance;
+            float dist = distance >= 0f ? distance : _knockbackDistance;
             _knockbackTotalDuration = duration > 0f ? duration : _knockbackDuration;
             _knockbackTimer = 0f;
-            _knockbackStartOffset = -dist; // Đẩy lùi về phía sau (-X)
+            _knockbackStartOffset = -dist; // Đẩy lùi về phía sau (-X) nếu dist > 0
             _knockbackOffsetX = _knockbackStartOffset;
         }
 

@@ -63,6 +63,9 @@ namespace StreamRushLive.Features.Spawning
         private readonly List<Transform> _wheelTransforms = new List<Transform>();
         private float _baseY;
         private float _rumbleSeed;
+        private bool _isPinnedToPlayer;
+        private Transform _pinnedPlayerTransform;
+        private float _pinnedOffsetX;
 
         public VehicleTier Tier => _vehicleTier;
         public float KnockbackDistance => _knockbackDistance;
@@ -85,6 +88,7 @@ namespace StreamRushLive.Features.Spawning
 
         /// <summary>
         /// Cấu hình thông số hình phạt của xe theo GDD v1.4 Mục 4.3
+        /// Xe và Runner đứng yên trong camera, chỉ thế giới cuộn ngược tạo cảm giác bị đẩy lùi 100m / 200m / 400m
         /// </summary>
         public void ConfigureTier(VehicleTier tier)
         {
@@ -97,11 +101,11 @@ namespace StreamRushLive.Features.Spawning
                     energyPenaltyPercent = 20f;       // -20% năng lượng
                     distancePenaltyMeters = 100f;     // -100m cự ly
                     hitStopDuration = 0.10f;          // 0.10s khựng nhẹ
-                    _knockbackDistance = 2.0f;
-                    _knockbackDuration = 0.45f;
+                    _knockbackDistance = 0f;          // Runner và xe không di chuyển
+                    _knockbackDuration = 1.8f;
                     _drivingSpeed = 7.0f;
-                    _reverseWorldPeakSpeed = -15.0f;  // Cuộn ngược thế giới -15 m/s (~6.2m trôi lùi)
-                    _reverseWorldDuration = 0.65f;
+                    _reverseWorldPeakSpeed = -87.0f;  // Thế giới cuộn ngược lùi đúng ~100m
+                    _reverseWorldDuration = 1.8f;
                     break;
 
                 case VehicleTier.PickupTruck:
@@ -110,11 +114,11 @@ namespace StreamRushLive.Features.Spawning
                     energyPenaltyPercent = 40f;       // -40% năng lượng
                     distancePenaltyMeters = 200f;     // -200m cự ly
                     hitStopDuration = 0.18f;          // 0.18s khựng/choáng
-                    _knockbackDistance = 3.2f;
-                    _knockbackDuration = 0.60f;
+                    _knockbackDistance = 0f;          // Runner và xe không di chuyển
+                    _knockbackDuration = 2.4f;
                     _drivingSpeed = 6.2f;
-                    _reverseWorldPeakSpeed = -24.0f;  // Cuộn ngược thế giới -24 m/s (~13.0m trôi lùi)
-                    _reverseWorldDuration = 0.85f;
+                    _reverseWorldPeakSpeed = -130.0f; // Thế giới cuộn ngược lùi đúng ~200m
+                    _reverseWorldDuration = 2.4f;
                     break;
 
                 case VehicleTier.HeavyTruck:
@@ -123,11 +127,11 @@ namespace StreamRushLive.Features.Spawning
                     energyPenaltyPercent = 60f;       // -60% năng lượng
                     distancePenaltyMeters = 400f;     // -400m cự ly
                     hitStopDuration = 0.25f;          // 0.25s cú tông cực mạnh
-                    _knockbackDistance = 4.5f;
-                    _knockbackDuration = 0.75f;
+                    _knockbackDistance = 0f;          // Runner và xe không di chuyển
+                    _knockbackDuration = 3.2f;
                     _drivingSpeed = 5.2f;
-                    _reverseWorldPeakSpeed = -36.0f;  // Cuộn ngược thế giới -36 m/s (~26.4m trôi lùi)
-                    _reverseWorldDuration = 1.15f;
+                    _reverseWorldPeakSpeed = -196.0f; // Thế giới cuộn ngược lùi đúng ~400m
+                    _reverseWorldDuration = 3.2f;
                     break;
             }
         }
@@ -166,6 +170,24 @@ namespace StreamRushLive.Features.Spawning
             if (_speedManager == null)
             {
                 _speedManager = WorldSpeedManager.Instance ?? FindFirstObjectByType<WorldSpeedManager>();
+            }
+
+            // Nếu đã va chạm với Runner: Xe găm cố định ngay trước mặt Runner, không di chuyển theo thế giới
+            if (_isPinnedToPlayer)
+            {
+                if (_pinnedPlayerTransform != null)
+                {
+                    Vector3 pinnedPos = transform.position;
+                    pinnedPos.x = _pinnedPlayerTransform.position.x + _pinnedOffsetX;
+                    if (_enableEngineRumble)
+                    {
+                        float rumbleOffset = Mathf.Sin((Time.time * _rumbleFrequency) + _rumbleSeed) * _rumbleAmplitude;
+                        pinnedPos.y = _baseY + rumbleOffset;
+                    }
+                    transform.position = pinnedPos;
+                    if (_rb != null) _rb.position = pinnedPos;
+                }
+                return;
             }
 
             float worldSpeed = _speedManager != null ? _speedManager.CurrentSpeed : 0f;
@@ -225,11 +247,17 @@ namespace StreamRushLive.Features.Spawning
                 if (colliders[i] != null) colliders[i].enabled = false;
             }
 
-            // 2. Dừng tốc độ tự lái để xe bị thế giới và runner kéo lùi lại cùng lúc trong 0.5s xung cuộn ngược
+            // 2. Dừng xe và ghim xe cố định cùng Runner (cả hai đứng yên trước camera trong lúc thế giới trôi lùi)
             _drivingSpeed = 0f;
+            _isPinnedToPlayer = true;
+            _pinnedPlayerTransform = player != null ? player.transform : null;
+            if (_pinnedPlayerTransform != null)
+            {
+                _pinnedOffsetX = Mathf.Clamp(transform.position.x - _pinnedPlayerTransform.position.x, 1.6f, 2.8f);
+            }
 
-            // 3. Tồn tại găm phía trước Runner trong thời gian xung giật lùi (0.55s) rồi biến mất
-            Destroy(gameObject, 0.55f);
+            // 3. Tồn tại găm phía trước Runner trong toàn bộ thời gian thế giới cuộn ngược rồi biến mất
+            Destroy(gameObject, _reverseWorldDuration);
         }
     }
 }
