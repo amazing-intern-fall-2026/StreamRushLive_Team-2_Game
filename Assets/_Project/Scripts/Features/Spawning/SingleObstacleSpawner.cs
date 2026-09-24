@@ -64,10 +64,10 @@ namespace StreamRushLive.Features.Spawning
 
         [Header("Spawn Distance & Warning")]
         [Tooltip("Khoảng cách X phía trước Player nơi xe xuất hiện.")]
-        [SerializeField] private float spawnDistanceAhead = 25f;
+        [SerializeField] private float spawnDistanceAhead = 35f;
 
         [Tooltip("Thời gian cảnh báo laser trước khi xe xuất hiện.")]
-        [SerializeField] private float laserWarningDuration = 3.5f;
+        [SerializeField] private float laserWarningDuration = 2.0f;
 
         [Tooltip("Khoảng thời gian bật/tắt laser.")]
         [SerializeField] private float laserBlinkInterval = 0.15f;

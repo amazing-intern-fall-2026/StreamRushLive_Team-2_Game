@@ -7838,8 +7838,8 @@ MonoBehaviour:
   laneOffsetLeft: 3
   laneOffsetCenter: 0
   laneOffsetRight: -3
-  spawnDistanceAhead: 25
-  laserWarningDuration: 3.5
+  spawnDistanceAhead: 35
+  laserWarningDuration: 2
   laserBlinkInterval: 0.15
   maxConcurrentObstacles: 2
   unlimitedModeDuration: 60
