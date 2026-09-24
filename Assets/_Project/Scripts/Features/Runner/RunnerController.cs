@@ -56,6 +56,7 @@ namespace SteamRush.Features.Runner
 
         private BoxCollider _boxCollider;
         private CapsuleCollider _capsuleCollider;
+        private Animator _animator;
         private Vector3 _standingBoxSize;
         private Vector3 _standingBoxCenter;
         private float _standingCapsuleHeight;
@@ -75,10 +76,11 @@ namespace SteamRush.Features.Runner
             // Project Settings > Physics > Gravity của máy đang mở là bao nhiêu.
             RB.useGravity = false;
 
-            Animator animator = GetComponent<Animator>();
-            if (animator != null)
+            _animator = GetComponent<Animator>();
+
+            if (_animator != null)
             {
-                animator.applyRootMotion = false;
+                _animator.applyRootMotion = false;
             }
 
             _visualRoot = transform.Find("Root");
@@ -167,6 +169,10 @@ namespace SteamRush.Features.Runner
         private void Update()
         {
             UpdateGroundCheck();
+
+            if (_animator != null)
+                _animator.SetBool("isGrounded", IsGrounded);
+
             if (_knockbackTimer < _knockbackDuration)
             {
                 _knockbackTimer += Time.deltaTime;
@@ -191,6 +197,13 @@ namespace SteamRush.Features.Runner
             _isCollidingWithGround = false;
             IsGrounded = false;
             _jumpCooldownTimer = 0.15f;
+
+            if (_animator != null)
+            {
+                _animator.SetBool("isGrounded", false);
+                _animator.ResetTrigger("Jump");
+                _animator.SetTrigger("Jump");
+            }
         }
 
         /// <summary>
@@ -299,13 +312,13 @@ namespace SteamRush.Features.Runner
             {
                 // Hyper Dash không được tắt Gravity hoặc khoá trục Y.
                 // Runner vẫn có thể nhảy và rơi bình thường.
-                RB.useGravity = true;
+                RB.useGravity = false;
                 RB.constraints &= ~RigidbodyConstraints.FreezePositionY;
             }
             else
             {
                 RB.constraints &= ~RigidbodyConstraints.FreezePositionY;
-                RB.useGravity = true;
+                RB.useGravity = false;
             }
         }
         private void UpdateGroundCheck()
