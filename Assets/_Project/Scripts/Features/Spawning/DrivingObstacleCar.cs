@@ -190,8 +190,15 @@ namespace StreamRushLive.Features.Spawning
                 return;
             }
 
-            float worldSpeed = _speedManager != null ? _speedManager.CurrentSpeed : 0f;
-            float totalSpeed = worldSpeed + _drivingSpeed;
+            // Nếu thế giới đang cuộn ngược (do va chạm đẩy lùi), các xe khác không bị kéo ngược lại
+            // mà vẫn tiếp tục di chuyển bình thường theo tốc độ đường chuẩn
+            float effectiveWorldSpeed = 10f;
+            if (_speedManager != null)
+            {
+                effectiveWorldSpeed = _speedManager.CurrentSpeed < 0f ? _speedManager.BaseSpeed : _speedManager.CurrentSpeed;
+            }
+
+            float totalSpeed = effectiveWorldSpeed + _drivingSpeed;
             float dt = Time.deltaTime;
 
             // 1. Di chuyển xe lao về phía trước (-X) theo tổng vận tốc (vận tốc đường + vận tốc tự lái)
