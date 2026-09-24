@@ -267,6 +267,18 @@ namespace SteamRush.Features.Runner
             if (Keyboard.current.f5Key.wasPressedThisFrame)
                 MockNewFollower();
 
+            if (Keyboard.current.f7Key.wasPressedThisFrame)
+                MockActivateAntiCarUnlimited();
+
+            if (Keyboard.current.f9Key.wasPressedThisFrame)
+                MockBuyNormalTicket();
+
+            if (Keyboard.current.f10Key.wasPressedThisFrame)
+                MockBuyVipTicket();
+
+            if (Keyboard.current.digit0Key.wasPressedThisFrame)
+                MockToggleUnlimitedModeDebug();
+
             if (Keyboard.current.escapeKey.wasPressedThisFrame)
             {
                 if (chatInputField != null && chatInputField.isFocused)
@@ -551,34 +563,34 @@ namespace SteamRush.Features.Runner
             ClearInputField();
         }
 
-      private void MockDonateShield()
-{
-    if (obstacleSpawner == null)
-    {
-        obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
-    }
+        private void MockDonateShield()
+        {
+            if (obstacleSpawner == null)
+            {
+                obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
+            }
 
-    if (obstacleSpawner == null)
-    {
-        Debug.LogWarning("[MockChatConsole] Không tìm thấy SingleObstacleSpawner.");
-        return;
-    }
+            if (obstacleSpawner == null)
+            {
+                Debug.LogWarning("[MockChatConsole] Không tìm thấy SingleObstacleSpawner.");
+                return;
+            }
 
-    int randomLane = Random.Range(1, 4);
-    bool success = obstacleSpawner.TriggerSpawnFanItem(randomLane, isShield: true);
+            int randomLane = Random.Range(1, 4);
+            bool success = obstacleSpawner.TriggerSpawnFanItem(randomLane, isShield: true);
 
-    if (success)
-    {
-        if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-        hudManager?.ShowStatusPopup($"[Khán giả] tặng Khiên Bảo Vệ trên Làn {randomLane}!", true);
-        hudManager?.ShowGiftToast("Khán giả", $"Khiên Bảo Vệ ({shieldDuration}s)", shieldGiftIcon, new Color(0.55f, 0.85f, 1f, 1f));
-        Debug.Log($"[MockChatConsole] F1 -> Spawn Shield item trên Làn {randomLane}.");
-    }
-    else
-    {
-        Debug.LogWarning("[MockChatConsole] F1 -> Spawn Shield thất bại (thiếu prefab hoặc Player reference).");
-    }
-}
+            if (success)
+            {
+                if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                hudManager?.ShowStatusPopup($"[Khán giả] tặng Khiên Bảo Vệ trên Làn {randomLane}!", true);
+                hudManager?.ShowGiftToast("Khán giả", $"Khiên Bảo Vệ ({shieldDuration}s)", shieldGiftIcon, new Color(0.55f, 0.85f, 1f, 1f));
+                Debug.Log($"[MockChatConsole] F1 -> Spawn Shield item trên Làn {randomLane}.");
+            }
+            else
+            {
+                Debug.LogWarning("[MockChatConsole] F1 -> Spawn Shield thất bại (thiếu prefab hoặc Player reference).");
+            }
+        }
 
         private void MockDonateHeal()
         {
@@ -671,6 +683,99 @@ namespace SteamRush.Features.Runner
                 Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatRunnerQueueManager.");
             }
         }
+
+        private void MockActivateAntiCarUnlimited()
+        {
+            if (obstacleSpawner == null)
+            {
+                obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
+            }
+
+            if (obstacleSpawner == null)
+            {
+                Debug.LogWarning("[MockChatConsole] Không tìm thấy SingleObstacleSpawner.");
+                return;
+            }
+
+            if (!obstacleSpawner.IsUnlimitedModeActive)
+            {
+                obstacleSpawner.ActivateUnlimitedMode();
+                if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                hudManager?.ShowStatusPopup("[Phe Anti] QUÀ XE KHÔNG GIỚI HẠN kích hoạt 60s!", false);
+                Debug.Log("[MockChatConsole] F7 -> Kích hoạt Thả Xe Không Giới Hạn (60s). Không spawn xe.");
+            }
+            else
+            {
+                Debug.Log("[MockChatConsole] F7 -> Thả Xe Không Giới Hạn đang hoạt động.");
+            }
+        }
+
+        // ===== [Dhuy] BEGIN - F9/F10 Vé hàng chờ (Ticket System) =====
+        private void MockBuyNormalTicket()
+        {
+            if (queueManager == null)
+            {
+                queueManager = FindFirstObjectByType<ChatRunnerQueueManager>();
+            }
+
+            if (queueManager == null)
+            {
+                Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatRunnerQueueManager.");
+                return;
+            }
+
+            string newId = "Follower_" + Random.Range(100, 999);
+            queueManager.TryEnqueueFollower(newId);
+
+            if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+            hudManager?.ShowStatusPopup($"[{newId}] mua vé THƯỜNG, xếp cuối hàng chờ!", true);
+            Debug.Log($"[MockChatConsole] F9 -> Vé thường: {newId} (cuối hàng chờ).");
+        }
+
+        private void MockBuyVipTicket()
+        {
+            if (queueManager == null)
+            {
+                queueManager = FindFirstObjectByType<ChatRunnerQueueManager>();
+            }
+
+            if (queueManager == null)
+            {
+                Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatRunnerQueueManager.");
+                return;
+            }
+
+            string newId = "VIP_" + Random.Range(100, 999);
+            queueManager.TryEnqueuePriorityFollower(newId);
+
+            if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+            hudManager?.ShowStatusPopup($"[{newId}] mua vé VIP, chen thẳng lên ĐẦU hàng chờ!", true);
+            Debug.Log($"[MockChatConsole] F10 -> Vé VIP: {newId} (đầu hàng chờ).");
+        }
+        // ===== [Dhuy] END =====
+
+        // ===== [Dhuy] BEGIN - Debug phím "0": toggle Unlimited Mode tự do để QA test =====
+        private void MockToggleUnlimitedModeDebug()
+        {
+            if (obstacleSpawner == null)
+            {
+                obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
+            }
+
+            if (obstacleSpawner == null)
+            {
+                Debug.LogWarning("[MockChatConsole] Không tìm thấy SingleObstacleSpawner.");
+                return;
+            }
+
+            bool newState = !obstacleSpawner.IsUnlimitedModeActive;
+            obstacleSpawner.SetUnlimitedModeDebug(newState);
+
+            if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+            hudManager?.ShowStatusPopup(newState ? "[DEBUG] Unlimited Mode: BẬT (phím 0)" : "[DEBUG] Unlimited Mode: TẮT (phím 0)", false);
+            Debug.Log($"[MockChatConsole] Phím 0 -> [DEBUG] Unlimited Mode = {newState}");
+        }
+        // ===== [Dhuy] END =====
 
         private void ClearInputField()
         {

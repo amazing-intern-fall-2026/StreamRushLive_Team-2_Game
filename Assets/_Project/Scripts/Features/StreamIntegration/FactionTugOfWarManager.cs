@@ -156,6 +156,8 @@ namespace SteamRush.Features.StreamIntegration
         }
 
         // Phe Anti nhắn 1, 2, 3 để thả xe cản đường trên làn mong muốn, giá 100 năng lượng / xe.
+        // ===== [Dhuy] BEGIN - F7 Unlimited Mode: bỏ qua trừ năng lượng khi SingleObstacleSpawner
+        // đang ở Unlimited Mode (60s), giữ nguyên hành vi cũ khi không active. =====
         public bool TrySpawnAntiObstacleCar(string userId, int laneIndex)
         {
             if (!_followerGate.CanSendCommand(userId))
@@ -163,19 +165,26 @@ namespace SteamRush.Features.StreamIntegration
                 return false;
             }
 
-            if (_antiLikes < _antiCarLaneCost)
+            var spawner = FindFirstObjectByType<StreamRushLive.Features.Spawning.SingleObstacleSpawner>();
+            bool isUnlimited = spawner != null && spawner.IsUnlimitedModeActive;
+
+            if (!isUnlimited)
             {
-                Debug.LogWarning($"[FactionTugOfWarManager] Phe Anti không đủ năng lượng! Cần {_antiCarLaneCost}, hiện có {_antiLikes}.");
-                return false;
+                if (_antiLikes < _antiCarLaneCost)
+                {
+                    Debug.LogWarning($"[FactionTugOfWarManager] Phe Anti không đủ năng lượng! Cần {_antiCarLaneCost}, hiện có {_antiLikes}.");
+                    return false;
+                }
+
+                _antiLikes -= _antiCarLaneCost;
+                _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
             }
 
-            _antiLikes -= _antiCarLaneCost;
-            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
-
-            Debug.Log($"[FactionTugOfWarManager] Phe Anti ({userId}) tiêu hao {_antiCarLaneCost} năng lượng -> Spawn xe cản đường trên Làn {laneIndex}!");
+            Debug.Log($"[FactionTugOfWarManager] Phe Anti ({userId}) {(isUnlimited ? "[UNLIMITED MODE] " : "")}spawn xe cản đường trên Làn {laneIndex}!");
             EventBus.Publish(new RequestCarSpawnEvent(laneIndex));
             return true;
         }
+        // ===== [Dhuy] END =====
 
         // Phe Fan nhắn fan 1, fan 2, fan 3 hoặc #shield/#buff để thả item hỗ trợ Runner trên làn mong muốn
         public bool TrySpawnFanItem(string userId, int laneIndex, bool isShield = false)
