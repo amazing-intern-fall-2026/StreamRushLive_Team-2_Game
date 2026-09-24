@@ -34,7 +34,6 @@ namespace SteamRush.Features.UI.Views
         private float _totalDuration = 60f;
         private float _remainingTime = 0f;
         private bool _isActive = false;
-        private Tween _pulseTween;
 
         private static Sprite _circleSprite;
 
@@ -93,7 +92,7 @@ namespace SteamRush.Features.UI.Views
             if (radialFillRing != null && _totalDuration > 0f)
             {
                 radialFillRing.fillAmount = Mathf.Clamp01(_remainingTime / _totalDuration);
-                radialFillRing.color = _remainingTime <= 10f ? warningRingColor : activeRingColor;
+                radialFillRing.color = activeRingColor;
             }
 
             // Cập nhật số giây còn lại
@@ -114,18 +113,17 @@ namespace SteamRush.Features.UI.Views
 
             BuildUIIfMissing();
 
+            if (containerRect != null)
+            {
+                DOTween.Kill(containerRect);
+                containerRect.localScale = Vector3.one;
+            }
+
             if (canvasGroup != null)
             {
                 DOTween.Kill(canvasGroup);
-                DOTween.Kill(containerRect);
-
-                containerRect.localScale = Vector3.one * 0.5f;
-                canvasGroup.DOFade(1f, 0.3f);
-                containerRect.DOScale(1f, 0.35f).SetEase(Ease.OutBack);
+                canvasGroup.DOFade(1f, 0.2f);
             }
-
-            // Hiệu ứng nhịp đập cảnh báo
-            StartPulseAnimation();
         }
 
         /// <summary>
@@ -135,31 +133,16 @@ namespace SteamRush.Features.UI.Views
         {
             _isActive = false;
 
-            if (_pulseTween != null)
+            if (containerRect != null)
             {
-                _pulseTween.Kill();
-                _pulseTween = null;
+                DOTween.Kill(containerRect);
+                containerRect.localScale = Vector3.one;
             }
 
             if (canvasGroup != null)
             {
                 DOTween.Kill(canvasGroup);
-                DOTween.Kill(containerRect);
-
-                containerRect.DOScale(0.6f, 0.25f).SetEase(Ease.InBack);
-                canvasGroup.DOFade(0f, 0.25f);
-            }
-        }
-
-        private void StartPulseAnimation()
-        {
-            if (_pulseTween != null) _pulseTween.Kill();
-
-            if (containerRect != null)
-            {
-                _pulseTween = containerRect.DOScale(1.06f, 0.6f)
-                    .SetLoops(-1, LoopType.Yoyo)
-                    .SetEase(Ease.InOutSine);
+                canvasGroup.DOFade(0f, 0.2f);
             }
         }
 

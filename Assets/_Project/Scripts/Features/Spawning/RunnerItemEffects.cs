@@ -39,7 +39,6 @@ namespace StreamRushLive.Features.Spawning
                 StopCoroutine(shieldCoroutine);
             }
 
-            SteamRush.Features.UI.Views.ActiveEffectTimerUI.ShowTimer("shield", "KHIÊN BẢO VỆ", duration, new Color(0.2f, 0.75f, 1f, 1f));
             shieldCoroutine = StartCoroutine(ShieldTimer(duration));
         }
 
@@ -62,7 +61,6 @@ namespace StreamRushLive.Features.Spawning
                 shieldCoroutine = null;
             }
 
-            SteamRush.Features.UI.Views.ActiveEffectTimerUI.CancelTimer("shield");
             Debug.Log("[RunnerItemEffects] Shield đã chặn 1 lần va chạm.");
 
             return true;
@@ -78,7 +76,6 @@ namespace StreamRushLive.Features.Spawning
 
             shieldActive = false;
             shieldCoroutine = null;
-            SteamRush.Features.UI.Views.ActiveEffectTimerUI.CancelTimer("shield");
 
             Debug.Log("[RunnerItemEffects] Shield đã hết thời gian.");
         }
