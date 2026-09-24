@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using SteamRush.Track;
 using SteamRush.Features.Runner;
+using SteamRush.Features.UI.Views;
 using UnityEngine.InputSystem;
 using UnityEngine;
 
@@ -230,11 +231,13 @@ namespace StreamRushLive.Features.Spawning
         {
             _isUnlimitedModeActive = true;
             Debug.Log($"[SingleObstacleSpawner] Unlimited Mode kích hoạt trong {unlimitedModeDuration}s.");
+            ActiveEffectTimerUI.ShowTimer("unlimited_car", "THẢ XE KHÔNG GIỚI HẠN", unlimitedModeDuration, new Color(1f, 0.28f, 0.2f, 1f));
 
             yield return new WaitForSeconds(unlimitedModeDuration);
 
             _isUnlimitedModeActive = false;
             _unlimitedModeCoroutine = null;
+            ActiveEffectTimerUI.CancelTimer("unlimited_car");
             Debug.Log("[SingleObstacleSpawner] Unlimited Mode kết thúc.");
         }
 
@@ -253,6 +256,14 @@ namespace StreamRushLive.Features.Spawning
             }
 
             _isUnlimitedModeActive = isActive;
+            if (isActive)
+            {
+                ActiveEffectTimerUI.ShowTimer("unlimited_car", "THẢ XE KHÔNG GIỚI HẠN (DEBUG)", 999f, new Color(1f, 0.28f, 0.2f, 1f));
+            }
+            else
+            {
+                ActiveEffectTimerUI.CancelTimer("unlimited_car");
+            }
             Debug.Log($"[SingleObstacleSpawner] [DEBUG] Unlimited Mode = {isActive} (phím 0, không giới hạn thời gian).");
         }
         // ===== [Dhuy] END =====
