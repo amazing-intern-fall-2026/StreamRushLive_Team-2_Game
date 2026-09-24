@@ -7815,16 +7815,17 @@ MonoBehaviour:
   - {fileID: 3615680029918305072, guid: 706cc8293765cee449a555bcad95e8cf, type: 3}
   - {fileID: 264844892321283291, guid: 04c5f6e9be748f442a292ec9b72ca8e0, type: 3}
   pickupTruckPrefabs:
-  - {fileID: 130278, guid: 94469aeaca2d49442af381840b70bb6c, type: 3}
   - {fileID: 164098, guid: 416c46ca128db5f4bb76f235b4f991d5, type: 3}
-  - {fileID: 3744482356543866777, guid: 1cb16cbeaa9da0c428b2a46bb6ffeee0, type: 3}
-  - {fileID: 907437995472702200, guid: 0f0daa8bf9f99fa409ac3fc15bda2b05, type: 3}
   - {fileID: 7893285494158317498, guid: 231a7513b481cb947b43d04e5bbd72bc, type: 3}
+  - {fileID: 54119980827139780, guid: 282396da42c71df488efb7e34fd49a5c, type: 3}
+  - {fileID: 8935816869220494611, guid: cbc25e2cd6d01604c973f34d269c9c21, type: 3}
   heavyTruckPrefabs:
   - {fileID: 8412460288916659892, guid: 25dd5d78fe192414d8513bf44b3685c0, type: 3}
   - {fileID: 2922206389645153971, guid: 92a6f32e158e9c1419ae093c3486c4eb, type: 3}
-  - {fileID: 5251988206647089760, guid: 190f71b864d95fd4c8f5eb59f37240e4, type: 3}
-  - {fileID: 5443105504725373947, guid: bfcc99dc36e5a0943aa68788d5b5cd80, type: 3}
+  - {fileID: 3744482356543866777, guid: 1cb16cbeaa9da0c428b2a46bb6ffeee0, type: 3}
+  - {fileID: 907437995472702200, guid: 0f0daa8bf9f99fa409ac3fc15bda2b05, type: 3}
+  - {fileID: 8247291409804382062, guid: f297e6c237f48344ea176374a3296397, type: 3}
+  - {fileID: 4131032445294630856, guid: d365dfc64ac179f42a44df8d1ce311fe, type: 3}
   - {fileID: 242565520339871044, guid: 2c06af02d79467b429310e849b375e54, type: 3}
   - {fileID: 7619004527960844412, guid: caa7b55a4623d0e4abe1bd6bf48e8d4b, type: 3}
   - {fileID: 8191502232408166463, guid: e6a47e86393dd2341b3bf17156a802d3, type: 3}
