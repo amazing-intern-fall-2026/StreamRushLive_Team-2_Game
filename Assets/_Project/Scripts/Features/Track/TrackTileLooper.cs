@@ -60,9 +60,19 @@ namespace SteamRush.Track
                 _tiles[i].position += delta;
             }
 
-            while (_tiles[0].position.x <= _recycleXThreshold)
+            if (step > 0f)
             {
-                RecycleFirstTile();
+                while (_tiles[0].position.x <= _recycleXThreshold)
+                {
+                    RecycleFirstTile();
+                }
+            }
+            else if (step < 0f)
+            {
+                while (_tiles[0].position.x > _recycleXThreshold + _tileLengthInWorldUnits)
+                {
+                    RecycleLastTile();
+                }
             }
 
             _progressTracker?.AddDistance(step);
@@ -89,6 +99,29 @@ namespace SteamRush.Track
             }
 
             _tiles[_tiles.Length - 1] = firstTile;
+        }
+
+        private void RecycleLastTile()
+        {
+            Transform lastTile = _tiles[_tiles.Length - 1];
+            float nearestX = _tiles[0].position.x;
+
+            for (int i = 1; i < _tiles.Length; i++)
+            {
+                if (_tiles[i].position.x < nearestX)
+                {
+                    nearestX = _tiles[i].position.x;
+                }
+            }
+
+            lastTile.position = new Vector3(nearestX - _tileLengthInWorldUnits, lastTile.position.y, lastTile.position.z);
+
+            for (int i = _tiles.Length - 1; i > 0; i--)
+            {
+                _tiles[i] = _tiles[i - 1];
+            }
+
+            _tiles[0] = lastTile;
         }
     }
 }

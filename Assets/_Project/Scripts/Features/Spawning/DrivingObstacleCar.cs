@@ -53,6 +53,12 @@ namespace StreamRushLive.Features.Spawning
         [SerializeField] private float _rumbleFrequency = 30f;
         [SerializeField] private float _rumbleAmplitude = 0.008f;
 
+        [Header("World Reverse Knockback (Hiệu ứng cuộn ngược thế giới GDD v1.2/v1.4)")]
+        [Tooltip("Vận tốc đỉnh khi thế giới cuộn ngược lại (m/s, giá trị âm).")]
+        [SerializeField] private float _reverseWorldPeakSpeed = -15f;
+        [Tooltip("Thời lượng thế giới cuộn ngược lại (giây).")]
+        [SerializeField] private float _reverseWorldDuration = 0.65f;
+
         private WorldSpeedManager _speedManager;
         private readonly List<Transform> _wheelTransforms = new List<Transform>();
         private float _baseY;
@@ -61,6 +67,8 @@ namespace StreamRushLive.Features.Spawning
         public VehicleTier Tier => _vehicleTier;
         public float KnockbackDistance => _knockbackDistance;
         public float KnockbackDuration => _knockbackDuration;
+        public float ReverseWorldPeakSpeed => _reverseWorldPeakSpeed;
+        public float ReverseWorldDuration => _reverseWorldDuration;
 
         public float DrivingSpeed
         {
@@ -92,6 +100,8 @@ namespace StreamRushLive.Features.Spawning
                     _knockbackDistance = 2.0f;
                     _knockbackDuration = 0.45f;
                     _drivingSpeed = 7.0f;
+                    _reverseWorldPeakSpeed = -15.0f;  // Cuộn ngược thế giới -15 m/s (~6.2m trôi lùi)
+                    _reverseWorldDuration = 0.65f;
                     break;
 
                 case VehicleTier.PickupTruck:
@@ -103,6 +113,8 @@ namespace StreamRushLive.Features.Spawning
                     _knockbackDistance = 3.2f;
                     _knockbackDuration = 0.60f;
                     _drivingSpeed = 6.2f;
+                    _reverseWorldPeakSpeed = -24.0f;  // Cuộn ngược thế giới -24 m/s (~13.0m trôi lùi)
+                    _reverseWorldDuration = 0.85f;
                     break;
 
                 case VehicleTier.HeavyTruck:
@@ -114,6 +126,8 @@ namespace StreamRushLive.Features.Spawning
                     _knockbackDistance = 4.5f;
                     _knockbackDuration = 0.75f;
                     _drivingSpeed = 5.2f;
+                    _reverseWorldPeakSpeed = -36.0f;  // Cuộn ngược thế giới -36 m/s (~26.4m trôi lùi)
+                    _reverseWorldDuration = 1.15f;
                     break;
             }
         }

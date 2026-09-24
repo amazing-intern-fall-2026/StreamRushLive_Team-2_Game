@@ -305,12 +305,14 @@ namespace SteamRush.Features.Runner
                 Time.timeScale = 1f;
             }
 
-            // 7. World Reverse Knockback (GDD v1.2 Mục 4):
-            // Kích hoạt xung cuộn ngược thế giới (-8.5 m/s trong 0.5s) tạo cảm giác thế giới trôi lùi về vị trí cũ
+            // 7. World Reverse Knockback (GDD v1.2 Mục 4 & v1.4):
+            // Kích hoạt xung cuộn ngược thế giới theo từng hạng xe để tạo ảo giác bị hất văng lùi xa
             WorldSpeedManager speedManager = FindFirstObjectByType<WorldSpeedManager>() ?? WorldSpeedManager.Instance;
             if (speedManager != null)
             {
-                speedManager.TriggerReverseWorldKnockback(-8.5f, 0.5f);
+                float peakSpeed = obstacle is StreamRushLive.Features.Spawning.DrivingObstacleCar carObj3 ? carObj3.ReverseWorldPeakSpeed : -15f;
+                float duration = obstacle is StreamRushLive.Features.Spawning.DrivingObstacleCar carObj4 ? carObj4.ReverseWorldDuration : 0.65f;
+                speedManager.TriggerReverseWorldKnockback(peakSpeed, duration);
             }
 
             // 8. i-Frames: Nhấp nháy model và giữ Trigger mode trong lúc trôi qua vật cản (2.0s theo GDD)
