@@ -146,9 +146,26 @@ namespace SteamRush.Features.UI.Views
             }
         }
 
+        [ContextMenu("Rebuild UI")]
+        public void RebuildUI()
+        {
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                var child = transform.GetChild(i).gameObject;
+                if (Application.isPlaying) Destroy(child);
+                else DestroyImmediate(child);
+            }
+            containerRect = null;
+            bgCircleImage = null;
+            radialFillRing = null;
+            timerText = null;
+            iconText = null;
+            BuildUIIfMissing();
+        }
+
         private void BuildUIIfMissing()
         {
-            if (containerRect != null) return;
+            if (containerRect != null && radialFillRing != null && timerText != null) return;
 
             // 1. Tìm FactionTugOfWarUI hoặc Canvas để đặt vị trí chính xác trên đầu thanh Anti
             Transform parentTransform = null;
@@ -170,19 +187,20 @@ namespace SteamRush.Features.UI.Views
             containerRect = GetComponent<RectTransform>();
             if (containerRect == null) containerRect = gameObject.AddComponent<RectTransform>();
 
-            // Vị trí: Đặt ngay góc trên bên phải, phía trên đỉnh thanh năng lượng Anti (X: -42, Y đỉnh thanh Anti)
-            containerRect.anchorMin = new Vector2(1f, 0.68f);
-            containerRect.anchorMax = new Vector2(1f, 0.68f);
-            containerRect.pivot = new Vector2(1f, 0.5f);
-            containerRect.anchoredPosition = new Vector2(-16f, 0f);
-            containerRect.sizeDelta = new Vector2(76f, 76f);
+            // Vị trí: Đặt ngay góc trên bên phải, phía trên đỉnh thanh năng lượng Anti (X: -12, Y: +16 trên đỉnh thanh Anti)
+            // Kích thước 116x116 tối ưu cho màn hình dọc (1080x1920)
+            containerRect.anchorMin = new Vector2(1f, 0.64f);
+            containerRect.anchorMax = new Vector2(1f, 0.64f);
+            containerRect.pivot = new Vector2(1f, 0f);
+            containerRect.anchoredPosition = new Vector2(-12f, 16f);
+            containerRect.sizeDelta = new Vector2(116f, 116f);
 
             canvasGroup = GetComponent<CanvasGroup>();
             if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
 
             Sprite circleSp = GetOrCreateCircleSprite();
 
-            // 2. Background Circle
+            // 2. Background Circle (116x116)
             GameObject bgObj = new GameObject("Circle_Bg", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             bgObj.transform.SetParent(containerRect, false);
             RectTransform bgRect = bgObj.GetComponent<RectTransform>();
@@ -209,42 +227,46 @@ namespace SteamRush.Features.UI.Views
             radialFillRing.fillAmount = 1f;
             radialFillRing.color = activeRingColor;
 
-            // 4. Center Inner Mask/Hole (tạo hình vành khuyên tròn hiện đại)
+            // 4. Center Inner Mask/Hole (vành khuyên tròn 88x88 -> độ dày viền ring 14px)
             GameObject innerHole = new GameObject("Circle_Inner", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             innerHole.transform.SetParent(containerRect, false);
             RectTransform innerRect = innerHole.GetComponent<RectTransform>();
             innerRect.anchorMin = new Vector2(0.5f, 0.5f);
             innerRect.anchorMax = new Vector2(0.5f, 0.5f);
             innerRect.pivot = new Vector2(0.5f, 0.5f);
-            innerRect.sizeDelta = new Vector2(58f, 58f);
+            innerRect.sizeDelta = new Vector2(88f, 88f);
             Image innerImg = innerHole.GetComponent<Image>();
             innerImg.sprite = circleSp;
-            innerImg.color = new Color(0.12f, 0.04f, 0.06f, 0.98f);
+            innerImg.color = new Color(0.10f, 0.03f, 0.05f, 0.98f);
 
-            // 5. Icon Text (🚨 hoặc 🚗)
-            GameObject iconObj = new GameObject("Icon_Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+            // 5. Label Text ("BÃO XE" thay vì emoji bị lỗi font [])
+            GameObject iconObj = new GameObject("Label_Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
             iconObj.transform.SetParent(innerHole.transform, false);
             RectTransform iconRect = iconObj.GetComponent<RectTransform>();
-            iconRect.anchorMin = new Vector2(0.5f, 0.65f);
-            iconRect.anchorMax = new Vector2(0.5f, 0.65f);
+            iconRect.anchorMin = new Vector2(0.5f, 0.5f);
+            iconRect.anchorMax = new Vector2(0.5f, 0.5f);
             iconRect.pivot = new Vector2(0.5f, 0.5f);
-            iconRect.sizeDelta = new Vector2(40f, 24f);
+            iconRect.anchoredPosition = new Vector2(0f, 16f);
+            iconRect.sizeDelta = new Vector2(80f, 22f);
             iconText = iconObj.GetComponent<TextMeshProUGUI>();
-            iconText.text = "🚨";
-            iconText.fontSize = 16;
+            iconText.text = "BÃO XE";
+            iconText.fontSize = 13;
+            iconText.fontStyle = FontStyles.Bold;
+            iconText.color = new Color(1f, 0.42f, 0.35f, 1f);
             iconText.alignment = TextAlignmentOptions.Center;
 
-            // 6. Countdown Timer Text (60s, 59s...)
+            // 6. Countdown Timer Text (60s, 59s... to rõ cho màn hình dọc)
             GameObject textObj = new GameObject("Timer_Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
             textObj.transform.SetParent(innerHole.transform, false);
             RectTransform textRect = textObj.GetComponent<RectTransform>();
-            textRect.anchorMin = new Vector2(0.5f, 0.32f);
-            textRect.anchorMax = new Vector2(0.5f, 0.32f);
+            textRect.anchorMin = new Vector2(0.5f, 0.5f);
+            textRect.anchorMax = new Vector2(0.5f, 0.5f);
             textRect.pivot = new Vector2(0.5f, 0.5f);
-            textRect.sizeDelta = new Vector2(54f, 22f);
+            textRect.anchoredPosition = new Vector2(0f, -12f);
+            textRect.sizeDelta = new Vector2(80f, 32f);
             timerText = textObj.GetComponent<TextMeshProUGUI>();
             timerText.text = "60s";
-            timerText.fontSize = 14;
+            timerText.fontSize = 26;
             timerText.fontStyle = FontStyles.Bold;
             timerText.alignment = TextAlignmentOptions.Center;
             timerText.color = Color.white;
@@ -254,12 +276,12 @@ namespace SteamRush.Features.UI.Views
         {
             if (_circleSprite != null) return _circleSprite;
 
-            int res = 128;
+            int res = 256;
             Texture2D tex = new Texture2D(res, res, TextureFormat.RGBA32, false);
             tex.wrapMode = TextureWrapMode.Clamp;
             tex.filterMode = FilterMode.Bilinear;
 
-            float radius = (res - 2) * 0.5f;
+            float radius = (res - 4) * 0.5f;
             Vector2 center = new Vector2(res * 0.5f, res * 0.5f);
 
             Color[] colors = new Color[res * res];
@@ -268,7 +290,7 @@ namespace SteamRush.Features.UI.Views
                 for (int x = 0; x < res; x++)
                 {
                     float dist = Vector2.Distance(new Vector2(x, y), center);
-                    float alpha = Mathf.Clamp01(radius - dist + 1f);
+                    float alpha = Mathf.Clamp01(radius - dist + 1.5f);
                     colors[y * res + x] = new Color(1f, 1f, 1f, alpha);
                 }
             }
