@@ -232,12 +232,14 @@ namespace StreamRushLive.Features.Spawning
             _isUnlimitedModeActive = true;
             Debug.Log($"[SingleObstacleSpawner] Unlimited Mode kích hoạt trong {unlimitedModeDuration}s.");
             ActiveEffectTimerUI.ShowTimer("unlimited_car", "THẢ XE KHÔNG GIỚI HẠN", unlimitedModeDuration, new Color(1f, 0.28f, 0.2f, 1f));
+            AntiUnlimitedTimerCircle.Instance?.ActivateTimer(unlimitedModeDuration);
 
             yield return new WaitForSeconds(unlimitedModeDuration);
 
             _isUnlimitedModeActive = false;
             _unlimitedModeCoroutine = null;
             ActiveEffectTimerUI.CancelTimer("unlimited_car");
+            AntiUnlimitedTimerCircle.Instance?.DeactivateTimer();
             Debug.Log("[SingleObstacleSpawner] Unlimited Mode kết thúc.");
         }
 
@@ -259,10 +261,12 @@ namespace StreamRushLive.Features.Spawning
             if (isActive)
             {
                 ActiveEffectTimerUI.ShowTimer("unlimited_car", "THẢ XE KHÔNG GIỚI HẠN (DEBUG)", 999f, new Color(1f, 0.28f, 0.2f, 1f));
+                AntiUnlimitedTimerCircle.Instance?.ActivateTimer(999f);
             }
             else
             {
                 ActiveEffectTimerUI.CancelTimer("unlimited_car");
+                AntiUnlimitedTimerCircle.Instance?.DeactivateTimer();
             }
             Debug.Log($"[SingleObstacleSpawner] [DEBUG] Unlimited Mode = {isActive} (phím 0, không giới hạn thời gian).");
         }

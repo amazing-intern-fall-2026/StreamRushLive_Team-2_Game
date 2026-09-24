@@ -7818,6 +7818,7 @@ MonoBehaviour:
   laserWarningDuration: 3.5
   laserBlinkInterval: 0.15
   maxConcurrentObstacles: 2
+  unlimitedModeDuration: 60
 --- !u!4 &819347503
 Transform:
   m_ObjectHideFlags: 0
@@ -8143,6 +8144,8 @@ MonoBehaviour:
   - {fileID: 153682, guid: 48b470c6a762f60438c631f219257520, type: 3}
   - {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
   - {fileID: 191860, guid: 498a13929c1393e44be1126bcadc448b, type: 3}
+  _normalNameColor: {r: 1, g: 1, b: 1, a: 1}
+  _vipNameColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   _waitingStateChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -8200,6 +8203,9 @@ MonoBehaviour:
   runnerNameplate: {fileID: 1027503294}
   statusPopupSpawner: {fileID: 1027503292}
   giftToastQueue: {fileID: 0}
+  topBannerQueue: {fileID: 0}
+  _buffAccentColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  _debuffAccentColor: {r: 1, g: 0.3, b: 0.25, a: 1}
 --- !u!114 &845593091
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9418,6 +9424,12 @@ MonoBehaviour:
   hudManager: {fileID: 845593090}
   obstacleSpawner: {fileID: 819347502}
   shieldDuration: 20
+  shieldGiftIcon: {fileID: 0}
+  energyGiftIcon: {fileID: 0}
+  debugPanelContainer: {fileID: 0}
+  toggleDebugButton: {fileID: 0}
+  toggleButtonText: {fileID: 0}
+  isDebugUIVisible: 1
 --- !u!114 &913794238
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15610,6 +15622,60 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1754172507}
   m_Mesh: {fileID: 4300000, guid: 88e975ccc0a823e45881be9718fd83de, type: 3}
+--- !u!1 &1769265812
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1769265813}
+  - component: {fileID: 1769265814}
+  m_Layer: 0
+  m_Name: AntiUnlimitedTimerCircle
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1769265813
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1769265812}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -960.00006, y: -1706.6667, z: 0}
+  m_LocalScale: {x: 1.7777779, y: 1.7777779, z: 1.7777779}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1997070771}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1769265814
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1769265812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4737483eaa138aa4b8948f3114e105cd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.UI.Views.AntiUnlimitedTimerCircle
+  obstacleSpawner: {fileID: 0}
+  containerRect: {fileID: 0}
+  bgCircleImage: {fileID: 0}
+  radialFillRing: {fileID: 0}
+  timerText: {fileID: 0}
+  iconText: {fileID: 0}
+  canvasGroup: {fileID: 0}
+  activeRingColor: {r: 1, g: 0.2, b: 0.1, a: 1}
+  warningRingColor: {r: 1, g: 0.8, b: 0.1, a: 1}
+  bgColor: {r: 0.08, g: 0.04, b: 0.06, a: 0.92}
 --- !u!1 &1777944958
 GameObject:
   m_ObjectHideFlags: 0
@@ -19445,7 +19511,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 4984125126943103238, guid: 94d28796fef95c44b869e8b6bd8b440d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1769265813}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 94d28796fef95c44b869e8b6bd8b440d, type: 3}
 --- !u!224 &1995482023 stripped
@@ -19469,6 +19538,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5f601b50c047dcf41a021a0659fe66f4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.UI.FactionTugOfWarUI
+--- !u!224 &1997070771 stripped
+RectTransform:
+  m_CorrespondingSourceObject: {fileID: 4984125126943103238, guid: 94d28796fef95c44b869e8b6bd8b440d, type: 3}
+  m_PrefabInstance: {fileID: 1995482022}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1998383781
 GameObject:
   m_ObjectHideFlags: 0
