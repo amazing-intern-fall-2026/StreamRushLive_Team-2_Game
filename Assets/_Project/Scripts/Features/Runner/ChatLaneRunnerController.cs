@@ -92,6 +92,7 @@ namespace SteamRush.Features.Runner
 
         private WorldSpeedManager _speedManager;
         private RunnerCollisionHandler _collisionHandler; // chỉ tham chiếu, KHÔNG sửa logic bên trong
+        private RunnerController _runnerController; // Đã thêm RunnerController
         private Rigidbody _rb;
         private Animator _animator;
         private Camera _mainCamera;
@@ -107,6 +108,7 @@ namespace SteamRush.Features.Runner
         {
             _speedManager = FindFirstObjectByType<WorldSpeedManager>() ?? WorldSpeedManager.Instance;
             _collisionHandler = GetComponent<RunnerCollisionHandler>();
+            _runnerController = GetComponent<RunnerController>(); // Lấy component RunnerController
             _rb = GetComponent<Rigidbody>();
             _animator = GetComponentInChildren<Animator>();
             _mainCamera = Camera.main;
@@ -269,8 +271,20 @@ namespace SteamRush.Features.Runner
 
         private void RunCommand(string command)
         {
+            
+            // Lọc các từ khóa nhảy
+            if (command == "j" || command == "nhay" || command == "up")
+            {
+                command = "jump";
+            }
+
             switch (command)
             {
+                case "jump":
+                    TriggerJump();
+                    _commandCooldownTimer = _nonLaneCommandDelay;
+                    break;
+
                 case "left":
                     ChangeLane(-1);
                     _commandCooldownTimer = _laneChangeSmoothTime;
@@ -304,6 +318,18 @@ namespace SteamRush.Features.Runner
                 default:
                     Debug.LogWarning($"[ChatLaneRunner] Lệnh không hợp lệ, bỏ qua: {command}");
                     break;
+            }
+        }
+
+        private void TriggerJump()
+        {
+            if (_runnerController != null && _runnerController.IsGrounded && !_runnerController.IsDucking)
+            {
+                _runnerController.PerformJump();
+                if (_animator != null)
+                {
+                    _animator.SetTrigger("Jump");
+                }
             }
         }
 
