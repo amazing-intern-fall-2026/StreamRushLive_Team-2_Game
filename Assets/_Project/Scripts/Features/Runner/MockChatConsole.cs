@@ -27,6 +27,10 @@ namespace SteamRush.Features.Runner
         [Header("Mock Settings")]
         [SerializeField] private float shieldDuration = 20f;
 
+        [Header("Gift Icons (khu Gift/Donate riêng)")]
+        [SerializeField] private Sprite shieldGiftIcon;
+        [SerializeField] private Sprite energyGiftIcon;
+
         private readonly ChatCommandSanitizer _sanitizer = new ChatCommandSanitizer();
 
         [Header("Debug UI Layout & Toggle")]
@@ -567,6 +571,7 @@ namespace SteamRush.Features.Runner
     {
         if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
         hudManager?.ShowStatusPopup($"[Khán giả] tặng Khiên Bảo Vệ trên Làn {randomLane}!", true);
+        hudManager?.ShowGiftToast("Khán giả", $"Khiên Bảo Vệ ({shieldDuration}s)", shieldGiftIcon, new Color(0.55f, 0.85f, 1f, 1f));
         Debug.Log($"[MockChatConsole] F1 -> Spawn Shield item trên Làn {randomLane}.");
     }
     else
@@ -575,33 +580,34 @@ namespace SteamRush.Features.Runner
     }
 }
 
-       private void MockDonateHeal()
-{
-    if (obstacleSpawner == null)
-    {
-        obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
-    }
+        private void MockDonateHeal()
+        {
+            if (obstacleSpawner == null)
+            {
+                obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
+            }
 
-    if (obstacleSpawner == null)
-    {
-        Debug.LogWarning("[MockChatConsole] Không tìm thấy SingleObstacleSpawner.");
-        return;
-    }
+            if (obstacleSpawner == null)
+            {
+                Debug.LogWarning("[MockChatConsole] Không tìm thấy SingleObstacleSpawner.");
+                return;
+            }
 
-    int randomLane = Random.Range(1, 4);
-    bool success = obstacleSpawner.TriggerSpawnFanItem(randomLane, isShield: false);
+            int randomLane = Random.Range(1, 4);
+            bool success = obstacleSpawner.TriggerSpawnFanItem(randomLane, isShield: false);
 
-    if (success)
-    {
-        if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-        hudManager?.ShowStatusPopup($"[Khán giả] tặng Bình Năng Lượng trên Làn {randomLane}!", true);
-        Debug.Log($"[MockChatConsole] F2 -> Spawn Energy Buff item trên Làn {randomLane}.");
-    }
-    else
-    {
-        Debug.LogWarning("[MockChatConsole] F2 -> Spawn Energy Buff thất bại (thiếu prefab hoặc Player reference).");
-    }
-}
+            if (success)
+            {
+                if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                hudManager?.ShowStatusPopup($"[Khán giả] tặng Bình Năng Lượng trên Làn {randomLane}!", true);
+                hudManager?.ShowGiftToast("Khán giả", "Bình Năng Lượng (+20%)", energyGiftIcon, new Color(0.55f, 1f, 0.5f, 1f));
+                Debug.Log($"[MockChatConsole] F2 -> Spawn Energy Buff item trên Làn {randomLane}.");
+            }
+            else
+            {
+                Debug.LogWarning("[MockChatConsole] F2 -> Spawn Energy Buff thất bại (thiếu prefab hoặc Player reference).");
+            }
+        }
 
         private void MockFanLikes()
         {

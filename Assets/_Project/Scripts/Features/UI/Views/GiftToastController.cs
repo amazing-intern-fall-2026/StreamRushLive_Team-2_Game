@@ -12,17 +12,29 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private TMP_Text viewerNameText;
         [SerializeField] private TMP_Text itemNameText;
         [SerializeField] private CanvasGroup canvasGroup;
+        [SerializeField] private Outline cardOutline;
         [SerializeField] private float showDuration = 3.5f;
         [SerializeField] private float animDuration = 0.3f;
 
-        public void Play(string viewerName, string itemName, Sprite icon, Color? iconColor = null)
+        // accentColor: mau chu de canh bao/su kien (vd. do = nguy hiem, xanh = tich cuc) - to vien the (cardOutline)
+        // va mac dinh cho icon neu iconColor khong truyen rieng. null = giu nguyen mau mac dinh tren template
+        // (dung cho khu Gift: moi qua co mau icon rieng, khong can vien doi mau).
+        public void Play(string viewerName, string itemName, Sprite icon, Color? iconColor = null, Color? accentColor = null)
         {
+            Color? resolvedIconColor = iconColor ?? accentColor;
+
             // icon null khi chưa có icon quà thật (đang chờ curate) - giữ nguyên icon mặc định trên template thay vì để trống.
             if (iconImage != null && icon != null)
             {
                 iconImage.sprite = icon;
                 // Icon nguồn là hình trắng/nền trong suốt (game-icons.net) - cần tint màu để có màu sắc phù hợp vật phẩm.
-                iconImage.color = iconColor ?? Color.white;
+                iconImage.color = resolvedIconColor ?? Color.white;
+            }
+
+            if (cardOutline != null && accentColor.HasValue)
+            {
+                Color c = accentColor.Value;
+                cardOutline.effectColor = new Color(c.r, c.g, c.b, cardOutline.effectColor.a);
             }
 
             if (viewerNameText != null)

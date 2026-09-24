@@ -7,7 +7,7 @@ namespace SteamRush.Features.UI.Views
     {
         [SerializeField] private GiftToastController toastTemplate;
 
-        public void Show(string viewerName, string itemName, Sprite icon, Color? iconColor = null)
+        public void Show(string viewerName, string itemName, Sprite icon, Color? iconColor = null, Color? accentColor = null)
         {
             if (toastTemplate == null)
             {
@@ -17,7 +17,7 @@ namespace SteamRush.Features.UI.Views
 
             GiftToastController instance = Instantiate(toastTemplate, toastTemplate.transform.parent);
             instance.gameObject.SetActive(true);
-            instance.Play(viewerName, itemName, icon, iconColor);
+            instance.Play(viewerName, itemName, icon, iconColor, accentColor);
         }
     }
 }
