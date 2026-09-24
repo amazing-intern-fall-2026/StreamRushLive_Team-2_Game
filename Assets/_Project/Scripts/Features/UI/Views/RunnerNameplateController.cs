@@ -14,6 +14,12 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private Image avatar;
         [SerializeField] private TMP_Text runnerName;
 
+        [Header("VIP Styling")]
+        [Tooltip("Màu tên mặc định của Runner thường.")]
+        [SerializeField] private Color normalColor = Color.white;
+        [Tooltip("Màu tên nổi bật khi Runner là VIP (vé F10).")]
+        [SerializeField] private Color vipColor = new Color(1f, 0.85f, 0.1f, 1f);
+
         [Header("Position Offset Settings")]
         [SerializeField] private float offsetX = 0f;
 
@@ -97,17 +103,31 @@ namespace SteamRush.Features.UI.Views
             gameObject.SetActive(target != null);
         }
 
-        // Cập nhật tên hiển thị và avatar tròn của runner hiện tại trên bảng tên.
-        public void SetRunnerInfo(string name, Sprite runnerAvatar)
+        // Cập nhật tên hiển thị, avatar tròn và trạng thái VIP của runner hiện tại trên bảng tên.
+        public void SetRunnerInfo(string name, Sprite runnerAvatar, bool isVip)
         {
             if (runnerName != null)
             {
                 runnerName.text = name;
+                runnerName.color = isVip ? vipColor : normalColor;
             }
 
             if (avatar != null && runnerAvatar != null)
             {
                 avatar.sprite = runnerAvatar;
+            }
+        }
+
+        public void SetRunnerInfo(string name, Sprite runnerAvatar)
+        {
+            SetRunnerInfo(name, runnerAvatar, false);
+        }
+
+        public void SetNameColor(Color color)
+        {
+            if (runnerName != null)
+            {
+                runnerName.color = color;
             }
         }
 

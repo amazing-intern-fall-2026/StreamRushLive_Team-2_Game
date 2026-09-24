@@ -28,10 +28,15 @@ namespace SteamRush.Features.Runner
         {
             if (_hasTriggered) return;
 
-            bool isPlayer = other.CompareTag("Player") || other.GetComponentInParent<RunnerController>() != null;
+            bool isPlayer = other.CompareTag("Player") 
+                || other.GetComponentInParent<RunnerController>() != null
+                || other.GetComponentInParent<ChatLaneRunnerController>() != null
+                || other.GetComponentInParent<RunnerCollisionHandler>() != null;
+
             if (!isPlayer) return;
 
             _hasTriggered = true;
+            Debug.Log("[RoadsideHandoverTrigger] Runner chạm vào Trigger 12m -> Kích hoạt chuyển gậy!");
             _queueManager?.NotifyRunnerReachedProxy();
         }
     }

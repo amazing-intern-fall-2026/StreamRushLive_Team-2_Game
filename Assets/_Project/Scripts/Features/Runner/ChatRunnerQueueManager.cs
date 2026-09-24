@@ -32,7 +32,9 @@ namespace SteamRush.Features.Runner
         [Tooltip("Bật cơ chế nhân vật tiếp theo đứng chờ sẵn bên lề đường để chuyển gậy.")]
         [SerializeField] private bool _enableRoadsideHandover = true;
         [Tooltip("Khoảng cách mét phía trước Runner xuất hiện nhân vật đứng chờ.")]
-        [SerializeField] private float _spawnAheadMeters = 30f;
+        [SerializeField] private float _spawnAheadMeters = 35f;
+        [Tooltip("Prefab đại diện người đứng chờ chuyển gậy (chứa Trigger 12m và ModelAnchor).")]
+        [SerializeField] private GameObject _roadsideProxyPrefab;
         [Tooltip("Khoảng cách X coi như Runner đã tiếp cận nhân vật đứng bên đường để hoàn tất chuyển gậy.")]
         [SerializeField] private float _arrivalThresholdX = 0.6f;
         [Tooltip("Vị trí Z của vỉa hè bên trái.")]
@@ -77,10 +79,27 @@ namespace SteamRush.Features.Runner
         private bool _pendingNextRunnerIsVip;
 
         public string CurrentRunnerId { get; private set; }
+        public bool CurrentRunnerIsVip { get; private set; }
         public bool IsWaitingForFollower => _isWaitingForFollower;
         public int QueuedCount => _followerQueue.Count;
         public float LegProgress => _distanceSinceLastLeg;
         public float LegDistanceMeters => _legDistanceMeters;
+
+        /// <summary>
+        /// Xem trước Runner kế tiếp trong hàng đợi hoặc Runner đang đứng chờ bên đường.
+        /// </summary>
+        public (string name, bool isVip)? PeekNextRunner()
+        {
+            if (_proxySpawnedForCurrentLeg && !string.IsNullOrEmpty(_pendingNextRunnerId))
+            {
+                return (_pendingNextRunnerId, _pendingNextRunnerIsVip);
+            }
+            if (_followerQueue.Count > 0)
+            {
+                return _followerQueue.Peek();
+            }
+            return null;
+        }
 
         public event Action<string, int> OnRunnerChanged;
 
@@ -152,6 +171,7 @@ namespace SteamRush.Features.Runner
             }
 
             _followerQueue.Enqueue((userId, false));
+            UpdateNextRunnerHud();
             OnRunnerChanged?.Invoke(CurrentRunnerId, _followerQueue.Count);
 
             if (_isWaitingForFollower)
@@ -186,6 +206,7 @@ namespace SteamRush.Features.Runner
 
             _vipFollowerIds.Add(userId);
 
+            UpdateNextRunnerHud();
             OnRunnerChanged?.Invoke(CurrentRunnerId, _followerQueue.Count);
 
             if (_isWaitingForFollower)
@@ -220,16 +241,20 @@ namespace SteamRush.Features.Runner
 
         private void UpdateRoadsideHandover()
         {
-            // 1. Kiểm tra khi cự ly còn cách mốc leg một khoảng _spawnAheadMeters -> spawn proxy đứng chờ bên lề đường
+            // 1. Kiểm tra khi cự ly còn cách mốc leg một khoảng _spawnAheadMeters (35m) -> spawn proxy đứng chờ bên lề đường
             float triggerDistance = Mathf.Max(0f, _legDistanceMeters - _spawnAheadMeters);
             if (_distanceSinceLastLeg >= triggerDistance && !_proxySpawnedForCurrentLeg && _activeProxy == null)
             {
                 TrySpawnRoadsideProxy();
             }
 
-            // 2. Handover được kích hoạt bởi RoadsideHandoverTrigger khi Runner thực sự chạm proxy.
-            // Fallback nếu không có proxy mà đã chạy hết cự ly
-            if (_activeProxy == null && _distanceSinceLastLeg >= _legDistanceMeters)
+            // 2. Handover được kích hoạt chính xác bởi RoadsideHandoverTrigger khi Runner chạm BoxCollider 12m.
+            // Fallback an toàn nếu proxy đã trôi qua phía sau Runner hoặc cự ly đã vượt mốc leg mà không có proxy
+            if (_activeProxy != null && _runnerTransform != null && _activeProxy.transform.position.x < _runnerTransform.position.x - 2f)
+            {
+                ExecuteRoadsideHandover();
+            }
+            else if (_activeProxy == null && _distanceSinceLastLeg >= _legDistanceMeters)
             {
                 _distanceSinceLastLeg -= _legDistanceMeters;
                 AdvanceToNextRunner();
@@ -269,9 +294,9 @@ namespace SteamRush.Features.Runner
             }
             else
             {
-                // ===== [Dhuy] Trừ người khỏi hàng đợi NGAY khi sinh Model chờ (theo hướng xử lý
-                // của Phước) - người này coi như đã chính thức "ra sân". Vé VIP chen vào sau thời
-                // điểm này sẽ không bao giờ đụng tới proxy đã spawn cho slot hiện tại. =====
+                // ===== Trừ người khỏi hàng đợi NGAY khi sinh Model chờ (cách đích 35m) =====
+                // Người này đã chính thức ra sân. Nếu có Vé VIP chen hàng lúc này,
+                // VIP sẽ đứng đầu hàng đợi để chạy chặng tiếp theo, không lo cướp chỗ hay làm biến mất người đang đứng chờ.
                 (_pendingNextRunnerId, _pendingNextRunnerIsVip) = _followerQueue.Dequeue();
             }
 
@@ -283,38 +308,88 @@ namespace SteamRush.Features.Runner
             // Đứng RANDOM ở 2 bên đường (vỉa hè trái hoặc phải)
             bool isLeft = UnityEngine.Random.value > 0.5f;
             float targetZ = isLeft ? _leftSidewalkZ : _rightSidewalkZ;
-            // Xoay mặt vào trong hướng về đường chạy và Runner đang chạy tới
             Quaternion spawnRot = isLeft ? Quaternion.Euler(0f, 65f, 0f) : Quaternion.Euler(0f, -65f, 0f);
 
-            Vector3 spawnPos = new Vector3(_runnerTransform.position.x + _spawnAheadMeters, _sidewalkY, targetZ);
+            // 1. Tạo Root Proxy ở tâm đường (Z=0, Y=0, X = Runner.x + _spawnAheadMeters)
+            Vector3 rootPos = new Vector3(_runnerTransform.position.x + _spawnAheadMeters, 0f, 0f);
 
-            _activeProxy = Instantiate(_pendingNextOutfit, spawnPos, spawnRot);
-            _activeProxy.name = $"RoadsideProxy_{_pendingNextOutfit.name}";
-
-            // Vô hiệu hoá Colliders trên proxy để tránh va chạm vật lý
-            foreach (var col in _activeProxy.GetComponentsInChildren<Collider>())
+            if (_roadsideProxyPrefab != null)
             {
-                col.enabled = false;
+                _activeProxy = Instantiate(_roadsideProxyPrefab, rootPos, Quaternion.identity);
+                _activeProxy.name = $"RoadsideHandoverProxy_{_pendingNextOutfit.name}";
             }
-
-            // ĐỨNG YÊN (không chạy phía trước người chơi): Vô hiệu hoá Animator và hạ tay xuống tư thế đứng thư giãn tự nhiên
-            var anims = _activeProxy.GetComponentsInChildren<Animator>();
-            foreach (var a in anims)
+            else
             {
-                a.enabled = false;
+                _activeProxy = new GameObject($"RoadsideHandoverProxy_{_pendingNextOutfit.name}");
+                _activeProxy.transform.position = rootPos;
+                _activeProxy.transform.rotation = Quaternion.identity;
             }
-            ApplyNaturalStandingPose(_activeProxy);
-
-            // Gắn Nameplate hiển thị tên Follower tiếp theo
-            AttachNameplateToProxy(_activeProxy, _pendingNextRunnerId, _pendingNextRunnerIsVip);
 
             // Gắn MovingWorldObject để proxy trôi theo thế giới về phía Runner
             MovingWorldObject mover = _activeProxy.GetComponent<MovingWorldObject>();
             if (mover == null) mover = _activeProxy.AddComponent<MovingWorldObject>();
             if (_worldSpeedManager != null) mover.Initialize(_worldSpeedManager);
 
-            // [Dhuy] Hàng đợi vừa giảm 1 người ngay tại thời điểm spawn (không phải lúc chuyển gậy nữa)
+            // Gắn BoxCollider Is Trigger = true kéo rộng ngang 12m phủ qua cả 3 làn đường chạy (-6m đến +6m)
+            BoxCollider box = _activeProxy.GetComponent<BoxCollider>();
+            if (box == null) box = _activeProxy.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+            box.size = new Vector3(1.5f, 3.5f, 12f);
+            box.center = new Vector3(0f, 1.75f, 0f);
+
+            // Gắn RoadsideHandoverTrigger để bắt OnTriggerEnter chính xác thời khắc chạm nhau
+            RoadsideHandoverTrigger trigger = _activeProxy.GetComponent<RoadsideHandoverTrigger>();
+            if (trigger == null) trigger = _activeProxy.AddComponent<RoadsideHandoverTrigger>();
+            trigger.Initialize(this, 12f);
+
+            // 2. Định vị Model nhân vật đứng chờ bên lề đường (ModelAnchor)
+            Transform existingContainer = _activeProxy.transform.Find("ModelContainer");
+            GameObject modelAnchor;
+            if (existingContainer != null)
+            {
+                modelAnchor = existingContainer.gameObject;
+            }
+            else
+            {
+                modelAnchor = new GameObject("ModelAnchor");
+                modelAnchor.transform.SetParent(_activeProxy.transform, false);
+            }
+
+            modelAnchor.transform.localPosition = new Vector3(0f, _sidewalkY, targetZ);
+            modelAnchor.transform.localRotation = spawnRot;
+
+            // Xoá model cũ trong anchor nếu có
+            foreach (Transform c in modelAnchor.transform)
+            {
+                Destroy(c.gameObject);
+            }
+
+            // Tạo model nhân vật mới từ variant
+            GameObject characterInstance = Instantiate(_pendingNextOutfit, modelAnchor.transform);
+            characterInstance.name = _pendingNextOutfit.name;
+            characterInstance.transform.localPosition = Vector3.zero;
+            characterInstance.transform.localRotation = Quaternion.identity;
+
+            // Vô hiệu hoá Colliders trên model nhân vật để tránh va chạm cản trở vật lý runner
+            foreach (var col in characterInstance.GetComponentsInChildren<Collider>())
+            {
+                col.enabled = false;
+            }
+
+            // ĐỨNG YÊN: Vô hiệu hoá Animator và hạ tay xuống tư thế đứng thư giãn tự nhiên
+            var anims = characterInstance.GetComponentsInChildren<Animator>();
+            foreach (var a in anims)
+            {
+                a.enabled = false;
+            }
+            ApplyNaturalStandingPose(characterInstance);
+
+            // Gắn Nameplate hiển thị tên Follower / VIP trên đầu nhân vật đứng chờ
+            AttachNameplateToProxy(characterInstance, _pendingNextRunnerId, _pendingNextRunnerIsVip);
+
+            // Hàng đợi vừa giảm 1 người ngay tại thời điểm spawn (không phải lúc chuyển gậy nữa)
             // -> báo lại UI đếm số hàng chờ cập nhật đúng ngay lúc này.
+            UpdateNextRunnerHud();
             OnRunnerChanged?.Invoke(CurrentRunnerId, _followerQueue.Count);
         }
 
@@ -324,6 +399,7 @@ namespace SteamRush.Features.Runner
             // từ lúc TrySpawnRoadsideProxy() spawn Model chờ (xem comment ở đó).
 
             CurrentRunnerId = _pendingNextRunnerId;
+            CurrentRunnerIsVip = _pendingNextRunnerIsVip;
             _distanceSinceLastLeg = 0f;
             _proxySpawnedForCurrentLeg = false;
 
@@ -380,7 +456,7 @@ namespace SteamRush.Features.Runner
             var tmp = nameplate.GetComponentInChildren<TMPro.TMP_Text>();
             if (tmp != null)
             {
-                tmp.text = isVip ? $"⭐ {displayName}" : displayName;
+                tmp.text = displayName;
                 tmp.color = isVip ? _vipNameColor : _normalNameColor;
             }
 
@@ -465,12 +541,12 @@ namespace SteamRush.Features.Runner
                 }
             }
 
-            (CurrentRunnerId, _) = _followerQueue.Dequeue();
+            (CurrentRunnerId, CurrentRunnerIsVip) = _followerQueue.Dequeue();
             UpdateRunnerHud();
             OnRunnerChanged?.Invoke(CurrentRunnerId, _followerQueue.Count);
         }
 
-        // Gắn tên/avatar lên bảng tên của Runner hiện tại qua facade HUDManager có sẵn.
+        // Gắn tên/avatar/trạng thái VIP lên bảng tên của Runner hiện tại qua facade HUDManager có sẵn.
         private void UpdateRunnerHud()
         {
             if (_hudManager == null)
@@ -478,8 +554,27 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            _hudManager.UpdateRunnerInfo(CurrentRunnerId, _defaultAvatar);
+            _hudManager.UpdateRunnerInfo(CurrentRunnerId, _defaultAvatar, CurrentRunnerIsVip);
             _hudManager.UpdateRunnerTarget(_runnerTransform);
+            UpdateNextRunnerHud();
+        }
+
+        public void UpdateNextRunnerHud()
+        {
+            if (_hudManager == null)
+            {
+                return;
+            }
+
+            var next = PeekNextRunner();
+            if (next.HasValue)
+            {
+                _hudManager.UpdateNextRunnerPreview(next.Value.name, next.Value.isVip);
+            }
+            else
+            {
+                _hudManager.UpdateNextRunnerPreview(string.Empty, false);
+            }
         }
 
         // Empty Queue Hold: dừng thế giới + báo UI hiện bảng chờ.
@@ -509,7 +604,7 @@ namespace SteamRush.Features.Runner
 
             _waitingStateChanged.Invoke(false);
 
-            (CurrentRunnerId, _) = _followerQueue.Dequeue();
+            (CurrentRunnerId, CurrentRunnerIsVip) = _followerQueue.Dequeue();
             UpdateRunnerHud();
             OnRunnerChanged?.Invoke(CurrentRunnerId, _followerQueue.Count);
         }

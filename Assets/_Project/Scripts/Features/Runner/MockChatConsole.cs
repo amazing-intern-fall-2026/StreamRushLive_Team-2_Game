@@ -467,6 +467,20 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
+            // Kiểm tra lệnh mua vé hàng chờ qua chat: #ve / #ticket (Thường) và #vip / #vevip (VIP)
+            if (trimmedCmd == "ve" || trimmedCmd == "#ve" || trimmedCmd == "ticket" || trimmedCmd == "#ticket" || trimmedCmd == "vethuong" || trimmedCmd == "#vethuong")
+            {
+                MockBuyNormalTicket(followerName);
+                ClearInputField();
+                return;
+            }
+            if (trimmedCmd == "vip" || trimmedCmd == "#vip" || trimmedCmd == "vevip" || trimmedCmd == "#vevip")
+            {
+                MockBuyVipTicket(followerName);
+                ClearInputField();
+                return;
+            }
+
             // 2. Kiểm tra lệnh spawn xe cản đường của phe Anti (100 năng lượng / xe):
             // TH A: Cú pháp trực tiếp: "#anti 1", "anti 1", "#anti 2", "anti 2", "#anti 3", "anti 3", "anti1", "anti2", "anti3"
             int antiLane = -1;
@@ -784,7 +798,7 @@ namespace SteamRush.Features.Runner
         }
 
         // ===== [Dhuy] BEGIN - F9/F10 Vé hàng chờ (Ticket System) =====
-        private void MockBuyNormalTicket()
+        private void MockBuyNormalTicket(string customUserId = null)
         {
             if (queueManager == null)
             {
@@ -797,15 +811,16 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            string newId = "Follower_" + Random.Range(100, 999);
+            string newId = string.IsNullOrEmpty(customUserId) ? ("Follower_" + Random.Range(100, 999)) : customUserId;
             queueManager.TryEnqueueFollower(newId);
 
             if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-            hudManager?.ShowStatusPopup($"[{newId}] mua vé THƯỜNG, xếp cuối hàng chờ!", true);
-            Debug.Log($"[MockChatConsole] F9 -> Vé thường: {newId} (cuối hàng chờ).");
+            hudManager?.ShowStatusPopup($"[{newId}] (Phe Fan) mua VÉ THƯỜNG -> Vào cuối hàng chờ!", true);
+            hudManager?.ShowGiftToast(newId, "Vé Hàng Chờ (Thường)", null, Color.white);
+            Debug.Log($"[MockChatConsole] F9 -> Vé thường: {newId} (vào cuối hàng chờ FIFO).");
         }
 
-        private void MockBuyVipTicket()
+        private void MockBuyVipTicket(string customUserId = null)
         {
             if (queueManager == null)
             {
@@ -818,12 +833,13 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            string newId = "VIP_" + Random.Range(100, 999);
+            string newId = string.IsNullOrEmpty(customUserId) ? ("VIP_" + Random.Range(100, 999)) : customUserId;
             queueManager.TryEnqueuePriorityFollower(newId);
 
             if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-            hudManager?.ShowStatusPopup($"[{newId}] mua vé VIP, chen thẳng lên ĐẦU hàng chờ!", true);
-            Debug.Log($"[MockChatConsole] F10 -> Vé VIP: {newId} (đầu hàng chờ).");
+            hudManager?.ShowStatusPopup($"[{newId}] (Phe Fan) mua VÉ VIP -> Chen lên vị trí ưu tiên kế tiếp (Slot #2)!", true, null, new Color(1f, 0.85f, 0.1f, 1f));
+            hudManager?.ShowGiftToast(newId, "Vé Hàng Chờ VIP", null, new Color(1f, 0.85f, 0.1f, 1f));
+            Debug.Log($"[MockChatConsole] F10 -> Vé VIP: {newId} (chen lên slot ưu tiên kế tiếp).");
         }
         // ===== [Dhuy] END =====
 

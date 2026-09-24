@@ -15,6 +15,12 @@ namespace SteamRush.Features.UI
         [SerializeField] private StatusPopupSpawner statusPopupSpawner;
         [SerializeField] private GiftToastQueue giftToastQueue;
         [SerializeField] private GiftToastQueue topBannerQueue;
+
+        [Header("Next Runner HUD / Preview")]
+        [SerializeField] private TMPro.TMP_Text nextRunnerLabel;
+        [SerializeField] private Color nextRunnerNormalColor = Color.white;
+        [SerializeField] private Color nextRunnerVipColor = new Color(1f, 0.85f, 0.1f, 1f);
+
         // Xanh duong dong bo voi mau Phe Fan (Fan_Bg Outline / FactionTugOfWarUI) thay vi xanh la.
         [SerializeField] private Color _buffAccentColor = new Color(0.35f, 0.75f, 1f, 1f);
         [SerializeField] private Color _debuffAccentColor = new Color(1f, 0.3f, 0.25f, 1f);
@@ -44,8 +50,8 @@ namespace SteamRush.Features.UI
             energyBar.SetEnergy(currentEnergy);
         }
 
-        // Cập nhật tên + avatar hiển thị trên bảng tên world-space của runner đang chạy hiện tại.
-        public void UpdateRunnerInfo(string name, Sprite avatar)
+        // Cập nhật tên + avatar + trạng thái VIP hiển thị trên bảng tên world-space của runner đang chạy hiện tại.
+        public void UpdateRunnerInfo(string name, Sprite avatar, bool isVip = false)
         {
             if (runnerNameplate == null)
             {
@@ -53,7 +59,29 @@ namespace SteamRush.Features.UI
                 return;
             }
 
-            runnerNameplate.SetRunnerInfo(name, avatar);
+            runnerNameplate.SetRunnerInfo(name, avatar, isVip);
+        }
+
+        public void UpdateRunnerInfo(string name, Sprite avatar)
+        {
+            UpdateRunnerInfo(name, avatar, false);
+        }
+
+        // Cập nhật khung xem trước Next Runner trên HUD (nếu có label liên kết)
+        public void UpdateNextRunnerPreview(string name, bool isVip)
+        {
+            if (nextRunnerLabel == null) return;
+
+            if (string.IsNullOrEmpty(name))
+            {
+                nextRunnerLabel.text = "<color=#888888>(Trống)</color>";
+                nextRunnerLabel.color = Color.gray;
+            }
+            else
+            {
+                nextRunnerLabel.text = name;
+                nextRunnerLabel.color = isVip ? nextRunnerVipColor : nextRunnerNormalColor;
+            }
         }
 
         // Gán Transform runner hiện tại để bảng tên world-space biết vị trí cần bám theo phía trên đầu.

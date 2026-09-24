@@ -8152,7 +8152,8 @@ MonoBehaviour:
   _runnerTransform: {fileID: 913794228}
   _defaultAvatar: {fileID: 21300000, guid: 33f6747086f03b2499072836eddfe397, type: 3}
   _enableRoadsideHandover: 1
-  _spawnAheadMeters: 30
+  _spawnAheadMeters: 35
+  _roadsideProxyPrefab: {fileID: 100001, guid: 8192a0e9d6c547a192d6e4b85c123456, type: 3}
   _arrivalThresholdX: 0.6
   _leftSidewalkZ: -5.8
   _rightSidewalkZ: 5.8
