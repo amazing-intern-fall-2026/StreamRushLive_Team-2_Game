@@ -440,28 +440,43 @@ namespace StreamRushLive.Features.Spawning
             carInstance.name = $"ObstacleCar_{tier}_{prefabToSpawn.name}";
             try { carInstance.tag = "Obstacle"; } catch { }
 
-            // Gán tag "Obstacle" và chuyển toàn bộ collider con sang Trigger
-            // để phát hiện va chạm mượt mà mà tuyệt đối không đẩy/kéo vật lý người chơi
-            Collider[] colliders = carInstance.GetComponentsInChildren<Collider>();
-            if (colliders == null || colliders.Length == 0)
+            // 1. Tắt toàn bộ Collider con có sẵn trên prefab để tránh lỗi MeshCollider non-convex vượt giới hạn 256 polygon
+            Collider[] existingColliders = carInstance.GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < existingColliders.Length; i++)
             {
-                var box = carInstance.AddComponent<BoxCollider>();
-                box.size = new Vector3(2.2f, 1.6f, 4.5f);
-                box.center = new Vector3(0f, 0.8f, 0f);
-                box.isTrigger = true;
-            }
-            else
-            {
-                for (int i = 0; i < colliders.Length; i++)
+                if (existingColliders[i] != null)
                 {
-                    if (colliders[i] is MeshCollider meshCol)
-                    {
-                        meshCol.convex = true;
-                    }
-                    colliders[i].isTrigger = true;
-                    try { colliders[i].gameObject.tag = "Obstacle"; } catch { }
+                    existingColliders[i].enabled = false;
                 }
             }
+
+            // 2. Gán BoxCollider Trigger chuẩn trên root GameObject theo đúng kích thước phân cấp xe
+            var box = carInstance.GetComponent<BoxCollider>();
+            if (box == null) box = carInstance.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+            box.enabled = true;
+
+            switch (tier)
+            {
+                case VehicleTier.HeavyTruck:
+                    box.size = new Vector3(2.6f, 3.2f, 7.5f);
+                    box.center = new Vector3(0f, 1.6f, 0f);
+                    break;
+                case VehicleTier.PickupTruck:
+                    box.size = new Vector3(2.5f, 2.2f, 5.5f);
+                    box.center = new Vector3(0f, 1.1f, 0f);
+                    break;
+                default: // SedanCar
+                    box.size = new Vector3(2.2f, 1.6f, 4.8f);
+                    box.center = new Vector3(0f, 0.8f, 0f);
+                    break;
+            }
+
+            // 3. Thêm Kinematic Rigidbody để tối ưu hóa chuyển động Trigger trong PhysX
+            var rb = carInstance.GetComponent<Rigidbody>();
+            if (rb == null) rb = carInstance.AddComponent<Rigidbody>();
+            rb.isKinematic = true;
+            rb.useGravity = false;
 
             if (obstacle != null)
             {

@@ -11,7 +11,7 @@ namespace StreamRushLive.Features.Spawning
     /// - Không có lực đẩy lùi knockback (Runner luôn cố định tọa độ X).
     /// - Cung cấp hàm abstract OnHitPlayer() để các lớp con tự định nghĩa hành vi phụ (ví dụ trừ quãng đường, xoay vòng, văng mảnh vỡ,...).
     /// </summary>
-    [RequireComponent(typeof(Collider))]
+    [RequireComponent(typeof(BoxCollider))]
     public abstract class ObstacleBase : MonoBehaviour
     {
         [Header("Obstacle Info")]

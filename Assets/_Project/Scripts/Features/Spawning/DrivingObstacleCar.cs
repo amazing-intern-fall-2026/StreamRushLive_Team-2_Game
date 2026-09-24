@@ -136,22 +136,38 @@ namespace StreamRushLive.Features.Spawning
             }
         }
 
+        private Rigidbody _rb;
+
         private void Start()
         {
+            _rb = GetComponent<Rigidbody>();
             if (_speedManager == null)
             {
-                _speedManager = FindFirstObjectByType<WorldSpeedManager>();
+                _speedManager = WorldSpeedManager.Instance ?? FindFirstObjectByType<WorldSpeedManager>();
             }
         }
 
         private void Update()
         {
+            if (_speedManager == null)
+            {
+                _speedManager = WorldSpeedManager.Instance ?? FindFirstObjectByType<WorldSpeedManager>();
+            }
+
             float worldSpeed = _speedManager != null ? _speedManager.CurrentSpeed : 0f;
             float totalSpeed = worldSpeed + _drivingSpeed;
             float dt = Time.deltaTime;
 
             // 1. Di chuyển xe lao về phía trước (-X) theo tổng vận tốc (vận tốc đường + vận tốc tự lái)
-            transform.position += Vector3.left * (totalSpeed * dt);
+            if (_rb != null && _rb.isKinematic)
+            {
+                _rb.position += Vector3.left * (totalSpeed * dt);
+                transform.position = _rb.position;
+            }
+            else
+            {
+                transform.position += Vector3.left * (totalSpeed * dt);
+            }
 
             // 2. Quay các bánh xe đồng bộ theo tốc độ thực tế của xe trên mặt đường
             if (_enableWheelSpin && _wheelTransforms.Count > 0 && _drivingSpeed > 0.01f)
