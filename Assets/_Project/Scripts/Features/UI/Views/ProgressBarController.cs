@@ -10,6 +10,10 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private Image fillBar;
         [SerializeField] private TMP_Text labelKm;
 
+        // Avatar Runner truot ngang theo % tien do doc theo thanh - cung co che voi Fan/Anti handle
+        // (FactionTugOfWarUI.UpdateHandlePosition), chi khac truc (ngang thay vi doc).
+        [SerializeField] private RectTransform avatarHandle;
+
         // GDD v1.3.1 muc 7: thanh cu ly hien theo met CHANG hien tai (0 -> RelayDistanceMeters,
         // mac dinh 100m), KHONG con hien theo km tong toan chang 100km nhu ban cu. Tang khi chay,
         // giam khi va cham (TrackProgressTracker.ReduceDistance goi lai ham nay voi gia tri moi).
@@ -25,11 +29,18 @@ namespace SteamRush.Features.UI.Views
                 var fillRect = fillBar.rectTransform;
                 float fullWidth = ((RectTransform)fillRect.parent).rect.width;
                 fillRect.sizeDelta = new Vector2(fullWidth * ratio, fillRect.sizeDelta.y);
+
+                if (avatarHandle != null)
+                {
+                    Vector2 pos = avatarHandle.anchoredPosition;
+                    pos.x = fullWidth * ratio;
+                    avatarHandle.anchoredPosition = pos;
+                }
             }
 
             if (labelKm != null)
             {
-                labelKm.text = $"{clampedMeters:F0}m";
+                labelKm.text = $"{clampedMeters:F0}m/{targetMeters:F0}m";
             }
         }
     }

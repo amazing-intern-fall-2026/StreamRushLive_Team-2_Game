@@ -26,38 +26,48 @@ namespace SteamRush.Features.UI
         private static Sprite _fallbackWhiteSprite;
         private float _targetFanFill;
         private float _targetAntiFill;
+        private float _currentFanFill;
+        private float _currentAntiFill;
 
         private void Awake()
         {
             EnsureSpriteAssigned(_fanFillImage);
             EnsureSpriteAssigned(_antiFillImage);
-            if (_fanFillImage != null) _targetFanFill = _fanFillImage.fillAmount;
-            if (_antiFillImage != null) _targetAntiFill = _antiFillImage.fillAmount;
         }
 
         private void Update()
         {
             if (_fanFillImage != null)
             {
-                _fanFillImage.fillAmount = Mathf.Lerp(_fanFillImage.fillAmount, _targetFanFill, Time.deltaTime * 12f);
+                _currentFanFill = Mathf.Lerp(_currentFanFill, _targetFanFill, Time.deltaTime * 12f);
+                ApplyFillHeight(_fanFillImage, _currentFanFill);
                 UpdateHandlePosition(_fanHandle, _fanFillImage);
             }
 
             if (_antiFillImage != null)
             {
-                _antiFillImage.fillAmount = Mathf.Lerp(_antiFillImage.fillAmount, _targetAntiFill, Time.deltaTime * 12f);
+                _currentAntiFill = Mathf.Lerp(_currentAntiFill, _targetAntiFill, Time.deltaTime * 12f);
+                ApplyFillHeight(_antiFillImage, _currentAntiFill);
                 UpdateHandlePosition(_antiHandle, _antiFillImage);
             }
         }
 
-        // Glow nho bam theo dung mep tren cua vach fill hien tai - doc chieu cao thuc te tu chinh
-        // RectTransform cua fillImage (khong hardcode so, vi Image kieu Filled khong tu resize).
+        // Resize RectTransform theo chieu cao thay vi dung Image.fillAmount, vi Image kieu Filled
+        // KHONG ho tro 9-slice (2 dau pill se bi keo meo) - cung logic da dung o ProgressBarController.
+        private static void ApplyFillHeight(Image fillImage, float ratio)
+        {
+            var fillRect = fillImage.rectTransform;
+            float trackHeight = ((RectTransform)fillRect.parent).rect.height;
+            fillRect.sizeDelta = new Vector2(fillRect.sizeDelta.x, trackHeight * ratio);
+        }
+
+        // Glow nho bam theo dung mep tren cua fill hien tai - fill gio la RectTransform duoc
+        // resize truc tiep (pivot day, gan bottom) nen rect.height chinh la vi tri can bam.
         private static void UpdateHandlePosition(RectTransform handle, Image fillImage)
         {
             if (handle == null) return;
-            float trackHeight = fillImage.rectTransform.rect.height;
             Vector2 pos = handle.anchoredPosition;
-            pos.y = fillImage.fillAmount * trackHeight;
+            pos.y = fillImage.rectTransform.rect.height;
             handle.anchoredPosition = pos;
         }
 
