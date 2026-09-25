@@ -15,6 +15,10 @@ namespace SteamRush.Features.UI.Views
     /// </summary>
     public class StatusPopupSpawner : MonoBehaviour
     {
+        // GDD v1.3.1 - yeu cau UI: tat chu noi tren dau Runner de khong che tam nhin + bang ten.
+        // Giu nguyen toan bo logic hang cho ben duoi (co the can lai sau), chi chan o diem vao Spawn().
+        [SerializeField] private bool _popupsEnabled = false;
+
         [SerializeField] private StatusPopupController popupTemplate;
 
         [Header("Queue Timing Settings")]
@@ -60,6 +64,7 @@ namespace SteamRush.Features.UI.Views
         /// </summary>
         public void Spawn(string message, bool isBuff, Sprite icon = null, Color? iconColor = null)
         {
+            if (!_popupsEnabled) return;
             if (string.IsNullOrWhiteSpace(message)) return;
 
             if (popupTemplate == null)

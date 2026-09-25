@@ -28,6 +28,10 @@ namespace SteamRush.Features.Runner
         [Header("Mock Settings")]
         [SerializeField] private float shieldDuration = 20f;
 
+        [Header("Gift Icons (khu Gift/Donate riêng)")]
+        [SerializeField] private Sprite shieldGiftIcon;
+        [SerializeField] private Sprite energyGiftIcon;
+
         private readonly ChatCommandSanitizer _sanitizer = new ChatCommandSanitizer();
 
         [Header("Debug UI Layout & Toggle")]
@@ -591,6 +595,7 @@ namespace SteamRush.Features.Runner
             if (success)
             {
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                hudManager?.ShowGiftToast("Khán giả", $"Khiên Bảo Vệ ({shieldDuration}s)", shieldGiftIcon, new Color(0.55f, 0.85f, 1f, 1f));
                 hudManager?.ShowStatusPopup($"[Khán giả] tặng Khiên Bảo Vệ trên Làn {randomLane}!", true);
                 Debug.Log($"[MockChatConsole] F1 -> Spawn Shield item trên Làn {randomLane}.");
             }
@@ -619,6 +624,7 @@ namespace SteamRush.Features.Runner
             if (success)
             {
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                hudManager?.ShowGiftToast("Khán giả", "Bình Năng Lượng (+20%)", energyGiftIcon, new Color(0.55f, 1f, 0.5f, 1f));
                 hudManager?.ShowStatusPopup($"[Khán giả] tặng Bình Năng Lượng trên Làn {randomLane}!", true);
                 Debug.Log($"[MockChatConsole] F2 -> Spawn Energy Buff item trên Làn {randomLane}.");
             }

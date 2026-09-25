@@ -45,15 +45,17 @@ namespace SteamRush.MinhHuy.ChatRunnerTest
             _sanitizer.SanitizeAndParse(_testChatMessage);
         }
 
+        // Public de nut test rieng (ngoai FactionTugOfWarUI - xem TestOverlay_MinhHuy trong scene)
+        // co the goi thang vao qua Button.onClick.AddListener luc runtime.
         [ContextMenu("2. Vao phe FAN + 1 Like")]
-        private void SimulateFanLike()
+        public void SimulateFanLike()
         {
             _factionManager.OnChatCommand(_testUserId, "#fan");
             _factionManager.OnLikeReceived(_testUserId);
         }
 
         [ContextMenu("3. Vao phe ANTI + 1 Like")]
-        private void SimulateAntiLike()
+        public void SimulateAntiLike()
         {
             _factionManager.OnChatCommand(_testUserId, "#anti");
             _factionManager.OnLikeReceived(_testUserId);

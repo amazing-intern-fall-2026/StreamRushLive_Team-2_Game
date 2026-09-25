@@ -71,7 +71,7 @@ namespace SteamRush.Features.UI
 
             if (_controlsGuideLabel != null)
             {
-                _controlsGuideLabel.text = "<b>Lệnh chat:</b> <color=#80D0FF>1/2/3</color> (làn) - <color=#FFA500>fast</color> - <color=#00BFFF>#fan</color> - <color=#FF6347>#anti</color> (500 tim thả xe) | <b>[F1-F5]</b> Test Quà";
+                _controlsGuideLabel.text = "<b>Lệnh chat:</b> <color=#80D0FF>1/2/3</color> (làn) - <color=#FFA500>fast</color> - <color=#00BFFF>#fan</color> - <color=#FF6347>#anti</color> (300 tim thả xe) | <b>[F1-F5]</b> Test Quà";
             }
         }
     }

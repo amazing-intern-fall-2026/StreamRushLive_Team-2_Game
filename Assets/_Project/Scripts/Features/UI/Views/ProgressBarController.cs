@@ -10,23 +10,37 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private Image fillBar;
         [SerializeField] private TMP_Text labelKm;
 
-        // currentKm: quãng đường hiện tại (km). GDD: TOTAL_DISTANCE = 100_000m = 100km.
-        public void SetProgress(float currentKm)
+        // Avatar Runner truot ngang theo % tien do doc theo thanh - cung co che voi Fan/Anti handle
+        // (FactionTugOfWarUI.UpdateHandlePosition), chi khac truc (ngang thay vi doc).
+        [SerializeField] private RectTransform avatarHandle;
+
+        // GDD v1.3.1 muc 7: thanh cu ly hien theo met CHANG hien tai (0 -> RelayDistanceMeters,
+        // mac dinh 100m), KHONG con hien theo km tong toan chang 100km nhu ban cu. Tang khi chay,
+        // giam khi va cham (TrackProgressTracker.ReduceDistance goi lai ham nay voi gia tri moi).
+        public void SetLegProgress(float currentMeters, float targetMeters)
         {
-            float clampedKm = Mathf.Clamp(currentKm, 0f, 100f);
+            float clampedMeters = Mathf.Clamp(currentMeters, 0f, targetMeters);
+            float ratio = targetMeters > 0f ? clampedMeters / targetMeters : 0f;
 
             if (fillBar != null)
             {
-                // Resize theo chiều rộng thay vì dùng fillAmount, vì Image kiểu Filled
-                // không hỗ trợ 9-slice (2 đầu bo tròn sẽ bị kéo méo).
+                // Resize theo chieu rong thay vi dung fillAmount, vi Image kieu Filled
+                // khong ho tro 9-slice (2 dau bo tron se bi keo meo).
                 var fillRect = fillBar.rectTransform;
                 float fullWidth = ((RectTransform)fillRect.parent).rect.width;
-                fillRect.sizeDelta = new Vector2(fullWidth * (clampedKm / 100f), fillRect.sizeDelta.y);
+                fillRect.sizeDelta = new Vector2(fullWidth * ratio, fillRect.sizeDelta.y);
+
+                if (avatarHandle != null)
+                {
+                    Vector2 pos = avatarHandle.anchoredPosition;
+                    pos.x = fullWidth * ratio;
+                    avatarHandle.anchoredPosition = pos;
+                }
             }
 
             if (labelKm != null)
             {
-                labelKm.text = $"{clampedKm:F1} / 100 km";
+                labelKm.text = $"{clampedMeters:F0}m/{targetMeters:F0}m";
             }
         }
     }

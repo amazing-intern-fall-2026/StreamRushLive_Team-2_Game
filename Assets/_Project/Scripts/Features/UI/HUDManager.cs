@@ -14,17 +14,22 @@ namespace SteamRush.Features.UI
         [SerializeField] private RunnerNameplateController runnerNameplate;
         [SerializeField] private StatusPopupSpawner statusPopupSpawner;
         [SerializeField] private GiftToastQueue giftToastQueue;
+        [SerializeField] private GiftToastQueue topBannerQueue;
+        // Xanh duong dong bo voi mau Phe Fan (Fan_Bg Outline / FactionTugOfWarUI) thay vi xanh la.
+        [SerializeField] private Color _buffAccentColor = new Color(0.35f, 0.75f, 1f, 1f);
+        [SerializeField] private Color _debuffAccentColor = new Color(1f, 0.3f, 0.25f, 1f);
 
-        // currentKm: quãng đường đã chạy, đơn vị km (GDD: TOTAL_DISTANCE = 100_000m = 100km).
-        public void UpdateProgress(float currentKm)
+        // GDD v1.3.1 muc 7: hien thi cu ly theo met CUA CHANG hien tai (khong phai tong 100km).
+        // currentMeters/targetMeters do TrackProgressTracker cung cap (CurrentLegDistanceMeters/RelayDistanceMeters).
+        public void UpdateLegProgress(float currentMeters, float targetMeters)
         {
             if (progressBar == null)
             {
-                Debug.LogWarning("[HUDManager] Chưa gán ProgressBarController trong Inspector - bỏ qua UpdateProgress.");
+                Debug.LogWarning("[HUDManager] Chưa gán ProgressBarController trong Inspector - bỏ qua UpdateLegProgress.");
                 return;
             }
 
-            progressBar.SetProgress(currentKm);
+            progressBar.SetLegProgress(currentMeters, targetMeters);
         }
 
         // currentEnergy: giá trị đã chuẩn hoá 0..1, phía gọi (module Like/Energy) tự tính trước khi truyền vào.
@@ -66,19 +71,28 @@ namespace SteamRush.Features.UI
         }
 
         // Hiện thông báo buff/debuff nổi lên trên đầu runner rồi tự mờ dần.
-        // isBuff quyết định màu chữ (xanh = buff, đỏ = debuff). icon: null = ẩn ô icon (vd. debuff chưa có icon riêng).
+        // isBuff quyết định màu viền/icon của Top Banner (xanh = buff, đỏ = debuff) - chữ tiêu đề luôn trắng
+        // theo đúng mẫu "Cảnh báo xe cản địa" (GDD). icon: null = ẩn ô icon (vd. debuff chưa có icon riêng).
         public void ShowStatusPopup(string message, bool isBuff, Sprite icon = null, Color? iconColor = null)
         {
-            if (statusPopupSpawner == null)
+            if (statusPopupSpawner != null)
             {
-                Debug.LogWarning("[HUDManager] Chưa gán StatusPopupSpawner trong Inspector - bỏ qua ShowStatusPopup.");
+                statusPopupSpawner.Spawn(message, isBuff, icon, iconColor);
+            }
+
+            // Top Banner (giữa trên cùng) - thay thế popup nổi trên đầu Runner (đã tắt qua _popupsEnabled)
+            // làm điểm hiển thị chính cho sự kiện chung của game. Tái sử dụng GiftToastQueue/GiftToastController.
+            if (topBannerQueue == null)
+            {
+                Debug.LogWarning("[HUDManager] Chưa gán topBannerQueue trong Inspector - bỏ qua Top Banner cho ShowStatusPopup.");
                 return;
             }
 
-            statusPopupSpawner.Spawn(message, isBuff, icon, iconColor);
+            topBannerQueue.Show(string.Empty, message, icon, iconColor, isBuff ? _buffAccentColor : _debuffAccentColor);
         }
 
-        // Hiện toast góc trên-phải khi viewer tặng quà: tên viewer + icon quà + tên vật thể tương ứng trong game (GDD).
+        // Hien toast ngay tren thanh Anti khi viewer tang qua: chi Icon + ten viewer (GDD moi -
+        // bo hien thi ten vat pham, xem itemName trong tham so chi con giu de tuong thich chu ky goi).
         // iconColor: tint cho icon quà (icon nguồn là hình trắng/nền trong suốt) - null = giữ màu mặc định.
         public void ShowGiftToast(string viewerName, string itemName, Sprite giftIcon, Color? iconColor = null)
         {
@@ -88,7 +102,7 @@ namespace SteamRush.Features.UI
                 return;
             }
 
-            giftToastQueue.Show(viewerName, itemName, giftIcon, iconColor);
+            giftToastQueue.Show(viewerName, itemName, giftIcon, iconColor, showItemName: false);
         }
     }
 }
