@@ -47,12 +47,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aeb395c47b6da4241a48ee255dd1002b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.StreamIntegration.FactionTugOfWarManager
-  _antiCarThreshold: 500
-  _antiCarCost: 300
+  _antiCarThreshold: 1000
+  _antiCarCost: 1000
+  _antiCarLaneCost: 100
+  _fanItemLaneCost: 50
   _defaultFaction: 0
   _factionValuesChanged:
     m_PersistentCalls:
       m_Calls: []
+  _initialFanLikes: 100
+  _initialAntiLikes: 200
 --- !u!114 &2892380118852192226
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -67,8 +71,28 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.ChatRunnerQueueManager
   _worldSpeedManager: {fileID: 0}
   _legDistanceMeters: 100
+  _initialRunnerId: Streamer_Alex
+  _initialFollowers:
+  - Viewer_Bao
+  - Viewer_Chi
+  - Top1_Dung
+  - Mod_Giang
+  - Gamer_Huy
+  _autoReplenishMockQueue: 1
   _hudManager: {fileID: 0}
   _runnerTransform: {fileID: 0}
+  _defaultAvatar: {fileID: 0}
+  _enableRoadsideHandover: 1
+  _spawnAheadMeters: 35
+  _roadsideProxyPrefab: {fileID: 0}
+  _arrivalThresholdX: 0.6
+  _leftSidewalkZ: -5.8
+  _rightSidewalkZ: 5.8
+  _sidewalkY: 0.2
+  _nameplatePrefab: {fileID: 0}
+  _outfitVariants: []
+  _normalNameColor: {r: 1, g: 1, b: 1, a: 1}
+  _vipNameColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   _waitingStateChanged:
     m_PersistentCalls:
       m_Calls: []

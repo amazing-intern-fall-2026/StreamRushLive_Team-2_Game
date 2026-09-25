@@ -2258,7 +2258,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u0110\u1EE7 300\u0111 \u2192 Th\u1EA3 Xe"
+  m_text: "Full Thanh \u2192 Th\u1EA3 Xe"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 30596ec5b5b2aef44a2f0b6bbac20068, type: 2}
   m_sharedMaterial: {fileID: 4762602659135997272, guid: 30596ec5b5b2aef44a2f0b6bbac20068, type: 2}
@@ -10899,8 +10899,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aeb395c47b6da4241a48ee255dd1002b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.StreamIntegration.FactionTugOfWarManager
-  _antiCarThreshold: 300
-  _antiCarCost: 300
+  _antiCarThreshold: 1000
+  _antiCarCost: 1000
   _antiCarLaneCost: 100
   _fanItemLaneCost: 50
   _defaultFaction: 0

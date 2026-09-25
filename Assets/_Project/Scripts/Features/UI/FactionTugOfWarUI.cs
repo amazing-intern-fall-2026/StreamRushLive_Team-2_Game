@@ -14,14 +14,17 @@ namespace SteamRush.Features.UI
         [Header("Fan (xanh, trai)")]
         [SerializeField] private Image _fanFillImage;
         [SerializeField] private TMP_Text _fanValueLabel;
-        [SerializeField] private int _fanMaxValue = 100;
+        [SerializeField] private int _fanMaxValue = 1000;
         [SerializeField] private RectTransform _fanHandle;
 
         [Header("Anti (do, phai)")]
         [SerializeField] private Image _antiFillImage;
         [SerializeField] private TMP_Text _antiValueLabel;
-        [SerializeField] private int _antiMaxValue = 300;
+        [SerializeField] private int _antiMaxValue = 1000;
         [SerializeField] private RectTransform _antiHandle;
+
+        public int FanMaxValue => _fanMaxValue;
+        public int AntiMaxValue => _antiMaxValue;
 
         private static Sprite _fallbackWhiteSprite;
         private float _targetFanFill;

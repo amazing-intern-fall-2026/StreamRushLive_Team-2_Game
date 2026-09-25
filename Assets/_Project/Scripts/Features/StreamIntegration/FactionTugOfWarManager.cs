@@ -20,8 +20,9 @@ namespace SteamRush.Features.StreamIntegration
     // Dictionary cua class nay.
     public class FactionTugOfWarManager : MonoBehaviour
     {
-        [SerializeField] private int _antiCarThreshold = 300;
-        [SerializeField] private int _antiCarCost = 300;
+        [Tooltip("Ngưỡng năng lượng để phe Anti tự động sinh xe cản đường (Full thanh = AntiMaxValue). Mặc định = 1000.")]
+        [SerializeField] private int _antiCarThreshold = 1000;
+        [SerializeField] private int _antiCarCost = 1000;
         [Tooltip("Chi phí năng lượng phe Anti để thả xe cản đường theo làn chỉ định (1, 2, 3). Mặc định = 100.")]
         [SerializeField] private int _antiCarLaneCost = 100;
         [Tooltip("Chi phí năng lượng phe Fan để thả vật phẩm hỗ trợ (khiên/buff) theo làn chỉ định (1, 2, 3). Mặc định = 50.")]
@@ -47,6 +48,7 @@ namespace SteamRush.Features.StreamIntegration
 
         public int FanLikes => _fanLikes;
         public int AntiLikes => _antiLikes;
+        public int AntiCarThreshold => _antiCarThreshold;
         public int AntiCarLaneCost => _antiCarLaneCost;
         public int FanItemLaneCost => _fanItemLaneCost;
 
@@ -54,6 +56,14 @@ namespace SteamRush.Features.StreamIntegration
         {
             _fanLikes = _initialFanLikes > 0 ? _initialFanLikes : 100;
             _antiLikes = _initialAntiLikes;
+
+            // Tự động đồng bộ ngưỡng spawn xe tự động bằng đúng dung lượng full thanh Anti (Full thanh mới spawn xe)
+            var ui = FindFirstObjectByType<SteamRush.Features.UI.FactionTugOfWarUI>();
+            if (ui != null && ui.AntiMaxValue > 0)
+            {
+                _antiCarThreshold = ui.AntiMaxValue;
+                _antiCarCost = ui.AntiMaxValue;
+            }
         }
 
         private void Start()
@@ -89,7 +99,7 @@ namespace SteamRush.Features.StreamIntegration
             _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
         }
 
-        // Bắn event yêu cầu sinh xe cản đường khi phe Anti tích đủ tim
+        // Bắn event yêu cầu sinh xe cản đường khi phe Anti tích đầy thanh năng lượng
         private void CheckAntiCarThreshold()
         {
             if (_antiLikes < _antiCarThreshold)
@@ -97,7 +107,7 @@ namespace SteamRush.Features.StreamIntegration
                 return;
             }
 
-            Debug.Log($"[FactionTugOfWarManager] Phe Anti du {_antiCarThreshold} tim - yeu cau sinh xe can duong.");
+            Debug.Log($"[FactionTugOfWarManager] Phe Anti full thanh ({_antiLikes}/{_antiCarThreshold}) - tự động sinh xe cản đường.");
 
             EventBus.Publish(new RequestCarSpawnEvent());
 
