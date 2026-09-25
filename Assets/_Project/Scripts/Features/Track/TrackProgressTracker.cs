@@ -43,7 +43,7 @@ namespace SteamRush.Track
 
             if (_hudManager != null)
             {
-                _hudManager.UpdateLegProgress(CurrentLegDistanceMeters, RelayDistanceMeters);
+                _hudManager.UpdateLegProgress(TotalDistanceMeters, GoalDistanceMeters);
             }
         }
 
@@ -68,7 +68,7 @@ namespace SteamRush.Track
 
             if (_hudManager != null)
             {
-                _hudManager.UpdateLegProgress(CurrentLegDistanceMeters, RelayDistanceMeters);
+                _hudManager.UpdateLegProgress(TotalDistanceMeters, GoalDistanceMeters);
             }
         }
 
@@ -86,7 +86,7 @@ namespace SteamRush.Track
 
             if (_hudManager != null)
             {
-                _hudManager.UpdateLegProgress(CurrentLegDistanceMeters, RelayDistanceMeters);
+                _hudManager.UpdateLegProgress(TotalDistanceMeters, GoalDistanceMeters);
                 _hudManager.ShowStatusPopup($"-{distanceDelta:F0}m Quãng đường!", false);
             }
         }

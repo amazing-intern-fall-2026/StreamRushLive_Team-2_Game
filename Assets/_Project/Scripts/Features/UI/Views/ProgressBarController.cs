@@ -40,7 +40,23 @@ namespace SteamRush.Features.UI.Views
 
             if (labelKm != null)
             {
-                labelKm.text = $"{clampedMeters:F0}m/{targetMeters:F0}m";
+                if (targetMeters >= 1000f)
+                {
+                    float targetKm = targetMeters / 1000f;
+                    if (clampedMeters < 1000f)
+                    {
+                        labelKm.text = $"{clampedMeters:F0}m/{targetKm:F0}km";
+                    }
+                    else
+                    {
+                        float currentKm = clampedMeters / 1000f;
+                        labelKm.text = $"{currentKm:F2}km/{targetKm:F0}km";
+                    }
+                }
+                else
+                {
+                    labelKm.text = $"{clampedMeters:F0}m/{targetMeters:F0}m";
+                }
             }
         }
     }
