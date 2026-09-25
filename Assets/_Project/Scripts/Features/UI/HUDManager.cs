@@ -119,7 +119,8 @@ namespace SteamRush.Features.UI
             topBannerQueue.Show(string.Empty, message, icon, iconColor, isBuff ? _buffAccentColor : _debuffAccentColor);
         }
 
-        // Hiện toast góc trên-phải khi viewer tặng quà: tên viewer + icon quà + tên vật thể tương ứng trong game (GDD).
+        // Hien toast ngay tren thanh Anti khi viewer tang qua: chi Icon + ten viewer (GDD moi -
+        // bo hien thi ten vat pham, xem itemName trong tham so chi con giu de tuong thich chu ky goi).
         // iconColor: tint cho icon quà (icon nguồn là hình trắng/nền trong suốt) - null = giữ màu mặc định.
         public void ShowGiftToast(string viewerName, string itemName, Sprite giftIcon, Color? iconColor = null)
         {
@@ -129,7 +130,7 @@ namespace SteamRush.Features.UI
                 return;
             }
 
-            giftToastQueue.Show(viewerName, itemName, giftIcon, iconColor);
+            giftToastQueue.Show(viewerName, itemName, giftIcon, iconColor, showItemName: false);
         }
     }
 }

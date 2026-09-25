@@ -7,6 +7,9 @@ namespace SteamRush.Features.UI
     // KHÔNG nằm trong Screen.safeArea vì đó là overlay riêng của app TikTok, hệ điều hành không
     // biết để tính vào safe area. Gắn script này lên 1 container rỗng làm cha của các phần tử HUD
     // cần né vùng chat (vd. ChatInputField, các nút/khung ở nửa dưới màn hình).
+    // ExecuteAlways: chay ca trong Edit Mode de Scene/Game view preview dung vi tri thuc te
+    // (khong phai doi vao Play Mode moi thay dung, tranh nham lam gia dinh vi tri sai khi chinh UI).
+    [ExecuteAlways]
     [RequireComponent(typeof(RectTransform))]
     public class SafeAreaHandler : MonoBehaviour
     {
@@ -17,7 +20,7 @@ namespace SteamRush.Features.UI
         private Rect _lastSafeArea;
         private Vector2Int _lastScreenSize;
 
-        private void Awake()
+        private void OnEnable()
         {
             _rectTransform = GetComponent<RectTransform>();
             Apply();
@@ -34,6 +37,16 @@ namespace SteamRush.Features.UI
 
         private void Apply()
         {
+            // ExecuteAlways co the goi Apply() vao dung luc Screen.width/height con la 0 (vd. khung
+            // hinh dau tien luc vua vao Play Mode, hoac Editor chua kip resize Game view) - chia cho
+            // 0 se ghi NaN vinh vien vao anchorMin/anchorMax, lam ca RectTransform lan cac con ben
+            // duoi (ChatInputField, QuickHelpBar) bien mat het. Bo qua lan goi do, cho lan Update() ke
+            // tiep khi Screen co kich thuoc hop le.
+            if (Screen.width <= 0 || Screen.height <= 0)
+            {
+                return;
+            }
+
             Rect safeArea = Screen.safeArea;
             _lastSafeArea = safeArea;
             _lastScreenSize = new Vector2Int(Screen.width, Screen.height);
