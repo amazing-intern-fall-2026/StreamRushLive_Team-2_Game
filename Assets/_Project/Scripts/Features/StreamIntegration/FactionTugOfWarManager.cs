@@ -129,6 +129,39 @@ namespace SteamRush.Features.StreamIntegration
             return _fanLikes > 0;
         }
 
+        /// <summary>
+        /// [DEBUG] Tăng/giảm năng lượng phe Fan (+/- delta). Clamped [0, 1000].
+        /// </summary>
+        public void DebugAdjustFanEnergy(int delta)
+        {
+            int max = 1000;
+            var ui = FindFirstObjectByType<SteamRush.Features.UI.FactionTugOfWarUI>();
+            if (ui != null && ui.FanMaxValue > 0) max = ui.FanMaxValue;
+
+            _fanLikes = Mathf.Clamp(_fanLikes + delta, 0, max);
+            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+            Debug.Log($"[FactionTugOfWarManager] Debug Fan Energy: {_fanLikes}/{max} (delta: {(delta >= 0 ? "+" : "")}{delta})");
+        }
+
+        /// <summary>
+        /// [DEBUG] Tăng/giảm năng lượng phe Anti (+/- delta). Clamped [0, _antiCarThreshold].
+        /// Nếu tăng chạm mốc full thanh, tự động kích hoạt sinh xe cản đường!
+        /// </summary>
+        public void DebugAdjustAntiEnergy(int delta)
+        {
+            int max = _antiCarThreshold > 0 ? _antiCarThreshold : 1000;
+            var ui = FindFirstObjectByType<SteamRush.Features.UI.FactionTugOfWarUI>();
+            if (ui != null && ui.AntiMaxValue > 0) max = ui.AntiMaxValue;
+
+            _antiLikes = Mathf.Clamp(_antiLikes + delta, 0, max);
+            if (delta > 0)
+            {
+                CheckAntiCarThreshold();
+            }
+            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+            Debug.Log($"[FactionTugOfWarManager] Debug Anti Energy: {_antiLikes}/{max} (delta: {(delta >= 0 ? "+" : "")}{delta})");
+        }
+
         // Doi phe qua chat: #FAN/#Blue -> Fan, #ANTI/#Red -> Anti (khong phan biet hoa thuong).
         public void OnChatCommand(string userId, string message)
         {

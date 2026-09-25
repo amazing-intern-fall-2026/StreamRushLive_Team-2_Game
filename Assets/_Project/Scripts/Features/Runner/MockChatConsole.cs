@@ -41,6 +41,7 @@ namespace SteamRush.Features.Runner
         [SerializeField] private bool isDebugUIVisible = true;
 
         private GameObject _quickHelpBarObj;
+        private GameObject _energyDebugPanelObj;
 
         private void Awake()
         {
@@ -153,6 +154,24 @@ namespace SteamRush.Features.Runner
                 }
             }
 
+            // 3. Tạo hoặc liên kết Panel Nút Tăng/Giảm Năng Lượng 2 Phe
+            if (_energyDebugPanelObj == null)
+            {
+                Canvas canvas = chatInputField != null ? chatInputField.GetComponentInParent<Canvas>() : FindFirstObjectByType<Canvas>();
+                if (canvas != null)
+                {
+                    Transform existingPanel = canvas.transform.Find("Panel_EnergyDebug");
+                    if (existingPanel != null)
+                    {
+                        _energyDebugPanelObj = existingPanel.gameObject;
+                    }
+                    else
+                    {
+                        CreateEnergyDebugButtons(canvas.transform);
+                    }
+                }
+            }
+
             if (toggleDebugButton != null)
             {
                 toggleDebugButton.onClick.RemoveListener(ToggleDebugUI);
@@ -160,6 +179,62 @@ namespace SteamRush.Features.Runner
             }
 
             UpdateDebugUIVisibility();
+        }
+
+        private void CreateEnergyDebugButtons(Transform canvasTransform)
+        {
+            _energyDebugPanelObj = new GameObject("Panel_EnergyDebug", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+            _energyDebugPanelObj.transform.SetParent(canvasTransform, false);
+
+            RectTransform rect = _energyDebugPanelObj.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0f);
+            rect.anchorMax = new Vector2(0.5f, 0f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.sizeDelta = new Vector2(780f, 36f);
+            rect.anchoredPosition = new Vector2(0f, 155f);
+
+            HorizontalLayoutGroup hlg = _energyDebugPanelObj.GetComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 8f;
+            hlg.childControlWidth = true;
+            hlg.childControlHeight = true;
+            hlg.childForceExpandWidth = true;
+            hlg.childForceExpandHeight = true;
+
+            // 4 Nút: Fan +100, Fan -100, Anti +100, Anti -100
+            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_FanPlus", "Fan +100 [F6 / ]]", new Color(0.12f, 0.45f, 0.85f, 0.95f), () => DebugIncreaseFanEnergy());
+            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_FanMinus", "Fan -100 [Shift+F6 / []", new Color(0.08f, 0.25f, 0.55f, 0.95f), () => DebugDecreaseFanEnergy());
+            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_AntiPlus", "Anti +100 [F11 / +]", new Color(0.85f, 0.28f, 0.15f, 0.95f), () => DebugIncreaseAntiEnergy());
+            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_AntiMinus", "Anti -100 [Shift+F11 / -]", new Color(0.55f, 0.15f, 0.08f, 0.95f), () => DebugDecreaseAntiEnergy());
+        }
+
+        private void CreateDebugButton(Transform parent, string name, string label, Color bgColor, UnityEngine.Events.UnityAction action)
+        {
+            GameObject btnObj = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            btnObj.transform.SetParent(parent, false);
+
+            Image img = btnObj.GetComponent<Image>();
+            img.color = bgColor;
+
+            Button btn = btnObj.GetComponent<Button>();
+            btn.onClick.AddListener(action);
+
+            GameObject textObj = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+            textObj.transform.SetParent(btnObj.transform, false);
+
+            RectTransform textRect = textObj.GetComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.sizeDelta = Vector2.zero;
+
+            TextMeshProUGUI tmp = textObj.GetComponent<TextMeshProUGUI>();
+            tmp.text = label;
+            tmp.fontSize = 12;
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.color = Color.white;
+            tmp.enableAutoSizing = true;
+            tmp.fontSizeMin = 9;
+            tmp.fontSizeMax = 13;
         }
 
         private void CreateToggleDebugButton(Transform canvasTransform)
@@ -217,6 +292,11 @@ namespace SteamRush.Features.Runner
                 _quickHelpBarObj.SetActive(isDebugUIVisible);
             }
 
+            if (_energyDebugPanelObj != null)
+            {
+                _energyDebugPanelObj.SetActive(isDebugUIVisible);
+            }
+
             if (debugPanelContainer != null)
             {
                 debugPanelContainer.SetActive(isDebugUIVisible);
@@ -227,8 +307,8 @@ namespace SteamRush.Features.Runner
                 RectTransform btnRect = toggleDebugButton.GetComponent<RectTransform>();
                 if (btnRect != null)
                 {
-                    // Khi thanh debug mở: Đẩy nút lên trên (Y: 155). Khi đóng: Nút hạ xuống góc dưới (Y: 20) gọn gàng
-                    btnRect.anchoredPosition = new Vector2(-20f, isDebugUIVisible ? 155f : 20f);
+                    // Khi thanh debug mở: Đẩy nút lên trên (Y: 195). Khi đóng: Nút hạ xuống góc dưới (Y: 20) gọn gàng
+                    btnRect.anchoredPosition = new Vector2(-20f, isDebugUIVisible ? 195f : 20f);
                 }
             }
 
@@ -302,6 +382,35 @@ namespace SteamRush.Features.Runner
 
             if (Keyboard.current.digit0Key.wasPressedThisFrame)
                 MockToggleUnlimitedModeDebug();
+
+            // ===== Phím tắt Debug Tăng / Giảm Năng Lượng 2 Phe =====
+            // Phím F6 (Fan) và F11 (Anti)
+            if (Keyboard.current.f6Key.wasPressedThisFrame)
+            {
+                if (isShift) DebugDecreaseFanEnergy(100);
+                else DebugIncreaseFanEnergy(100);
+            }
+
+            if (Keyboard.current.f11Key.wasPressedThisFrame)
+            {
+                if (isShift) DebugDecreaseAntiEnergy(100);
+                else DebugIncreaseAntiEnergy(100);
+            }
+
+            // Phím [ / ] (Fan - / Fan +) và - / = (Anti - / Anti +) khi không focus khung gõ text
+            bool isChatFocused = chatInputField != null && chatInputField.isFocused;
+            if (!isChatFocused)
+            {
+                if (Keyboard.current.leftBracketKey.wasPressedThisFrame)
+                    DebugDecreaseFanEnergy(100);
+                if (Keyboard.current.rightBracketKey.wasPressedThisFrame)
+                    DebugIncreaseFanEnergy(100);
+
+                if (Keyboard.current.minusKey.wasPressedThisFrame || (Keyboard.current.numpadMinusKey != null && Keyboard.current.numpadMinusKey.wasPressedThisFrame))
+                    DebugDecreaseAntiEnergy(100);
+                if (Keyboard.current.equalsKey.wasPressedThisFrame || (Keyboard.current.numpadPlusKey != null && Keyboard.current.numpadPlusKey.wasPressedThisFrame))
+                    DebugIncreaseAntiEnergy(100);
+            }
 
             if (Keyboard.current.escapeKey.wasPressedThisFrame)
             {
@@ -907,7 +1016,50 @@ namespace SteamRush.Features.Runner
             hudManager?.ShowStatusPopup(newState ? "[DEBUG] Unlimited Mode: BẬT (phím 0)" : "[DEBUG] Unlimited Mode: TẮT (phím 0)", false);
             Debug.Log($"[MockChatConsole] Phím 0 -> [DEBUG] Unlimited Mode = {newState}");
         }
-        // ===== [Dhuy] END =====
+        // ===== Debug Tăng / Giảm Năng Lượng 2 Phe =====
+        public void DebugIncreaseFanEnergy(int amount = 100)
+        {
+            if (factionManager == null) factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
+            if (factionManager != null)
+            {
+                factionManager.DebugAdjustFanEnergy(amount);
+                if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                hudManager?.ShowStatusPopup($"[Debug] Fan +{amount} (Hiện có: {factionManager.FanLikes})", true);
+            }
+        }
+
+        public void DebugDecreaseFanEnergy(int amount = 100)
+        {
+            if (factionManager == null) factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
+            if (factionManager != null)
+            {
+                factionManager.DebugAdjustFanEnergy(-amount);
+                if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                hudManager?.ShowStatusPopup($"[Debug] Fan -{amount} (Hiện có: {factionManager.FanLikes})", true);
+            }
+        }
+
+        public void DebugIncreaseAntiEnergy(int amount = 100)
+        {
+            if (factionManager == null) factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
+            if (factionManager != null)
+            {
+                factionManager.DebugAdjustAntiEnergy(amount);
+                if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                hudManager?.ShowStatusPopup($"[Debug] Anti +{amount} (Hiện có: {factionManager.AntiLikes})", false);
+            }
+        }
+
+        public void DebugDecreaseAntiEnergy(int amount = 100)
+        {
+            if (factionManager == null) factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
+            if (factionManager != null)
+            {
+                factionManager.DebugAdjustAntiEnergy(-amount);
+                if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                hudManager?.ShowStatusPopup($"[Debug] Anti -{amount} (Hiện có: {factionManager.AntiLikes})", false);
+            }
+        }
 
         private void ClearInputField()
         {
