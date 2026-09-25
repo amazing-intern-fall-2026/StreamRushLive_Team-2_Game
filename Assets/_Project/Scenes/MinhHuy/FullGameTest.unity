@@ -2293,7 +2293,7 @@ MonoBehaviour:
   m_fontSizeMax: 15
   m_fontStyle: 0
   m_HorizontalAlignment: 1
-  m_VerticalAlignment: 512
+  m_VerticalAlignment: 4096
   m_textAlignment: 65535
   m_characterSpacing: 0
   m_characterHorizontalScale: 1
@@ -5128,7 +5128,7 @@ MonoBehaviour:
   m_fontSizeMax: 15
   m_fontStyle: 0
   m_HorizontalAlignment: 1
-  m_VerticalAlignment: 512
+  m_VerticalAlignment: 4096
   m_textAlignment: 65535
   m_characterSpacing: 0
   m_characterHorizontalScale: 1
@@ -6556,7 +6556,7 @@ MonoBehaviour:
   m_fontSizeMax: 15
   m_fontStyle: 0
   m_HorizontalAlignment: 1
-  m_VerticalAlignment: 512
+  m_VerticalAlignment: 4096
   m_textAlignment: 65535
   m_characterSpacing: 0
   m_characterHorizontalScale: 1
@@ -6986,7 +6986,7 @@ MonoBehaviour:
   m_fontSizeMax: 15
   m_fontStyle: 0
   m_HorizontalAlignment: 1
-  m_VerticalAlignment: 512
+  m_VerticalAlignment: 4096
   m_textAlignment: 65535
   m_characterSpacing: 0
   m_characterHorizontalScale: 1
@@ -7239,7 +7239,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "1/2/3 \u2192 N\xE9 L\xE0n"
+  m_text: "1/2/3, jump \u2192 N\xE9 L\xE0n, Nh\u1EA3y"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 30596ec5b5b2aef44a2f0b6bbac20068, type: 2}
   m_sharedMaterial: {fileID: 4762602659135997272, guid: 30596ec5b5b2aef44a2f0b6bbac20068, type: 2}
@@ -10250,6 +10250,9 @@ MonoBehaviour:
   - {fileID: 130278, guid: 94469aeaca2d49442af381840b70bb6c, type: 3}
   - {fileID: 127632, guid: 0383b854a926f1643b20f9c7cdb2e4de, type: 3}
   - {fileID: 157676, guid: fcd06c9319e99cc4bbee7ce7730d9422, type: 3}
+  sedanCarPrefabs: []
+  pickupTruckPrefabs: []
+  heavyTruckPrefabs: []
   carDrivingSpeed: 7
   shieldItemPrefab: {fileID: 4142973673762590350, guid: 5936c31fd1d2cce4094bc3f1c47dc418, type: 3}
   energyBuffItemPrefab: {fileID: 1238612675515126827, guid: 6a6946e5d28b408479b33e3bb670058f, type: 3}
@@ -10263,6 +10266,7 @@ MonoBehaviour:
   laserWarningDuration: 3.5
   laserBlinkInterval: 0.15
   maxConcurrentObstacles: 2
+  unlimitedModeDuration: 60
 --- !u!4 &819347503
 Transform:
   m_ObjectHideFlags: 0
@@ -10648,6 +10652,7 @@ MonoBehaviour:
   _defaultAvatar: {fileID: 21300000, guid: 33f6747086f03b2499072836eddfe397, type: 3}
   _enableRoadsideHandover: 1
   _spawnAheadMeters: 30
+  _roadsideProxyPrefab: {fileID: 0}
   _arrivalThresholdX: 0.6
   _leftSidewalkZ: -5.8
   _rightSidewalkZ: 5.8
@@ -10663,6 +10668,8 @@ MonoBehaviour:
   - {fileID: 153682, guid: 48b470c6a762f60438c631f219257520, type: 3}
   - {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
   - {fileID: 191860, guid: 498a13929c1393e44be1126bcadc448b, type: 3}
+  _normalNameColor: {r: 1, g: 1, b: 1, a: 1}
+  _vipNameColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   _waitingStateChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -10721,6 +10728,9 @@ MonoBehaviour:
   statusPopupSpawner: {fileID: 1027503292}
   giftToastQueue: {fileID: 122752305}
   topBannerQueue: {fileID: 701557133}
+  nextRunnerLabel: {fileID: 0}
+  nextRunnerNormalColor: {r: 1, g: 1, b: 1, a: 1}
+  nextRunnerVipColor: {r: 1, g: 0.85, b: 0.1, a: 1}
   _buffAccentColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   _debuffAccentColor: {r: 1, g: 0.3, b: 0.25, a: 1}
 --- !u!114 &845593091
@@ -12243,6 +12253,7 @@ MonoBehaviour:
   chatInputField: {fileID: 2001878230}
   itemEffects: {fileID: 913794238}
   chatLaneRunner: {fileID: 913794240}
+  giftDance: {fileID: 0}
   factionManager: {fileID: 845593088}
   queueManager: {fileID: 845593087}
   hudManager: {fileID: 845593090}
