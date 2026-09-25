@@ -187,12 +187,12 @@ namespace SteamRush.Features.UI.Views
             containerRect = GetComponent<RectTransform>();
             if (containerRect == null) containerRect = gameObject.AddComponent<RectTransform>();
 
-            // Vị trí: Đặt ngay góc trên bên phải, phía trên đỉnh thanh năng lượng Anti (X: -8, Y: +16 trên đỉnh thanh Anti)
+            // Vị trí: Đặt bên trái cạnh thân thanh năng lượng Anti (né hoàn toàn khu vực thông báo trên đỉnh)
             // Kích thước 116x116 tối ưu cho màn hình dọc (1080x1920)
-            containerRect.anchorMin = new Vector2(1f, 0.88f);
-            containerRect.anchorMax = new Vector2(1f, 0.88f);
-            containerRect.pivot = new Vector2(1f, 0f);
-            containerRect.anchoredPosition = new Vector2(-8f, 16f);
+            containerRect.anchorMin = new Vector2(1f, 0.80f);
+            containerRect.anchorMax = new Vector2(1f, 0.80f);
+            containerRect.pivot = new Vector2(1f, 0.5f);
+            containerRect.anchoredPosition = new Vector2(-52f, 0f);
             containerRect.sizeDelta = new Vector2(116f, 116f);
 
             canvasGroup = GetComponent<CanvasGroup>();
