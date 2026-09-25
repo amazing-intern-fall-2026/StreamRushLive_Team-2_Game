@@ -176,6 +176,7 @@ GameObject:
   - component: {fileID: 8247060680622094285}
   - component: {fileID: 828318411709364814}
   - component: {fileID: 1967889876392556945}
+  - component: {fileID: -4329241370652715477}
   m_Layer: 0
   m_Name: Character_Male_Jacket_01
   m_TagString: Player
@@ -269,14 +270,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f77d07c219c4b4d5bb4080d34b66530d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.RunnerController
-  _risingMultiplier: 1.5
-  _fallMultiplier: 2.5
+  _jumpVelocity: 6.5
+  _risingGravity: 9.6
+  _fallingGravity: 18
   _duckHeightRatio: 0.5
   _fastFallSpeed: 20
   _groundTag: Ground
+  _groundCheckDistance: 0.25
+  _autoApplyForgivingHitbox: 1
+  _hitboxToleranceRatio: 0.85
   _knockbackDistance: 1.5
   _knockbackDuration: 0.3
-  _knockbackDirection: {x: -1, y: 0, z: 0}
 --- !u!114 &2897163426978595252
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -289,7 +293,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1a4cba5a99e44b899ed8b019b4f27db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.RunnerInputHandler
-  _jumpForce: 7
+  _slideHoldThreshold: 0.15
+  _slideTapDuckDuration: 0.8
 --- !u!114 &8247060680622094285
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -305,6 +310,7 @@ MonoBehaviour:
   _obstacleTag: Obstacle
   _hitStopDuration: 0.15
   _energyPenaltyPercent: 25
+  _defaultDistancePenalty: 10
   _invulnerabilityDuration: 0.8
 --- !u!114 &828318411709364814
 MonoBehaviour:
@@ -352,6 +358,7 @@ MonoBehaviour:
   - {r: 0.35, g: 0.7, b: 1, a: 1}
   - {r: 1, g: 0.8, b: 0.2, a: 1}
   testFakeProgressAndEnergy: 0
+  testRandomStatusPopups: 0
 --- !u!65 &1967889876392556945
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -373,6 +380,22 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1.7170372, z: 1}
   m_Center: {x: 0, y: 0.84368086, z: 0}
+--- !u!114 &-4329241370652715477
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 607670523344378315}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e04e04e8cdc6914baaadc6f038beb53, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.GiftDanceController
+  _danceLayerName: Dance
+  _danceStateName: Dance
+  _danceDuration: 60
+  _blendTime: 0.25
 --- !u!1 &667503015618846190
 GameObject:
   m_ObjectHideFlags: 0

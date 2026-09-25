@@ -17,6 +17,7 @@ namespace SteamRush.Features.Runner
         [Header("Runner Components")]
         [SerializeField] private RunnerItemEffects itemEffects;
         [SerializeField] private ChatLaneRunnerController chatLaneRunner;
+        [SerializeField] private GiftDanceController giftDance;
 
         [Header("Stream Integration Managers")]
         [SerializeField] private FactionTugOfWarManager factionManager;
@@ -55,6 +56,15 @@ namespace SteamRush.Features.Runner
                 chatLaneRunner = GetComponent<ChatLaneRunnerController>();
                 if (chatLaneRunner == null)
                     chatLaneRunner = GetComponentInParent<ChatLaneRunnerController>();
+            }
+
+            if (giftDance == null)
+            {
+                giftDance = GetComponent<GiftDanceController>();
+                if (giftDance == null)
+                    giftDance = GetComponentInParent<GiftDanceController>();
+                if (giftDance == null)
+                    giftDance = FindFirstObjectByType<GiftDanceController>();
             }
 
             if (factionManager == null)
@@ -280,6 +290,9 @@ namespace SteamRush.Features.Runner
 
             if (Keyboard.current.f7Key.wasPressedThisFrame)
                 MockActivateAntiCarUnlimited();
+
+            if (Keyboard.current.f8Key.wasPressedThisFrame)
+                MockGiftDance();
 
             if (Keyboard.current.f9Key.wasPressedThisFrame)
                 MockBuyNormalTicket();
@@ -796,6 +809,34 @@ namespace SteamRush.Features.Runner
                 Debug.Log("[MockChatConsole] F7 -> Thả Xe Không Giới Hạn đang hoạt động.");
             }
         }
+
+        // ===== [Dhuy] BEGIN - F8 Gift Dance: Runner nhảy 60s =====
+        private void MockGiftDance()
+        {
+            if (giftDance == null)
+            {
+                giftDance = FindFirstObjectByType<GiftDanceController>();
+            }
+
+            if (giftDance == null)
+            {
+                Debug.LogWarning("[MockChatConsole] Không tìm thấy GiftDanceController.");
+                return;
+            }
+
+            if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+
+            if (giftDance.TriggerDance())
+            {
+                hudManager?.ShowStatusPopup($"[Khán giả] tặng Điệu Nhảy! Runner nhảy {giftDance.Duration:F0}s!", true);
+                Debug.Log("[MockChatConsole] F8 -> Gift Dance bắt đầu.");
+            }
+            else
+            {
+                Debug.Log($"[MockChatConsole] F8 -> Bỏ qua (đang nhảy, còn {giftDance.RemainingSeconds:F0}s).");
+            }
+        }
+        // ===== [Dhuy] END =====
 
         // ===== [Dhuy] BEGIN - F9/F10 Vé hàng chờ (Ticket System) =====
         private void MockBuyNormalTicket(string customUserId = null)
