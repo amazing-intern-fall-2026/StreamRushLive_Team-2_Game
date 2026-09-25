@@ -22,7 +22,8 @@ namespace SteamRush.Features.StreamIntegration
     {
         [Tooltip("Ngưỡng năng lượng để phe Anti tự động sinh xe cản đường (Full thanh = AntiMaxValue). Mặc định = 1000.")]
         [SerializeField] private int _antiCarThreshold = 1000;
-        [SerializeField] private int _antiCarCost = 1000;
+        [Tooltip("Chi phí năng lượng trừ khi phe Anti tự động sinh xe cản đường (bằng chi phí player spawn xe = 100).")]
+        [SerializeField] private int _antiCarCost = 100;
         [Tooltip("Chi phí năng lượng phe Anti để thả xe cản đường theo làn chỉ định (1, 2, 3). Mặc định = 100.")]
         [SerializeField] private int _antiCarLaneCost = 100;
         [Tooltip("Chi phí năng lượng phe Fan để thả vật phẩm hỗ trợ (khiên/buff) theo làn chỉ định (1, 2, 3). Mặc định = 50.")]
@@ -49,6 +50,7 @@ namespace SteamRush.Features.StreamIntegration
         public int FanLikes => _fanLikes;
         public int AntiLikes => _antiLikes;
         public int AntiCarThreshold => _antiCarThreshold;
+        public int AntiCarCost => _antiCarCost;
         public int AntiCarLaneCost => _antiCarLaneCost;
         public int FanItemLaneCost => _fanItemLaneCost;
 
@@ -62,8 +64,9 @@ namespace SteamRush.Features.StreamIntegration
             if (ui != null && ui.AntiMaxValue > 0)
             {
                 _antiCarThreshold = ui.AntiMaxValue;
-                _antiCarCost = ui.AntiMaxValue;
             }
+            // Trừ số lượng bằng với số lượng như lúc player spawn xe (_antiCarLaneCost = 100)
+            _antiCarCost = _antiCarLaneCost;
         }
 
         private void Start()
@@ -107,11 +110,11 @@ namespace SteamRush.Features.StreamIntegration
                 return;
             }
 
-            Debug.Log($"[FactionTugOfWarManager] Phe Anti full thanh ({_antiLikes}/{_antiCarThreshold}) - tự động sinh xe cản đường.");
+            Debug.Log($"[FactionTugOfWarManager] Phe Anti full thanh ({_antiLikes}/{_antiCarThreshold}) - tự động sinh xe ngẫu nhiên và trừ {_antiCarCost} năng lượng.");
 
-            EventBus.Publish(new RequestCarSpawnEvent());
+            EventBus.Publish(new RequestCarSpawnEvent(0)); // 0 = Random lane
 
-            _antiLikes -= _antiCarCost;
+            _antiLikes = Mathf.Max(0, _antiLikes - _antiCarCost);
         }
 
         // Fan Like sạc Năng Lượng dùng cho lệnh fast hoặc thả vật phẩm bảo vệ.

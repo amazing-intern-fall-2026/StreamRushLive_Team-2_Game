@@ -11324,7 +11324,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.StreamIntegration.FactionTugOfWarManager
   _antiCarThreshold: 1000
-  _antiCarCost: 1000
+  _antiCarCost: 100
   _antiCarLaneCost: 100
   _fanItemLaneCost: 50
   _defaultFaction: 0
