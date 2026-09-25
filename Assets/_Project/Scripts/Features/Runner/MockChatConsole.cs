@@ -815,7 +815,9 @@ namespace SteamRush.Features.Runner
         {
             if (giftDance == null)
             {
-                giftDance = FindFirstObjectByType<GiftDanceController>();
+                giftDance = GetComponent<GiftDanceController>()
+                    ?? GetComponentInParent<GiftDanceController>()
+                    ?? FindFirstObjectByType<GiftDanceController>();
             }
 
             if (giftDance == null)

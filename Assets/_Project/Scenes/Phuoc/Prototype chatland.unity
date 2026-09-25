@@ -7805,30 +7805,9 @@ MonoBehaviour:
   - {fileID: 130278, guid: 94469aeaca2d49442af381840b70bb6c, type: 3}
   - {fileID: 127632, guid: 0383b854a926f1643b20f9c7cdb2e4de, type: 3}
   - {fileID: 157676, guid: fcd06c9319e99cc4bbee7ce7730d9422, type: 3}
-  sedanCarPrefabs:
-  - {fileID: 198730, guid: 85ac88d7c46e0ea4583870a98cc13580, type: 3}
-  - {fileID: 127632, guid: 0383b854a926f1643b20f9c7cdb2e4de, type: 3}
-  - {fileID: 175378, guid: a916a44328d322240bd1aaaca22fc8a7, type: 3}
-  - {fileID: 189930, guid: f539f0390d17a9f4a922b722e47998fe, type: 3}
-  - {fileID: 141870, guid: edf6cb56e12fba648b2cf1e7dfa5bf88, type: 3}
-  - {fileID: 4229331993378657525, guid: 4322bffb3dfd8db4598e4bcb273d8a68, type: 3}
-  - {fileID: 3615680029918305072, guid: 706cc8293765cee449a555bcad95e8cf, type: 3}
-  - {fileID: 264844892321283291, guid: 04c5f6e9be748f442a292ec9b72ca8e0, type: 3}
-  pickupTruckPrefabs:
-  - {fileID: 164098, guid: 416c46ca128db5f4bb76f235b4f991d5, type: 3}
-  - {fileID: 7893285494158317498, guid: 231a7513b481cb947b43d04e5bbd72bc, type: 3}
-  - {fileID: 54119980827139780, guid: 282396da42c71df488efb7e34fd49a5c, type: 3}
-  - {fileID: 8935816869220494611, guid: cbc25e2cd6d01604c973f34d269c9c21, type: 3}
-  heavyTruckPrefabs:
-  - {fileID: 8412460288916659892, guid: 25dd5d78fe192414d8513bf44b3685c0, type: 3}
-  - {fileID: 2922206389645153971, guid: 92a6f32e158e9c1419ae093c3486c4eb, type: 3}
-  - {fileID: 3744482356543866777, guid: 1cb16cbeaa9da0c428b2a46bb6ffeee0, type: 3}
-  - {fileID: 907437995472702200, guid: 0f0daa8bf9f99fa409ac3fc15bda2b05, type: 3}
-  - {fileID: 8247291409804382062, guid: f297e6c237f48344ea176374a3296397, type: 3}
-  - {fileID: 4131032445294630856, guid: d365dfc64ac179f42a44df8d1ce311fe, type: 3}
-  - {fileID: 242565520339871044, guid: 2c06af02d79467b429310e849b375e54, type: 3}
-  - {fileID: 7619004527960844412, guid: caa7b55a4623d0e4abe1bd6bf48e8d4b, type: 3}
-  - {fileID: 8191502232408166463, guid: e6a47e86393dd2341b3bf17156a802d3, type: 3}
+  sedanCarPrefabs: []
+  pickupTruckPrefabs: []
+  heavyTruckPrefabs: []
   carDrivingSpeed: 7
   shieldItemPrefab: {fileID: 4142973673762590350, guid: 5936c31fd1d2cce4094bc3f1c47dc418, type: 3}
   energyBuffItemPrefab: {fileID: 1238612675515126827, guid: 6a6946e5d28b408479b33e3bb670058f, type: 3}
@@ -8153,7 +8132,7 @@ MonoBehaviour:
   _defaultAvatar: {fileID: 21300000, guid: 33f6747086f03b2499072836eddfe397, type: 3}
   _enableRoadsideHandover: 1
   _spawnAheadMeters: 35
-  _roadsideProxyPrefab: {fileID: 100001, guid: 8192a0e9d6c547a192d6e4b85c123456, type: 3}
+  _roadsideProxyPrefab: {fileID: 0}
   _arrivalThresholdX: 0.6
   _leftSidewalkZ: -5.8
   _rightSidewalkZ: 5.8
@@ -8229,6 +8208,9 @@ MonoBehaviour:
   statusPopupSpawner: {fileID: 1027503292}
   giftToastQueue: {fileID: 0}
   topBannerQueue: {fileID: 0}
+  nextRunnerLabel: {fileID: 0}
+  nextRunnerNormalColor: {r: 1, g: 1, b: 1, a: 1}
+  nextRunnerVipColor: {r: 1, g: 0.85, b: 0.1, a: 1}
   _buffAccentColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   _debuffAccentColor: {r: 1, g: 0.3, b: 0.25, a: 1}
 --- !u!114 &845593091
@@ -9316,6 +9298,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
       insertIndex: -1
       addedObject: {fileID: 913794235}
+    - targetCorrespondingSourceObject: {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 913794242}
   m_SourcePrefab: {fileID: 100100000, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
 --- !u!1 &913794227 stripped
 GameObject:
@@ -9415,7 +9400,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 913794227}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 1080515247}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -9444,6 +9429,7 @@ MonoBehaviour:
   chatInputField: {fileID: 2001878230}
   itemEffects: {fileID: 913794238}
   chatLaneRunner: {fileID: 913794240}
+  giftDance: {fileID: 913794242}
   factionManager: {fileID: 845593088}
   queueManager: {fileID: 845593087}
   hudManager: {fileID: 845593090}
@@ -9494,6 +9480,22 @@ MonoBehaviour:
   _factionManager: {fileID: 0}
   _knockbackDistance: 1.8
   _knockbackDuration: 0.45
+--- !u!114 &913794242
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 913794227}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e04e04e8cdc6914baaadc6f038beb53, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.GiftDanceController
+  _danceLayerName: Dance
+  _danceStateName: Dance
+  _danceDuration: 60
+  _blendTime: 0.25
 --- !u!1 &945572461
 GameObject:
   m_ObjectHideFlags: 0
@@ -10758,6 +10760,19 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1069678278}
   m_Mesh: {fileID: 4300000, guid: 7099dfc2c2c03224387983f7ba0a1ec2, type: 3}
+--- !u!134 &1080515247
+PhysicsMaterial:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  serializedVersion: 2
+  m_DynamicFriction: 0.6
+  m_StaticFriction: 0.6
+  m_Bounciness: 0
+  m_FrictionCombine: 0
+  m_BounceCombine: 0
 --- !u!1 &1111902276
 GameObject:
   m_ObjectHideFlags: 0
