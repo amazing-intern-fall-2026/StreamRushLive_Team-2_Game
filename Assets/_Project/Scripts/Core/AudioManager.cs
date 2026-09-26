@@ -24,6 +24,35 @@ public class AudioManager : MonoBehaviour
 
         Instance = this;
         DontDestroyOnLoad(gameObject);
+
+        EnsureAudioSources();
+    }
+
+    private void EnsureAudioSources()
+    {
+        if (bgmSource == null)
+        {
+            var sources = GetComponents<AudioSource>();
+            if (sources.Length > 0) bgmSource = sources[0];
+            else
+            {
+                bgmSource = gameObject.AddComponent<AudioSource>();
+                bgmSource.loop = false;
+                bgmSource.playOnAwake = false;
+            }
+        }
+
+        if (sfxSource == null)
+        {
+            var sources = GetComponents<AudioSource>();
+            if (sources.Length > 1) sfxSource = sources[1];
+            else
+            {
+                sfxSource = gameObject.AddComponent<AudioSource>();
+                sfxSource.loop = false;
+                sfxSource.playOnAwake = false;
+            }
+        }
     }
 
     private void Start()
@@ -33,7 +62,7 @@ public class AudioManager : MonoBehaviour
 
     private void Update()
     {
-        if (!bgmSource.isPlaying && bgmClips.Count > 0)
+        if (bgmClips != null && bgmClips.Count > 0 && bgmSource != null && !bgmSource.isPlaying)
         {
             PlayRandomBGM();
         }
@@ -44,12 +73,20 @@ public class AudioManager : MonoBehaviour
         if (clip == null)
             return;
 
-        sfxSource.PlayOneShot(clip);
+        EnsureAudioSources();
+        if (sfxSource != null)
+        {
+            sfxSource.PlayOneShot(clip);
+        }
     }
 
     private void PlayRandomBGM()
     {
-        if (bgmClips.Count == 0)
+        if (bgmClips == null || bgmClips.Count == 0)
+            return;
+
+        EnsureAudioSources();
+        if (bgmSource == null)
             return;
 
         int randomIndex;

@@ -46,6 +46,14 @@ namespace SteamRush.Features.Runner
         [Tooltip("Tham chiếu FactionTugOfWarManager để kiểm tra và trừ năng lượng Fan.")]
         [SerializeField] private FactionTugOfWarManager _factionManager;
 
+        [Header("Sprint Buff (Fan Gift - F2)")]
+        [Tooltip("Thời gian hiệu lực mặc định của Bình Tăng Tốc (giây). GDD v1.4 = 30s.")]
+        [SerializeField] private float _sprintBuffDuration = 30f;
+        private bool _isSprintBuffActive;
+        private Coroutine _sprintBuffCoroutine;
+
+        public bool IsSprintBuffActive => _isSprintBuffActive;
+
         [Header("Knockback Settings (GDD v1.2)")]
         [Tooltip("Khoảng cách đẩy lùi Runner (mét) khi va chạm chướng ngại vật theo GDD v1.2.")]
         [SerializeField] private float _knockbackDistance = 1.8f;
@@ -362,7 +370,7 @@ namespace SteamRush.Features.Runner
                 _factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
             }
 
-            if (_factionManager != null && _factionManager.FanLikes <= 0)
+            if (!_isSprintBuffActive && _factionManager != null && _factionManager.FanLikes <= 0)
             {
                 Debug.LogWarning($"[ChatLaneRunner] Hết năng lượng Fan ({_factionManager.FanLikes}) để bứt tốc fast!");
                 return;
@@ -383,6 +391,16 @@ namespace SteamRush.Features.Runner
         private void UpdateFastEnergyDrain()
         {
             if (!_isFastRunning) return;
+
+            // Nếu đang có Sprint Buff (Bình Tăng Tốc), KHÔNG tiêu hao năng lượng Fan và duy trì tốc độ
+            if (_isSprintBuffActive)
+            {
+                if (_speedManager != null && !_speedManager.IsRecovering && _speedManager.CurrentSpeed < _fastTargetSpeed - 0.5f)
+                {
+                    _speedManager.TriggerCommandSpeed(_fastTargetSpeed, 9999f);
+                }
+                return;
+            }
 
             // Nếu đang va chạm/hồi phục tốc độ thì hủy fast ngay
             if (_speedManager != null && _speedManager.IsRecovering)
@@ -425,6 +443,61 @@ namespace SteamRush.Features.Runner
             _fastTimer = 0f;
             _fastEnergyAccumulator = 0f;
             _speedManager?.CancelCommandSpeed();
+        }
+
+        /// <summary>
+        /// Kích hoạt quà Bình Tăng Tốc (Sprint Buff) cho phe Fan trong duration giây (mặc định 30s).
+        /// Bứt tốc 18m/s liên tục mà KHÔNG trừ năng lượng Fan.
+        /// </summary>
+        public void ActivateSprintBuff(float duration = 30f)
+        {
+            if (_sprintBuffCoroutine != null)
+            {
+                StopCoroutine(_sprintBuffCoroutine);
+            }
+            float dur = duration > 0f ? duration : _sprintBuffDuration;
+            _sprintBuffCoroutine = StartCoroutine(SprintBuffRoutine(dur));
+        }
+
+        private System.Collections.IEnumerator SprintBuffRoutine(float duration)
+        {
+            _isSprintBuffActive = true;
+            TriggerFast();
+            var timer = SteamRush.Features.UI.Views.FanSprintTimerCircle.Instance;
+            if (timer != null) timer.ActivateTimer(duration);
+
+            yield return new WaitForSeconds(duration);
+
+            _isSprintBuffActive = false;
+            _sprintBuffCoroutine = null;
+            StopFast();
+            var timerEnd = SteamRush.Features.UI.Views.FanSprintTimerCircle.Instance;
+            if (timerEnd != null) timerEnd.DeactivateTimer();
+        }
+
+        /// <summary>
+        /// [DEBUG] Bật/tắt tự do Sprint Buff không giới hạn thời gian (dành cho QA / test nhanh).
+        /// </summary>
+        public void SetSprintBuffDebug(bool isActive)
+        {
+            if (_sprintBuffCoroutine != null)
+            {
+                StopCoroutine(_sprintBuffCoroutine);
+                _sprintBuffCoroutine = null;
+            }
+
+            _isSprintBuffActive = isActive;
+            var timer = SteamRush.Features.UI.Views.FanSprintTimerCircle.Instance;
+            if (isActive)
+            {
+                TriggerFast();
+                if (timer != null) timer.ActivateTimer(999f);
+            }
+            else
+            {
+                StopFast();
+                if (timer != null) timer.DeactivateTimer();
+            }
         }
     }
 }

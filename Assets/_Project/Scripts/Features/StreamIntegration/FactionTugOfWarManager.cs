@@ -34,12 +34,42 @@ namespace SteamRush.Features.StreamIntegration
         [SerializeField] private FactionValuesChangedEvent _factionValuesChanged = new FactionValuesChangedEvent();
         public FactionValuesChangedEvent FactionValuesChanged => _factionValuesChanged;
 
+        [Serializable] public class FactionMemberCountsChangedEvent : UnityEvent<int, int> { }
+        [SerializeField] private FactionMemberCountsChangedEvent _factionMemberCountsChanged = new FactionMemberCountsChangedEvent();
+        public FactionMemberCountsChangedEvent FactionMemberCountsChanged => _factionMemberCountsChanged;
+
         // GDD v1.3 muc 2: "Khan gia DA FOLLOW moi duoc tu do chon gia nhap 1 trong 2 phe" - Like/
         // doi phe/donate deu phai qua Gate nay truoc, giong het cach ChatRunnerQueueManager dang
         // dung cho lenh dieu khien. Chua gan IFollowerStatusProvider that -> mac dinh cho qua (mock).
         private readonly FollowerGate _followerGate = new FollowerGate();
 
         private readonly Dictionary<string, FactionType> _userFactions = new Dictionary<string, FactionType>();
+
+        public int FanMemberCount
+        {
+            get
+            {
+                int count = 0;
+                foreach (var f in _userFactions.Values)
+                {
+                    if (f == FactionType.Fan) count++;
+                }
+                return count;
+            }
+        }
+
+        public int AntiMemberCount
+        {
+            get
+            {
+                int count = 0;
+                foreach (var f in _userFactions.Values)
+                {
+                    if (f == FactionType.Anti) count++;
+                }
+                return count;
+            }
+        }
 
         [SerializeField] private int _initialFanLikes = 100;
         [SerializeField] private int _initialAntiLikes = 200;
@@ -72,6 +102,7 @@ namespace SteamRush.Features.StreamIntegration
         private void Start()
         {
             _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+            _factionMemberCountsChanged.Invoke(FanMemberCount, AntiMemberCount);
         }
 
         // Doc phe hien tai cua 1 nguoi dung - chua tung xuat hien thi mac dinh _defaultFaction.
@@ -180,11 +211,11 @@ namespace SteamRush.Features.StreamIntegration
 
             string normalized = message.Trim().ToLowerInvariant();
 
-            if (normalized == "#fan" || normalized == "#blue")
+            if (normalized == "blue" || normalized == "#blue" || normalized == "#fan" || normalized == "fan")
             {
                 SetFaction(userId, FactionType.Fan);
             }
-            else if (normalized == "#anti" || normalized == "#red")
+            else if (normalized == "red" || normalized == "#red" || normalized == "#anti" || normalized == "anti")
             {
                 SetFaction(userId, FactionType.Anti);
             }
@@ -266,6 +297,7 @@ namespace SteamRush.Features.StreamIntegration
         public void SetFaction(string userId, FactionType faction)
         {
             _userFactions[userId] = faction;
+            _factionMemberCountsChanged.Invoke(FanMemberCount, AntiMemberCount);
         }
     }
 }

@@ -3,25 +3,25 @@ using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using StreamRushLive.Features.Spawning;
+using SteamRush.Features.Runner;
 
 namespace SteamRush.Features.UI.Views
 {
     /// <summary>
-    /// Vòng tròn đếm ngược thời gian tác dụng của 'Thả Xe Không Giới Hạn' (F7)
-    /// nằm ngay phía trên thanh năng lượng Anti (Phe Đỏ).
-    /// Có hiệu ứng Radial Fill 360 độ quét dần theo thời gian thực và đếm ngược số giây.
+    /// Vòng tròn đếm ngược thời gian tác dụng của quà 'Bình Tăng Tốc (Sprint Buff)' (F2)
+    /// nằm đối xứng phía bên thanh năng lượng Fan (Phe Xanh).
+    /// Có hiệu ứng Radial Fill 360 độ quét dần theo thời gian thực và đếm ngược số giây (30s).
     /// </summary>
-    public class AntiUnlimitedTimerCircle : MonoBehaviour
+    public class FanSprintTimerCircle : MonoBehaviour
     {
-        private static AntiUnlimitedTimerCircle _instance;
-        public static AntiUnlimitedTimerCircle Instance
+        private static FanSprintTimerCircle _instance;
+        public static FanSprintTimerCircle Instance
         {
             get
             {
                 if (_instance == null)
                 {
-                    _instance = FindFirstObjectByType<AntiUnlimitedTimerCircle>(FindObjectsInactive.Include);
+                    _instance = FindFirstObjectByType<FanSprintTimerCircle>(FindObjectsInactive.Include);
                 }
                 return _instance;
             }
@@ -35,7 +35,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         [Header("References")]
-        [SerializeField] private SingleObstacleSpawner obstacleSpawner;
+        [SerializeField] private ChatLaneRunnerController runnerController;
         [SerializeField] private RectTransform containerRect;
         [SerializeField] private Image bgCircleImage;
         [SerializeField] private Image radialFillRing;
@@ -44,11 +44,11 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private CanvasGroup canvasGroup;
 
         [Header("Colors & Timing")]
-        [SerializeField] private Color activeRingColor = new Color(1f, 0.2f, 0.1f, 1f);
-        [SerializeField] private Color warningRingColor = new Color(1f, 0.8f, 0.1f, 1f);
-        [SerializeField] private Color bgColor = new Color(0.08f, 0.04f, 0.06f, 0.92f);
+        [SerializeField] private Color activeRingColor = new Color(0.22f, 0.74f, 1f, 1f); // Electric Blue/Cyan
+        [SerializeField] private Color bgColor = new Color(0.04f, 0.08f, 0.16f, 0.92f); // Deep Navy Blue
+        [SerializeField] private Color innerColor = new Color(0.03f, 0.06f, 0.12f, 0.98f);
 
-        private float _totalDuration = 60f;
+        private float _totalDuration = 30f;
         private float _remainingTime = 0f;
         private bool _isActive = false;
 
@@ -63,9 +63,9 @@ namespace SteamRush.Features.UI.Views
             }
             _instance = this;
 
-            if (obstacleSpawner == null)
+            if (runnerController == null)
             {
-                obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
+                runnerController = FindFirstObjectByType<ChatLaneRunnerController>();
             }
 
             BuildUIIfMissing();
@@ -81,7 +81,7 @@ namespace SteamRush.Features.UI.Views
 
         private void Start()
         {
-            // Mặc định ẩn khi chưa kích hoạt Unlimited Mode
+            // Mặc định ẩn khi chưa kích hoạt Sprint Buff
             if (!_isActive && canvasGroup != null)
             {
                 canvasGroup.alpha = 0f;
@@ -90,14 +90,19 @@ namespace SteamRush.Features.UI.Views
 
         private void Update()
         {
-            // Theo dõi trạng thái từ SingleObstacleSpawner
-            if (obstacleSpawner != null)
+            if (runnerController == null)
             {
-                if (obstacleSpawner.IsUnlimitedModeActive && !_isActive)
+                runnerController = FindFirstObjectByType<ChatLaneRunnerController>();
+            }
+
+            // Theo dõi trạng thái từ ChatLaneRunnerController
+            if (runnerController != null)
+            {
+                if (runnerController.IsSprintBuffActive && !_isActive)
                 {
-                    ActivateTimer(60f);
+                    ActivateTimer(30f);
                 }
-                else if (!obstacleSpawner.IsUnlimitedModeActive && _isActive)
+                else if (!runnerController.IsSprintBuffActive && _isActive)
                 {
                     DeactivateTimer();
                 }
@@ -139,7 +144,7 @@ namespace SteamRush.Features.UI.Views
                 gameObject.SetActive(true);
             }
 
-            _totalDuration = duration > 0 ? duration : 60f;
+            _totalDuration = duration > 0 ? duration : 30f;
             _remainingTime = _totalDuration;
             _isActive = true;
 
@@ -201,7 +206,7 @@ namespace SteamRush.Features.UI.Views
             if (this == null) return;
             if (containerRect != null && radialFillRing != null && timerText != null) return;
 
-            // 1. Tìm FactionTugOfWarUI hoặc Canvas để đặt vị trí chính xác trên đầu thanh Anti
+            // 1. Tìm FactionTugOfWarUI hoặc Canvas để đặt vị trí đối xứng bên thân thanh Fan
             Transform parentTransform = null;
             var factionUI = FindFirstObjectByType<FactionTugOfWarUI>();
             if (factionUI != null)
@@ -222,12 +227,12 @@ namespace SteamRush.Features.UI.Views
             containerRect = GetComponent<RectTransform>();
             if (containerRect == null) containerRect = gameObject.AddComponent<RectTransform>();
 
-            // Vị trí: Đặt bên trái cạnh thân thanh năng lượng Anti (né hoàn toàn khu vực thông báo trên đỉnh)
+            // Vị trí: Đặt bên phải cạnh thân thanh năng lượng Fan (đối xứng hoàn hảo với AntiUnlimitedTimerCircle)
             // Kích thước 116x116 tối ưu cho màn hình dọc (1080x1920)
-            containerRect.anchorMin = new Vector2(1f, 0.80f);
-            containerRect.anchorMax = new Vector2(1f, 0.80f);
-            containerRect.pivot = new Vector2(1f, 0.5f);
-            containerRect.anchoredPosition = new Vector2(-52f, 0f);
+            containerRect.anchorMin = new Vector2(0f, 0.80f);
+            containerRect.anchorMax = new Vector2(0f, 0.80f);
+            containerRect.pivot = new Vector2(0f, 0.5f);
+            containerRect.anchoredPosition = new Vector2(52f, 0f);
             containerRect.sizeDelta = new Vector2(116f, 116f);
 
             canvasGroup = GetComponent<CanvasGroup>();
@@ -272,9 +277,9 @@ namespace SteamRush.Features.UI.Views
             innerRect.sizeDelta = new Vector2(88f, 88f);
             Image innerImg = innerHole.GetComponent<Image>();
             innerImg.sprite = circleSp;
-            innerImg.color = new Color(0.10f, 0.03f, 0.05f, 0.98f);
+            innerImg.color = innerColor;
 
-            // 5. Label Text ("BÃO XE" thay vì emoji bị lỗi font [])
+            // 5. Label Text ("TĂNG TỐC")
             GameObject iconObj = new GameObject("Label_Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
             iconObj.transform.SetParent(innerHole.transform, false);
             RectTransform iconRect = iconObj.GetComponent<RectTransform>();
@@ -284,13 +289,13 @@ namespace SteamRush.Features.UI.Views
             iconRect.anchoredPosition = new Vector2(0f, 16f);
             iconRect.sizeDelta = new Vector2(80f, 22f);
             iconText = iconObj.GetComponent<TextMeshProUGUI>();
-            iconText.text = "BÃO XE";
+            iconText.text = "TĂNG TỐC";
             iconText.fontSize = 13;
             iconText.fontStyle = FontStyles.Bold;
-            iconText.color = new Color(1f, 0.42f, 0.35f, 1f);
+            iconText.color = activeRingColor;
             iconText.alignment = TextAlignmentOptions.Center;
 
-            // 6. Countdown Timer Text (60s, 59s... to rõ cho màn hình dọc)
+            // 6. Countdown Timer Text (30s, 29s... to rõ cho màn hình dọc)
             GameObject textObj = new GameObject("Timer_Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
             textObj.transform.SetParent(innerHole.transform, false);
             RectTransform textRect = textObj.GetComponent<RectTransform>();
@@ -300,7 +305,7 @@ namespace SteamRush.Features.UI.Views
             textRect.anchoredPosition = new Vector2(0f, -12f);
             textRect.sizeDelta = new Vector2(80f, 32f);
             timerText = textObj.GetComponent<TextMeshProUGUI>();
-            timerText.text = "60s";
+            timerText.text = "30s";
             timerText.fontSize = 26;
             timerText.fontStyle = FontStyles.Bold;
             timerText.alignment = TextAlignmentOptions.Center;

@@ -23,10 +23,15 @@ namespace SteamRush.Features.UI
         [SerializeField] private int _antiMaxValue = 1000;
         [SerializeField] private RectTransform _antiHandle;
 
+        [Header("Member Counts")]
+        [SerializeField] private TMP_Text _fanMemberCountLabel;
+        [SerializeField] private TMP_Text _antiMemberCountLabel;
+
         public int FanMaxValue => _fanMaxValue;
         public int AntiMaxValue => _antiMaxValue;
 
         private static Sprite _fallbackWhiteSprite;
+        private SteamRush.Features.StreamIntegration.FactionTugOfWarManager _manager;
         private float _targetFanFill;
         private float _targetAntiFill;
         private float _currentFanFill;
@@ -36,6 +41,30 @@ namespace SteamRush.Features.UI
         {
             EnsureSpriteAssigned(_fanFillImage);
             EnsureSpriteAssigned(_antiFillImage);
+        }
+
+        private void Start()
+        {
+            if (_manager == null)
+            {
+                _manager = FindFirstObjectByType<SteamRush.Features.StreamIntegration.FactionTugOfWarManager>();
+            }
+            if (_manager != null)
+            {
+                SetMemberCounts(_manager.FanMemberCount, _manager.AntiMemberCount);
+            }
+        }
+
+        public void SetMemberCounts(int fanCount, int antiCount)
+        {
+            if (_fanMemberCountLabel != null)
+            {
+                _fanMemberCountLabel.text = fanCount.ToString();
+            }
+            if (_antiMemberCountLabel != null)
+            {
+                _antiMemberCountLabel.text = antiCount.ToString();
+            }
         }
 
         private void Update()
