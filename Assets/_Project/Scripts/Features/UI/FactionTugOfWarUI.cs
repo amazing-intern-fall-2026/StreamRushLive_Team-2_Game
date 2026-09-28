@@ -52,6 +52,7 @@ namespace SteamRush.Features.UI
             if (_manager != null)
             {
                 SetMemberCounts(_manager.FanMemberCount, _manager.AntiMemberCount);
+                SetFactionValues(_manager.FanLikes, _manager.AntiLikes);
             }
         }
 
@@ -116,9 +117,8 @@ namespace SteamRush.Features.UI
             }
         }
 
-        // Duoc FactionTugOfWarManager.FactionValuesChanged goi moi lan co Like moi hoac tieu hao nang luong fast.
-        // Fan hien theo % (nang luong con lai so voi muc toi da) - Anti hien theo phan so thuc
-        // (can biet chinh xac con bao nhieu tim nua thi cham nguong 500 sinh xe).
+        // Duoc FactionTugOfWarManager.FactionValuesChanged goi moi lan co Like moi hoac tieu hao nang luong.
+        // Ca Fan va Anti deu dong bo hien theo % (nang luong hien tai / muc toi da).
         public void SetFactionValues(int fanValue, int antiValue)
         {
             EnsureSpriteAssigned(_fanFillImage);
@@ -127,15 +127,17 @@ namespace SteamRush.Features.UI
             _targetFanFill = _fanMaxValue > 0 ? Mathf.Clamp01((float)fanValue / _fanMaxValue) : 0f;
             _targetAntiFill = _antiMaxValue > 0 ? Mathf.Clamp01((float)antiValue / _antiMaxValue) : 0f;
 
+            int fanPercent = _fanMaxValue > 0 ? Mathf.Clamp(Mathf.RoundToInt(100f * fanValue / _fanMaxValue), 0, 100) : 0;
+            int antiPercent = _antiMaxValue > 0 ? Mathf.Clamp(Mathf.RoundToInt(100f * antiValue / _antiMaxValue), 0, 100) : 0;
+
             if (_fanValueLabel != null)
             {
-                int fanPercent = _fanMaxValue > 0 ? Mathf.RoundToInt(100f * fanValue / _fanMaxValue) : 0;
                 _fanValueLabel.text = $"{fanPercent}%";
             }
 
             if (_antiValueLabel != null)
             {
-                _antiValueLabel.text = $"{antiValue}/{_antiMaxValue}";
+                _antiValueLabel.text = $"{antiPercent}%";
             }
         }
     }

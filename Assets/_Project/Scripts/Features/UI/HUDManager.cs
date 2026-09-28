@@ -119,18 +119,10 @@ namespace SteamRush.Features.UI
             topBannerQueue.Show(string.Empty, message, icon, iconColor, isBuff ? _buffAccentColor : _debuffAccentColor);
         }
 
-        // Hien toast ngay tren thanh Anti khi viewer tang qua: chi Icon + ten viewer (GDD moi -
-        // bo hien thi ten vat pham, xem itemName trong tham so chi con giu de tuong thich chu ky goi).
-        // iconColor: tint cho icon quà (icon nguồn là hình trắng/nền trong suốt) - null = giữ màu mặc định.
+        // Da loai bo thong bao Gift Toast theo yeu cau cua nguoi dung
         public void ShowGiftToast(string viewerName, string itemName, Sprite giftIcon, Color? iconColor = null)
         {
-            if (giftToastQueue == null)
-            {
-                Debug.LogWarning("[HUDManager] Chưa gán GiftToastQueue trong Inspector - bỏ qua ShowGiftToast.");
-                return;
-            }
-
-            giftToastQueue.Show(viewerName, itemName, giftIcon, iconColor, showItemName: false);
+            // Disabled: Khong hien thi Gift Toast
         }
     }
 }

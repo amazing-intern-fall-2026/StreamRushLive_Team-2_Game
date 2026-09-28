@@ -101,8 +101,8 @@ namespace StreamRushLive.Features.Spawning
                     energyPenaltyPercent = 20f;       // -20% năng lượng
                     distancePenaltyMeters = 100f;     // -100m cự ly
                     hitStopDuration = 0.10f;          // 0.10s khựng nhẹ
-                    _knockbackDistance = 0f;          // Runner và xe không di chuyển
-                    _knockbackDuration = 1.8f;
+                    _knockbackDistance = 2.0f;        // Runner bị húc đẩy lùi 2.0m
+                    _knockbackDuration = 0.5f;
                     _drivingSpeed = 7.0f;
                     _reverseWorldPeakSpeed = -87.0f;  // Thế giới cuộn ngược lùi đúng ~100m
                     _reverseWorldDuration = 1.8f;
@@ -114,8 +114,8 @@ namespace StreamRushLive.Features.Spawning
                     energyPenaltyPercent = 40f;       // -40% năng lượng
                     distancePenaltyMeters = 200f;     // -200m cự ly
                     hitStopDuration = 0.18f;          // 0.18s khựng/choáng
-                    _knockbackDistance = 0f;          // Runner và xe không di chuyển
-                    _knockbackDuration = 2.4f;
+                    _knockbackDistance = 3.0f;        // Runner bị húc đẩy lùi 3.0m
+                    _knockbackDuration = 0.6f;
                     _drivingSpeed = 6.2f;
                     _reverseWorldPeakSpeed = -130.0f; // Thế giới cuộn ngược lùi đúng ~200m
                     _reverseWorldDuration = 2.4f;
@@ -127,8 +127,8 @@ namespace StreamRushLive.Features.Spawning
                     energyPenaltyPercent = 60f;       // -60% năng lượng
                     distancePenaltyMeters = 400f;     // -400m cự ly
                     hitStopDuration = 0.25f;          // 0.25s cú tông cực mạnh
-                    _knockbackDistance = 0f;          // Runner và xe không di chuyển
-                    _knockbackDuration = 3.2f;
+                    _knockbackDistance = 4.2f;        // Runner bị húc đẩy lùi 4.2m
+                    _knockbackDuration = 0.7f;
                     _drivingSpeed = 5.2f;
                     _reverseWorldPeakSpeed = -196.0f; // Thế giới cuộn ngược lùi đúng ~400m
                     _reverseWorldDuration = 3.2f;

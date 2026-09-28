@@ -15,6 +15,23 @@ namespace SteamRush.Features.UI.Views
 
         private readonly List<GiftToastController> _active = new List<GiftToastController>();
 
+        private void Awake()
+        {
+            _active.Clear();
+            if (toastTemplate != null && toastTemplate.transform.parent != null)
+            {
+                Transform parent = toastTemplate.transform.parent;
+                for (int i = parent.childCount - 1; i >= 0; i--)
+                {
+                    Transform child = parent.GetChild(i);
+                    if (child != toastTemplate.transform && child.name.Contains("(Clone)"))
+                    {
+                        Destroy(child.gameObject);
+                    }
+                }
+            }
+        }
+
         public void Show(string viewerName, string itemName, Sprite icon, Color? iconColor = null, Color? accentColor = null, bool showItemName = true)
         {
             if (toastTemplate == null)
@@ -23,13 +40,17 @@ namespace SteamRush.Features.UI.Views
                 return;
             }
 
-            if (_active.Count >= _maxConcurrentToasts)
+            // Dọn sạch các toast đã bị huỷ hoặc null
+            _active.RemoveAll(item => item == null);
+
+            while (_active.Count >= _maxConcurrentToasts)
             {
-                // ForceDismiss chay fade bat dong bo (DOTween) - go khoi danh sach NGAY o day
-                // thay vi cho callback Dismissed, de dem cho _active luon dung tai thoi diem nay.
                 GiftToastController oldest = _active[0];
                 _active.RemoveAt(0);
-                oldest.ForceDismiss();
+                if (oldest != null)
+                {
+                    oldest.ForceDismiss();
+                }
             }
 
             GiftToastController instance = Instantiate(toastTemplate, toastTemplate.transform.parent);
@@ -41,8 +62,12 @@ namespace SteamRush.Features.UI.Views
 
         private void OnToastDismissed(GiftToastController toast)
         {
-            toast.Dismissed -= OnToastDismissed;
+            if (toast != null)
+            {
+                toast.Dismissed -= OnToastDismissed;
+            }
             _active.Remove(toast);
+            _active.RemoveAll(item => item == null);
         }
     }
 }

@@ -69,6 +69,7 @@ namespace SteamRush.Features.Runner
 
         public void ApplyKnockback(float distance = -1f, float duration = -1f)
         {
+            _currentSurgeX = 0f; // Triệt tiêu ngay lập tức rướn người về phía trước
             float dist = distance >= 0f ? distance : _knockbackDistance;
             _knockbackTotalDuration = duration > 0f ? duration : _knockbackDuration;
             _knockbackTimer = 0f;
@@ -192,7 +193,10 @@ namespace SteamRush.Features.Runner
 
             // 3. Hiệu ứng vị trí Runner trên thảm chạy (rướn mạnh lên phía trước khi bứt tốc fast)
             float targetSurgeX = 0f;
-            if (currentSpeed > baseSpeed + 2f)
+            bool isKnockedOrRecovering = (_speedManager != null && (_speedManager.IsReverseKnockingBack || _speedManager.IsRecovering)) ||
+                                        (_collisionHandler != null && _collisionHandler.IsHandlingHit) ||
+                                        IsKnockingBack;
+            if (!isKnockedOrRecovering && currentSpeed > baseSpeed + 2f)
             {
                 targetSurgeX = 1.6f;
             }
@@ -392,10 +396,29 @@ namespace SteamRush.Features.Runner
         {
             if (!_isFastRunning) return;
 
+            // Nếu đang va chạm (ReverseKnockback hoặc Recovery) hoặc Runner đang bị hit:
+            // Tuyệt đối KHÔNG can thiệp đè tốc độ thế giới
+            if (_speedManager != null && (_speedManager.IsReverseKnockingBack || _speedManager.IsRecovering))
+            {
+                if (!_isSprintBuffActive)
+                {
+                    StopFast();
+                }
+                return;
+            }
+
+            if (_collisionHandler != null && _collisionHandler.IsHandlingHit)
+            {
+                return;
+            }
+
             // Nếu đang có Sprint Buff (Bình Tăng Tốc), KHÔNG tiêu hao năng lượng Fan và duy trì tốc độ
             if (_isSprintBuffActive)
             {
-                if (_speedManager != null && !_speedManager.IsRecovering && _speedManager.CurrentSpeed < _fastTargetSpeed - 0.5f)
+                if (_speedManager != null && 
+                    !_speedManager.IsRecovering && 
+                    !_speedManager.IsReverseKnockingBack && 
+                    _speedManager.CurrentSpeed < _fastTargetSpeed - 0.5f)
                 {
                     _speedManager.TriggerCommandSpeed(_fastTargetSpeed, 9999f);
                 }
@@ -403,7 +426,7 @@ namespace SteamRush.Features.Runner
             }
 
             // Nếu đang va chạm/hồi phục tốc độ thì hủy fast ngay
-            if (_speedManager != null && _speedManager.IsRecovering)
+            if (_speedManager != null && (_speedManager.IsRecovering || _speedManager.IsReverseKnockingBack))
             {
                 StopFast();
                 return;

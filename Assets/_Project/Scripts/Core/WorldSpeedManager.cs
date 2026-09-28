@@ -337,7 +337,7 @@ namespace SteamRush.Track
         /// </summary>
         public void TriggerCommandSpeed(float targetSpeed, float duration)
         {
-            if (_state == SpeedState.Recovery) return; // đang ngã thì lệnh chat không có tác dụng
+            if (_state == SpeedState.Recovery || _state == SpeedState.ReverseKnockback) return; // đang ngã hoặc đang bị cuộn ngược đẩy lùi thì không được đè tốc độ
 
             _commandOverrideTargetSpeed = targetSpeed;
             _commandOverrideTimer = duration;

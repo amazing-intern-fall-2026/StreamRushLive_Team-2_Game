@@ -78,13 +78,47 @@ namespace SteamRush.Features.UI.Views
         // roi bien mat - dung y nguoi dung (giu hieu ung "day len roi bien mat" thay vi truot ngang).
         public void ForceDismiss()
         {
-            if (_dismissed) return;
+            if (this == null || _dismissed) return;
 
-            DOTween.Kill(transform);
-            Sequence sequence = DOTween.Sequence().SetTarget(transform);
-            sequence.Append(canvasGroup.DOFade(0f, animDuration * 0.6f));
-            sequence.Join(transform.DOScale(0.85f, animDuration * 0.6f).SetEase(Ease.InBack));
-            sequence.OnComplete(() => Dismiss());
+            try
+            {
+                if (transform != null)
+                {
+                    DOTween.Kill(transform);
+                    Sequence sequence = DOTween.Sequence().SetTarget(transform);
+                    if (canvasGroup != null)
+                    {
+                        sequence.Append(canvasGroup.DOFade(0f, animDuration * 0.6f));
+                    }
+                    sequence.Join(transform.DOScale(0.85f, animDuration * 0.6f).SetEase(Ease.InBack));
+                    sequence.OnComplete(() => Dismiss());
+                    return;
+                }
+            }
+            catch (System.Exception)
+            {
+                // Đối tượng đã bị huỷ bởi Unity
+            }
+
+            Dismiss();
+        }
+
+        private void OnDestroy()
+        {
+            try
+            {
+                if (this != null && transform != null)
+                {
+                    DOTween.Kill(transform);
+                }
+            }
+            catch (System.Exception) { }
+
+            if (!_dismissed)
+            {
+                _dismissed = true;
+                Dismissed?.Invoke(this);
+            }
         }
 
         private void Dismiss()
@@ -93,7 +127,10 @@ namespace SteamRush.Features.UI.Views
             _dismissed = true;
 
             Dismissed?.Invoke(this);
-            Destroy(gameObject);
+            if (this != null && gameObject != null)
+            {
+                Destroy(gameObject);
+            }
         }
     }
 }
