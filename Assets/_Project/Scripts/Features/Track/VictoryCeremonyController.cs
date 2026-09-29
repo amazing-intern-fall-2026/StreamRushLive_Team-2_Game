@@ -76,7 +76,7 @@ namespace SteamRush.Track
             obstacleSpawner?.SetSpawningLocked(true);
             runnerController?.SetControlsLocked(true);
             stopwatch?.StopTimer();
-            giftDanceController?.TriggerDance(9999f);
+            giftDanceController?.TriggerVictoryDance(9999f);
 
             StartCoroutine(ConfettiRoutine());
             StartCoroutine(ShowPopupDelayed());

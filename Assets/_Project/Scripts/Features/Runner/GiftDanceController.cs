@@ -28,9 +28,14 @@ namespace SteamRush.Features.Runner
         [Tooltip("Thời gian blend vào/ra giữa animation chạy và nhảy (giây). Đã tính trong 60s.")]
         [SerializeField] private float _blendTime = 0.25f;
 
+        [Header("Victory Dance (GDD v1.4.1 - Finish Line)")]
+        [Tooltip("Ten state animation rieng cho luc ve dich (Kevin Iglesias HumanM@Dance01), khac voi state Dance dung cho Gift Meme-Dance de khong bi trung - cung layer 'Dance', chi khac state.")]
+        [SerializeField] private string _victoryDanceStateName = "VictoryDance";
+
         private Animator _animator;
         private int _danceLayerIndex = -1;
         private int _danceStateHash;
+        private int _victoryDanceStateHash;
         private float _remainingTime;
         private float _currentWeight;
 
@@ -56,6 +61,7 @@ namespace SteamRush.Features.Runner
             }
 
             _danceStateHash = Animator.StringToHash(_danceStateName);
+            _victoryDanceStateHash = Animator.StringToHash(_victoryDanceStateName);
             _animator.SetLayerWeight(_danceLayerIndex, 0f);
         }
 
@@ -69,6 +75,20 @@ namespace SteamRush.Features.Runner
         /// </param>
         public bool TriggerDance(float overrideDuration = -1f)
         {
+            return PlayState(_danceStateHash, overrideDuration);
+        }
+
+        /// <summary>
+        /// GDD v1.4.1 muc 7 (Victory Celebration): nhay state VictoryDance rieng (Kevin Iglesias
+        /// HumanM@Dance01) thay vi state Dance dung chung voi Gift Meme-Dance, tranh trung lap.
+        /// </summary>
+        public bool TriggerVictoryDance(float overrideDuration = -1f)
+        {
+            return PlayState(_victoryDanceStateHash, overrideDuration);
+        }
+
+        private bool PlayState(int stateHash, float overrideDuration)
+        {
             if (_animator == null || _danceLayerIndex < 0) return false;
             if (IsDancing) return false;
 
@@ -76,7 +96,7 @@ namespace SteamRush.Features.Runner
 
             // Layer weight 0 vẫn chạy ngầm state machine, nên phải ép về đầu clip để dance
             // luôn bắt đầu từ frame đầu thay vì giữa chừng.
-            _animator.Play(_danceStateHash, _danceLayerIndex, 0f);
+            _animator.Play(stateHash, _danceLayerIndex, 0f);
             return true;
         }
 

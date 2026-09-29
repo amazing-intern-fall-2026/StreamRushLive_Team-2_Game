@@ -14206,6 +14206,7 @@ MonoBehaviour:
   _danceStateName: Dance
   _danceDuration: 60
   _blendTime: 0.25
+  _victoryDanceStateName: VictoryDance
 --- !u!1 &922362394
 GameObject:
   m_ObjectHideFlags: 0
