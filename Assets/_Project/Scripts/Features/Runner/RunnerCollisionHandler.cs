@@ -7,17 +7,8 @@ namespace SteamRush.Features.Runner
     using SteamRush.Features.UI;
 
     /// <summary>
-    /// Chịu trách nhiệm xử lý tương tác giữa Runner với vật cản và vật phẩm (GDD v1.2):
-    /// - Không còn cơ chế máu/tim (Runner không chết vì va chạm).
-    /// - Nếu có Shield: Shield chặn đúng 1 lần va chạm và huỷ vật cản.
-    /// - Nếu không có Shield:
-    ///   + Bật Trigger Mode để vật cản xuyên qua mà không xô lệch vật lý.
-    ///   + Knockback đẩy lùi Runner về sau theo đường cong Ease Out Quad.
-    ///   + Phạt trừ quãng đường trên thanh tiến trình (-10m).
-    ///   + Phạt trừ năng lượng (-25%).
-    ///   + Đóng băng khung hình ngắn (hit-stop 0.15s).
-    ///   + Hồi phục tốc độ thế giới (WorldSpeedManager.TriggerRecovery).
-    ///   + Miễn nhiễm và nhấp nháy i-Frames 0.8s.
+    /// Handles Runner collision and interactions with obstacles and pickups.
+    /// Manages shield defense, knockback penalty, i-frames, and world recovery.
     /// </summary>
     [RequireComponent(typeof(RunnerController))]
     public class RunnerCollisionHandler : MonoBehaviour
@@ -89,7 +80,6 @@ namespace SteamRush.Features.Runner
 
         private void HandleInteraction(GameObject obj)
         {
-            // 1. Hyper Dash
             if (_isHyperDashActive)
             {
                 ObstacleBase hyperDashObstacle =
@@ -101,7 +91,6 @@ namespace SteamRush.Features.Runner
                     return;
                 }
 
-                // Fallback cho vật cản chưa có ObstacleBase.
                 if (obj.CompareTag(_obstacleTag)
                     || obj.name.Contains("Barrier")
                     || obj.name.Contains("Obstacle"))
@@ -111,33 +100,28 @@ namespace SteamRush.Features.Runner
                 }
             }
 
-            // 2. Item
             ItemBase item = obj.GetComponentInParent<ItemBase>();
-
             if (item != null)
             {
                 item.Collect(gameObject);
                 return;
             }
 
-            // Fallback Buff Item cũ.
             if (obj.CompareTag("Buff") || obj.name.Contains("Buff"))
             {
                 EnergySystem energy = FindFirstObjectByType<EnergySystem>();
-
                 if (energy != null)
                 {
                     energy.AddEnergy(20f);
                 }
 
                 HUDManager hud = FindFirstObjectByType<HUDManager>();
-                hud?.ShowStatusPopup("Năng lượng +20%", true);
+                hud?.ShowStatusPopup("+20% Energy", true);
 
                 Destroy(obj);
                 return;
             }
 
-            // 3. Obstacle
             if (_isHandlingHit)
             {
                 return;
@@ -148,7 +132,6 @@ namespace SteamRush.Features.Runner
 
             if (obstacle != null)
             {
-                // Shield được ưu tiên kiểm tra trước Health.
                 if (TryConsumeShield())
                 {
                     Destroy(obstacle.gameObject);
@@ -221,7 +204,6 @@ namespace SteamRush.Features.Runner
                 ? obstacle.DistancePenaltyMeters
                 : _defaultDistancePenalty;
 
-            // 1. Chuyển Runner thành Trigger để vật cản trôi xuyên qua an toàn
             if (_controller != null)
             {
                 _controller.SetTriggerMode(true);
@@ -232,7 +214,6 @@ namespace SteamRush.Features.Runner
                 if (col != null) col.isTrigger = true;
             }
 
-            // 2. Trừ năng lượng (hỗ trợ cả EnergySystem lẫn Faction Fan Energy)
             EnergySystem energySystem = FindFirstObjectByType<EnergySystem>();
             if (energySystem != null && penalty > 0f)
             {
@@ -248,7 +229,6 @@ namespace SteamRush.Features.Runner
                 }
             }
 
-            // 3. Phạt trừ quãng đường trên thanh tiến trình (-15m)
             TrackProgressTracker tracker = FindFirstObjectByType<TrackProgressTracker>();
             float finalDistancePenalty = (obstacle != null && obstacle.DistancePenaltyMeters > 0f)
                 ? obstacle.DistancePenaltyMeters
@@ -262,21 +242,20 @@ namespace SteamRush.Features.Runner
                 }
             }
 
-            // 4. Hiển thị thông báo trạng thái theo phân cấp xe GDD v1.4
             HUDManager hud = FindFirstObjectByType<HUDManager>();
             if (obstacle is StreamRushLive.Features.Spawning.DrivingObstacleCar drivingCar)
             {
                 string tierTitle = drivingCar.Tier switch
                 {
-                    StreamRushLive.Features.Spawning.VehicleTier.HeavyTruck => "Xe Tải Hạng Nặng Tông!",
-                    StreamRushLive.Features.Spawning.VehicleTier.PickupTruck => "Xe Bán Tải Húc!",
-                    _ => "Xe Con Húc!"
+                    StreamRushLive.Features.Spawning.VehicleTier.HeavyTruck => "Heavy Truck Hit!",
+                    StreamRushLive.Features.Spawning.VehicleTier.PickupTruck => "Pickup Hit!",
+                    _ => "Car Hit!"
                 };
-                hud?.ShowStatusPopup($"{tierTitle} (-{finalDistancePenalty:F0}m Cự ly, -{penalty:F0}% NL)", false);
+                hud?.ShowStatusPopup($"{tierTitle} (-{finalDistancePenalty:F0}m, -{penalty:F0}% Energy)", false);
             }
             else
             {
-                hud?.ShowStatusPopup($"Va chạm xe! (-{finalDistancePenalty:F0}m Cự ly, -{penalty:F0}% NL)", false);
+                hud?.ShowStatusPopup($"Vehicle Hit! (-{finalDistancePenalty:F0}m, -{penalty:F0}% Energy)", false);
             }
 
             if (_chatLaneRunner == null)
@@ -284,9 +263,10 @@ namespace SteamRush.Features.Runner
                 _chatLaneRunner = GetComponent<ChatLaneRunnerController>() ?? GetComponentInParent<ChatLaneRunnerController>();
             }
 
-            // 5. Knockback: Đẩy lùi Runner về sau theo trục -X (GDD v1.2 & v1.4)
             float kbDistance = obstacle is StreamRushLive.Features.Spawning.DrivingObstacleCar carObj ? carObj.KnockbackDistance : 2.2f;
-            float kbDuration = obstacle is StreamRushLive.Features.Spawning.DrivingObstacleCar carObj2 ? carObj2.KnockbackDuration : 0.5f;
+            float kbDuration = obstacle is StreamRushLive.Features.Spawning.DrivingObstacleCar carObj2
+                ? Mathf.Max(carObj2.KnockbackDuration, carObj2.ReverseWorldDuration)
+                : 1.8f;
 
             if (_chatLaneRunner != null)
             {
@@ -297,7 +277,6 @@ namespace SteamRush.Features.Runner
                 _controller.ApplyKnockback(kbDistance, kbDuration);
             }
 
-            // 6. Hit-stop: Đóng băng khung hình ngắn nếu có cấu hình
             if (hitStop > 0.01f)
             {
                 Time.timeScale = 0f;
@@ -305,8 +284,6 @@ namespace SteamRush.Features.Runner
                 Time.timeScale = 1f;
             }
 
-            // 7. World Reverse Knockback (GDD v1.2 Mục 4 & v1.4):
-            // Kích hoạt xung cuộn ngược thế giới theo từng hạng xe để tạo ảo giác bị hất văng lùi xa
             WorldSpeedManager speedManager = FindFirstObjectByType<WorldSpeedManager>() ?? WorldSpeedManager.Instance;
             if (speedManager != null)
             {
@@ -315,7 +292,6 @@ namespace SteamRush.Features.Runner
                 speedManager.TriggerReverseWorldKnockback(peakSpeed, duration);
             }
 
-            // 8. i-Frames: Nhấp nháy model và giữ Trigger mode trong lúc trôi qua vật cản (2.0s theo GDD)
             float invulDuration = _chatLaneRunner != null ? 2.0f : _invulnerabilityDuration;
             float elapsed = 0f;
             bool isKnocking = true;
@@ -330,7 +306,6 @@ namespace SteamRush.Features.Runner
 
             SetRenderersVisible(true);
 
-            // 9. Trả Collider về trạng thái bình thường
             if (_controller != null)
             {
                 _controller.SetTriggerMode(false);
@@ -395,7 +370,7 @@ namespace SteamRush.Features.Runner
                     FindFirstObjectByType<HUDManager>();
 
                 hud?.ShowStatusPopup(
-                    "Shield chặn va chạm!",
+                    "Shield Blocked!",
                     true
                 );
             }

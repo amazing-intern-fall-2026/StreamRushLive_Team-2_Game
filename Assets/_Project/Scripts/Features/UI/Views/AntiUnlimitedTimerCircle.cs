@@ -201,7 +201,6 @@ namespace SteamRush.Features.UI.Views
             if (this == null) return;
             if (containerRect != null && radialFillRing != null && timerText != null) return;
 
-            // 1. Tìm FactionTugOfWarUI hoặc Canvas để đặt vị trí chính xác trên đầu thanh Anti
             Transform parentTransform = null;
             var factionUI = FindFirstObjectByType<FactionTugOfWarUI>();
             if (factionUI != null)
@@ -222,8 +221,6 @@ namespace SteamRush.Features.UI.Views
             containerRect = GetComponent<RectTransform>();
             if (containerRect == null) containerRect = gameObject.AddComponent<RectTransform>();
 
-            // Vị trí: Đặt bên trái cạnh thân thanh năng lượng Anti (né hoàn toàn khu vực thông báo trên đỉnh)
-            // Kích thước 116x116 tối ưu cho màn hình dọc (1080x1920)
             containerRect.anchorMin = new Vector2(1f, 0.80f);
             containerRect.anchorMax = new Vector2(1f, 0.80f);
             containerRect.pivot = new Vector2(1f, 0.5f);
@@ -235,7 +232,6 @@ namespace SteamRush.Features.UI.Views
 
             Sprite circleSp = GetOrCreateCircleSprite();
 
-            // 2. Background Circle (116x116)
             GameObject bgObj = new GameObject("Circle_Bg", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             bgObj.transform.SetParent(containerRect, false);
             RectTransform bgRect = bgObj.GetComponent<RectTransform>();
@@ -246,7 +242,6 @@ namespace SteamRush.Features.UI.Views
             bgCircleImage.sprite = circleSp;
             bgCircleImage.color = bgColor;
 
-            // 3. Radial Fill Ring (Quét 360 độ từ đỉnh theo chiều kim đồng hồ)
             GameObject ringObj = new GameObject("Circle_RadialFill", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             ringObj.transform.SetParent(containerRect, false);
             RectTransform ringRect = ringObj.GetComponent<RectTransform>();
@@ -262,7 +257,6 @@ namespace SteamRush.Features.UI.Views
             radialFillRing.fillAmount = 1f;
             radialFillRing.color = activeRingColor;
 
-            // 4. Center Inner Mask/Hole (vành khuyên tròn 88x88 -> độ dày viền ring 14px)
             GameObject innerHole = new GameObject("Circle_Inner", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             innerHole.transform.SetParent(containerRect, false);
             RectTransform innerRect = innerHole.GetComponent<RectTransform>();
@@ -274,7 +268,6 @@ namespace SteamRush.Features.UI.Views
             innerImg.sprite = circleSp;
             innerImg.color = new Color(0.10f, 0.03f, 0.05f, 0.98f);
 
-            // 5. Label Text ("BÃO XE" thay vì emoji bị lỗi font [])
             GameObject iconObj = new GameObject("Label_Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
             iconObj.transform.SetParent(innerHole.transform, false);
             RectTransform iconRect = iconObj.GetComponent<RectTransform>();
@@ -284,13 +277,12 @@ namespace SteamRush.Features.UI.Views
             iconRect.anchoredPosition = new Vector2(0f, 16f);
             iconRect.sizeDelta = new Vector2(80f, 22f);
             iconText = iconObj.GetComponent<TextMeshProUGUI>();
-            iconText.text = "BÃO XE";
+            iconText.text = "STORM";
             iconText.fontSize = 13;
             iconText.fontStyle = FontStyles.Bold;
             iconText.color = new Color(1f, 0.42f, 0.35f, 1f);
             iconText.alignment = TextAlignmentOptions.Center;
 
-            // 6. Countdown Timer Text (60s, 59s... to rõ cho màn hình dọc)
             GameObject textObj = new GameObject("Timer_Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
             textObj.transform.SetParent(innerHole.transform, false);
             RectTransform textRect = textObj.GetComponent<RectTransform>();

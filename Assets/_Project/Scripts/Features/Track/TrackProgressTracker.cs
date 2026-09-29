@@ -87,7 +87,7 @@ namespace SteamRush.Track
             if (_hudManager != null)
             {
                 _hudManager.UpdateLegProgress(TotalDistanceMeters, GoalDistanceMeters);
-                _hudManager.ShowStatusPopup($"-{distanceDelta:F0}m Quãng đường!", false);
+                _hudManager.ShowStatusPopup($"-{distanceDelta:F0}m Distance!", false);
             }
         }
     }

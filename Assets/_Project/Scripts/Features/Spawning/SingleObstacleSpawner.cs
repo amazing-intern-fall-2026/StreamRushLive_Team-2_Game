@@ -440,7 +440,6 @@ namespace StreamRushLive.Features.Spawning
             carInstance.name = $"ObstacleCar_{tier}_{prefabToSpawn.name}";
             try { carInstance.tag = "Obstacle"; } catch { }
 
-            // 1. Tắt toàn bộ Collider con có sẵn trên prefab để tránh lỗi MeshCollider non-convex vượt giới hạn 256 polygon
             Collider[] existingColliders = carInstance.GetComponentsInChildren<Collider>(true);
             for (int i = 0; i < existingColliders.Length; i++)
             {
@@ -450,7 +449,6 @@ namespace StreamRushLive.Features.Spawning
                 }
             }
 
-            // 2. Gán BoxCollider Trigger chuẩn trên root GameObject theo đúng kích thước phân cấp xe
             var box = carInstance.GetComponent<BoxCollider>();
             if (box == null) box = carInstance.AddComponent<BoxCollider>();
             box.isTrigger = true;
@@ -472,7 +470,6 @@ namespace StreamRushLive.Features.Spawning
                     break;
             }
 
-            // 3. Thêm Kinematic Rigidbody để tối ưu hóa chuyển động Trigger trong PhysX
             var rb = carInstance.GetComponent<Rigidbody>();
             if (rb == null) rb = carInstance.AddComponent<Rigidbody>();
             rb.isKinematic = true;

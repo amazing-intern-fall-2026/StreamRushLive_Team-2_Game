@@ -6,21 +6,7 @@ namespace SteamRush.Features.Runner
     using SteamRush.Features.StreamIntegration;
 
     /// <summary>
-    /// Điều khiển Runner theo GDD v1.3 mục 1 (Lối chơi 3 làn) + mục 5 (Hệ thống điều khiển chat).
-    /// Bản thử nghiệm SONG SONG với gameplay 1 làn cũ (GDD v1.2) — KHÔNG thay thế RunnerController
-    /// hay RunnerInputHandler, chỉ cộng thêm khả năng đổi làn + nhận lệnh chat lên trên Runner có
-    /// sẵn. Toàn bộ logic Nhảy/Trượt/Va chạm vẫn do RunnerController + RunnerCollisionHandler đảm
-    /// nhiệm như cũ, script này không đụng vào.
-    ///
-    /// LƯU Ý QUAN TRỌNG VỀ VẬT LÝ: RunnerController khoá vĩnh viễn RigidbodyConstraints.
-    /// FreezePositionZ (vì bản v1.2 gốc không cần đổi làn). Script này tự mở khoá RIÊNG bit Z đó
-    /// ngay lúc Start() (không đụng gì tới RunnerController.cs), và dùng RB.MovePosition() trong
-    /// FixedUpdate() thay vì ghi thẳng transform.position trong Update() — bắt buộc phải làm vậy
-    /// vì Rigidbody không-Kinematic sẽ tự kéo transform về lại vị trí cũ mỗi bước mô phỏng vật lý
-    /// nếu chỉ ghi transform.position suông, khiến nhân vật trông như không di chuyển gì cả.
-    ///
-    /// Luồng dữ liệu: Bộ lọc chat (chưa nối) sẽ gọi ExecuteCommands(List&lt;string&gt;) mỗi khi có
-    /// comment mới từ Follower đang là Runner. Trong lúc chưa nối, dùng phím A/D để tự test.
+    /// Controls 3-lane runner movement and chat command execution.
     /// </summary>
     [RequireComponent(typeof(RunnerCollisionHandler))]
     [RequireComponent(typeof(Rigidbody))]
@@ -65,16 +51,70 @@ namespace SteamRush.Features.Runner
         private float _knockbackTotalDuration = 0.45f;
         private float _knockbackStartOffset;
 
+        [Header("Control Lock On Hit")]
+        [Tooltip("Automatically lock all runner controls when pushed back by obstacle or vehicle.")]
+        [SerializeField] private bool _lockControlOnKnockback = true;
+        [Tooltip("Extra stun / control lock duration after knockback finishes (seconds).")]
+        [SerializeField] private float _extraControlLockDuration = 0.25f;
+
+        private float _controlLockTimer = 0f;
+
+        /// <summary>
+        /// Runner có đang bị khóa điều khiển (do va chạm bị đẩy lùi, choáng hoặc thế giới đang cuộn ngược) không.
+        /// </summary>
+        public bool IsControlLocked
+        {
+            get
+            {
+                if (!_lockControlOnKnockback) return false;
+
+                if (_controlLockTimer > 0f || IsKnockingBack) return true;
+                if (_collisionHandler != null && _collisionHandler.IsHandlingHit) return true;
+                if (_speedManager != null && (_speedManager.IsReverseKnockingBack || _speedManager.CurrentSpeed < 0f)) return true;
+
+                return false;
+            }
+        }
+
         public bool IsKnockingBack => _knockbackTimer < _knockbackTotalDuration;
 
         public void ApplyKnockback(float distance = -1f, float duration = -1f)
         {
-            _currentSurgeX = 0f; // Triệt tiêu ngay lập tức rướn người về phía trước
+            _currentSurgeX = 0f;
             float dist = distance >= 0f ? distance : _knockbackDistance;
             _knockbackTotalDuration = duration > 0f ? duration : _knockbackDuration;
             _knockbackTimer = 0f;
-            _knockbackStartOffset = -dist; // Đẩy lùi về phía sau (-X) nếu dist > 0
+            _knockbackStartOffset = -dist;
             _knockbackOffsetX = _knockbackStartOffset;
+
+            if (_lockControlOnKnockback)
+            {
+                _controlLockTimer = _knockbackTotalDuration + Mathf.Max(0f, _extraControlLockDuration);
+                _commandQueue.Clear();
+                StopFast();
+                _zVelocity = 0f;
+
+                if (_rb != null)
+                {
+                    _currentLaneIndex = GetClosestLaneIndex(_rb.position.z);
+                }
+            }
+        }
+
+        private int GetClosestLaneIndex(float currentZ)
+        {
+            int bestIndex = _currentLaneIndex;
+            float bestDist = float.MaxValue;
+            for (int i = 0; i < _laneZPositions.Length; i++)
+            {
+                float dist = Mathf.Abs(currentZ - _laneZPositions[i]);
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    bestIndex = i;
+                }
+            }
+            return bestIndex;
         }
 
         private void UpdateKnockback(float dt)
@@ -93,15 +133,15 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        private int _currentLaneIndex = 1; // bắt đầu ở làn giữa
-        private float _zVelocity; // bắt buộc phải có cho Mathf.SmoothDamp, lưu vận tốc giữa các frame
+        private int _currentLaneIndex = 1;
+        private float _zVelocity;
 
         private readonly Queue<string> _commandQueue = new Queue<string>();
         private float _commandCooldownTimer;
 
         private WorldSpeedManager _speedManager;
-        private RunnerCollisionHandler _collisionHandler; // chỉ tham chiếu, KHÔNG sửa logic bên trong
-        private RunnerController _runnerController; // Đã thêm RunnerController
+        private RunnerCollisionHandler _collisionHandler;
+        private RunnerController _runnerController;
         private Rigidbody _rb;
         private Animator _animator;
         private Camera _mainCamera;
@@ -117,7 +157,7 @@ namespace SteamRush.Features.Runner
         {
             _speedManager = FindFirstObjectByType<WorldSpeedManager>() ?? WorldSpeedManager.Instance;
             _collisionHandler = GetComponent<RunnerCollisionHandler>();
-            _runnerController = GetComponent<RunnerController>(); // Lấy component RunnerController
+            _runnerController = GetComponent<RunnerController>();
             _rb = GetComponent<Rigidbody>();
             _animator = GetComponentInChildren<Animator>();
             _mainCamera = Camera.main;
@@ -135,13 +175,8 @@ namespace SteamRush.Features.Runner
 
         private void Start()
         {
-            // Chạy ở Start() (không phải Awake()) để CHẮC CHẮN RunnerController.Awake() đã set
-            // xong constraints trước — nếu làm ở Awake(), thứ tự Awake() giữa 2 script trên cùng
-            // GameObject không được đảm bảo, có thể bị RunnerController ghi đè lại constraints
-            // SAU khi mình vừa mở khoá, làm mất tác dụng.
             _rb.constraints &= ~(RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezePositionX);
 
-            // Đặt vị trí Z ban đầu đúng làn giữa, tránh Runner spawn lệch làn nếu Scene đặt sai.
             Vector3 startPos = transform.position;
             startPos.z = _laneZPositions[_currentLaneIndex];
             _rb.position = startPos;
@@ -149,6 +184,11 @@ namespace SteamRush.Features.Runner
 
         private void Update()
         {
+            if (_controlLockTimer > 0f)
+            {
+                _controlLockTimer -= Time.deltaTime;
+            }
+
             ProcessCommandQueue();
             UpdateFastEnergyDrain();
             UpdateSpeedVisualEffects();
@@ -165,8 +205,6 @@ namespace SteamRush.Features.Runner
             float currentSpeed = _speedManager.CurrentSpeed;
             float baseSpeed = 8.0f;
 
-            // 1. Đồng bộ nhịp chạy Animator với tốc độ cuộn thế giới:
-            // 8m/s -> 1.0x (chạy đều), 18m/s -> 2.25x (bứt tốc cuồng nhiệt xé gió)
             if (_animator != null)
             {
                 if (currentSpeed <= 0.2f)
@@ -179,19 +217,17 @@ namespace SteamRush.Features.Runner
                 }
             }
 
-            // 2. Hiệu ứng Camera FOV (Speed Warp Effect): mở rộng góc nhìn xé gió khi fast sprint
             if (_mainCamera != null)
             {
                 float targetFov = _baseFov;
                 if (currentSpeed > baseSpeed + 2f)
                 {
-                    targetFov = _baseFov + 12f; // Tăng lên 72 FOV tạo hiệu ứng bứt tốc rõ rệt
+                    targetFov = _baseFov + 12f;
                 }
 
                 _mainCamera.fieldOfView = Mathf.Lerp(_mainCamera.fieldOfView, targetFov, Time.deltaTime * 7f);
             }
 
-            // 3. Hiệu ứng vị trí Runner trên thảm chạy (rướn mạnh lên phía trước khi bứt tốc fast)
             float targetSurgeX = 0f;
             bool isKnockedOrRecovering = (_speedManager != null && (_speedManager.IsReverseKnockingBack || _speedManager.IsRecovering)) ||
                                         (_collisionHandler != null && _collisionHandler.IsHandlingHit) ||
@@ -209,31 +245,31 @@ namespace SteamRush.Features.Runner
             UpdateLaneMovement();
         }
 
-        /// <summary>
-        /// Trượt mềm trục Z về đúng vị trí làn hiện tại — chạy trong FixedUpdate và dùng
-        /// RB.MovePosition() (không ghi transform.position trực tiếp) để không bị Physics Engine
-        /// kéo ngược lại, vì Rigidbody vẫn là non-kinematic (Y vẫn rơi/nhảy bình thường).
-        /// </summary>
         private void UpdateLaneMovement()
         {
             UpdateKnockback(Time.fixedDeltaTime);
 
-            float targetZ = _laneZPositions[_currentLaneIndex];
             Vector3 pos = _rb.position;
-            float newZ = Mathf.SmoothDamp(pos.z, targetZ, ref _zVelocity, _laneChangeSmoothTime);
+            float newZ;
+
+            if (IsControlLocked)
+            {
+                _zVelocity = 0f;
+                newZ = _laneZPositions[_currentLaneIndex];
+            }
+            else
+            {
+                float targetZ = _laneZPositions[_currentLaneIndex];
+                newZ = Mathf.SmoothDamp(pos.z, targetZ, ref _zVelocity, _laneChangeSmoothTime);
+            }
+
             float newX = _baseX + _currentSurgeX + _knockbackOffsetX;
             _rb.MovePosition(new Vector3(newX, pos.y, newZ));
         }
 
-        // --- PUBLIC COMMAND API ---
-
-        /// <summary>
-        /// Nhận 1 chuỗi tối đa 3 lệnh từ 1 comment chat (GDD mục 5.2 "Command Queue FIFO").
-        /// Nếu gửi quá 3 lệnh, chỉ 3 lệnh đầu tiên được nhận, phần dư bị huỷ bỏ.
-        /// </summary>
         public void ExecuteCommands(List<string> commands)
         {
-            if (commands == null) return;
+            if (commands == null || IsControlLocked) return;
 
             int count = Mathf.Min(commands.Count, _maxCommandsPerBatch);
             for (int i = 0; i < count; i++)
@@ -242,15 +278,15 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        /// <summary>Nhận đúng 1 lệnh — dùng cho test phím A/D hoặc chat chỉ gửi 1 lệnh duy nhất.</summary>
         public void ExecuteSingleCommand(string command)
         {
+            if (IsControlLocked) return;
             EnqueueCommand(command);
         }
 
         private void EnqueueCommand(string command)
         {
-            if (string.IsNullOrWhiteSpace(command)) return;
+            if (string.IsNullOrWhiteSpace(command) || IsControlLocked) return;
 
             string normalized = command.Trim().ToLowerInvariant();
 
@@ -263,12 +299,13 @@ namespace SteamRush.Features.Runner
             _commandQueue.Enqueue(normalized);
         }
 
-        /// <summary>
-        /// Xử lý 1 lệnh trong queue mỗi khi cooldown của lệnh trước đã hết — đảm bảo FIFO,
-        /// lệnh sau không chồng lên lệnh trước khi đang lách làn/đang tăng-giảm tốc.
-        /// </summary>
         private void ProcessCommandQueue()
         {
+            if (IsControlLocked)
+            {
+                return;
+            }
+
             if (_commandCooldownTimer > 0f)
             {
                 _commandCooldownTimer -= Time.deltaTime;
@@ -283,8 +320,8 @@ namespace SteamRush.Features.Runner
 
         private void RunCommand(string command)
         {
+            if (IsControlLocked) return;
             
-            // Lọc các từ khóa nhảy
             if (command == "j" || command == "nhay" || command == "up")
             {
                 command = "jump";
@@ -308,17 +345,17 @@ namespace SteamRush.Features.Runner
                     break;
 
                 case "1":
-                    SetLane(0); // Làn 1: Trái cùng (Z = +3.0)
+                    SetLane(0);
                     _commandCooldownTimer = _laneChangeSmoothTime;
                     break;
 
                 case "2":
-                    SetLane(1); // Làn 2: Giữa (Z = 0.0)
+                    SetLane(1);
                     _commandCooldownTimer = _laneChangeSmoothTime;
                     break;
 
                 case "3":
-                    SetLane(2); // Làn 3: Phải cùng (Z = -3.0)
+                    SetLane(2);
                     _commandCooldownTimer = _laneChangeSmoothTime;
                     break;
 
@@ -335,6 +372,8 @@ namespace SteamRush.Features.Runner
 
         private void TriggerJump()
         {
+            if (IsControlLocked) return;
+
             if (_runnerController != null && _runnerController.IsGrounded && !_runnerController.IsDucking)
             {
                 _runnerController.PerformJump();
@@ -347,6 +386,8 @@ namespace SteamRush.Features.Runner
 
         private void SetLane(int targetIndex)
         {
+            if (IsControlLocked) return;
+
             int clampedIndex = Mathf.Clamp(targetIndex, 0, _laneZPositions.Length - 1);
             if (clampedIndex == _currentLaneIndex)
             {
@@ -358,6 +399,8 @@ namespace SteamRush.Features.Runner
 
         private void ChangeLane(int direction)
         {
+            if (IsControlLocked) return;
+
             int newIndex = Mathf.Clamp(_currentLaneIndex + direction, 0, _laneZPositions.Length - 1);
             if (newIndex == _currentLaneIndex)
             {
@@ -369,6 +412,8 @@ namespace SteamRush.Features.Runner
 
         private void TriggerFast()
         {
+            if (IsControlLocked) return;
+
             if (_factionManager == null)
             {
                 _factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
@@ -396,8 +441,6 @@ namespace SteamRush.Features.Runner
         {
             if (!_isFastRunning) return;
 
-            // Nếu đang va chạm (ReverseKnockback hoặc Recovery) hoặc Runner đang bị hit:
-            // Tuyệt đối KHÔNG can thiệp đè tốc độ thế giới
             if (_speedManager != null && (_speedManager.IsReverseKnockingBack || _speedManager.IsRecovering))
             {
                 if (!_isSprintBuffActive)
@@ -412,7 +455,6 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            // Nếu đang có Sprint Buff (Bình Tăng Tốc), KHÔNG tiêu hao năng lượng Fan và duy trì tốc độ
             if (_isSprintBuffActive)
             {
                 if (_speedManager != null && 
@@ -425,7 +467,6 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            // Nếu đang va chạm/hồi phục tốc độ thì hủy fast ngay
             if (_speedManager != null && (_speedManager.IsRecovering || _speedManager.IsReverseKnockingBack))
             {
                 StopFast();
@@ -468,10 +509,6 @@ namespace SteamRush.Features.Runner
             _speedManager?.CancelCommandSpeed();
         }
 
-        /// <summary>
-        /// Kích hoạt quà Bình Tăng Tốc (Sprint Buff) cho phe Fan trong duration giây (mặc định 30s).
-        /// Bứt tốc 18m/s liên tục mà KHÔNG trừ năng lượng Fan.
-        /// </summary>
         public void ActivateSprintBuff(float duration = 30f)
         {
             if (_sprintBuffCoroutine != null)
@@ -498,9 +535,6 @@ namespace SteamRush.Features.Runner
             if (timerEnd != null) timerEnd.DeactivateTimer();
         }
 
-        /// <summary>
-        /// [DEBUG] Bật/tắt tự do Sprint Buff không giới hạn thời gian (dành cho QA / test nhanh).
-        /// </summary>
         public void SetSprintBuffDebug(bool isActive)
         {
             if (_sprintBuffCoroutine != null)

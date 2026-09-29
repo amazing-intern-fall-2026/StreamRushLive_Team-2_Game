@@ -15,6 +15,13 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private Outline cardOutline;
         [SerializeField] private float showDuration = 3.5f;
         [SerializeField] private float animDuration = 0.3f;
+        [SerializeField] private bool hideIconIfNull = false;
+
+        public void SetDuration(float showDur, float animDur = -1f)
+        {
+            showDuration = showDur;
+            if (animDur > 0f) animDuration = animDur;
+        }
 
         // GiftToastQueue lang nghe de tu go khoi danh sach dang hien thi khi toast bien mat
         // (ca truong hop tu het gio lan bi ep dismiss som de nhuong cho toast moi - xem ForceDismiss).
@@ -30,12 +37,19 @@ namespace SteamRush.Features.UI.Views
         {
             Color? resolvedIconColor = iconColor ?? accentColor;
 
-            // icon null khi chưa có icon quà thật (đang chờ curate) - giữ nguyên icon mặc định trên template thay vì để trống.
-            if (iconImage != null && icon != null)
+            if (iconImage != null)
             {
-                iconImage.sprite = icon;
-                // Icon nguồn là hình trắng/nền trong suốt (game-icons.net) - cần tint màu để có màu sắc phù hợp vật phẩm.
-                iconImage.color = resolvedIconColor ?? Color.white;
+                if (icon != null)
+                {
+                    iconImage.gameObject.SetActive(true);
+                    iconImage.sprite = icon;
+                    // Icon nguồn là hình trắng/nền trong suốt (game-icons.net) - cần tint màu để có màu sắc phù hợp vật phẩm.
+                    iconImage.color = resolvedIconColor ?? Color.white;
+                }
+                else if (hideIconIfNull)
+                {
+                    iconImage.gameObject.SetActive(false);
+                }
             }
 
             if (cardOutline != null && accentColor.HasValue)

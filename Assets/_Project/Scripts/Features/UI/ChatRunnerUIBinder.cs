@@ -24,6 +24,7 @@ namespace SteamRush.Features.UI
             if (_factionManager != null && _factionUI != null)
             {
                 _factionManager.FactionValuesChanged.AddListener(_factionUI.SetFactionValues);
+                _factionManager.FactionMemberCountsChanged.AddListener(_factionUI.SetMemberCounts);
             }
 
             if (_queueManager != null && _waitingPanel != null)

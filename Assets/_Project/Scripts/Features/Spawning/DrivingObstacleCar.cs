@@ -5,22 +5,17 @@ using SteamRush.Track;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Phân cấp xe cản phá theo GDD v1.4 Mục 4.3:
-    /// - SedanCar (Xe Con Húc): Giảm 20% năng lượng, đẩy lùi 100m.
-    /// - PickupTruck (Xe Bán Tải): Giảm 40% năng lượng, đẩy lùi 200m (kèm choáng).
-    /// - HeavyTruck (Xe Tải Hạng Nặng / Xe Bus): Giảm 60% năng lượng, đẩy lùi 400m.
+    /// Vehicle tiers according to design specs (Sedan, Pickup, Heavy Truck).
     /// </summary>
     public enum VehicleTier
     {
-        SedanCar,     // Xe Con Húc: -20% NL, -100m cự ly
-        PickupTruck,  // Xe Bán Tải: -40% NL, -200m cự ly
-        HeavyTruck    // Xe Tải Hạng Nặng: -60% NL, -400m cự ly
+        SedanCar,
+        PickupTruck,
+        HeavyTruck
     }
 
     /// <summary>
-    /// Điều khiển xe cản đường có tốc độ tự chạy thực tế (Driving Speed)
-    /// thay vì chỉ trôi thụ động theo tốc độ thế giới.
-    /// Kế thừa ObstacleBase để tương thích hoàn toàn với hệ thống va chạm và khiên.
+    /// Controls dynamic obstacle vehicles with independent forward driving speed.
     /// </summary>
     public class DrivingObstacleCar : ObstacleBase
     {
@@ -201,7 +196,6 @@ namespace StreamRushLive.Features.Spawning
             float totalSpeed = effectiveWorldSpeed + _drivingSpeed;
             float dt = Time.deltaTime;
 
-            // 1. Di chuyển xe lao về phía trước (-X) theo tổng vận tốc (vận tốc đường + vận tốc tự lái)
             if (_rb != null && _rb.isKinematic)
             {
                 _rb.position += Vector3.left * (totalSpeed * dt);
@@ -212,10 +206,8 @@ namespace StreamRushLive.Features.Spawning
                 transform.position += Vector3.left * (totalSpeed * dt);
             }
 
-            // 2. Quay các bánh xe đồng bộ theo tốc độ thực tế của xe trên mặt đường
             if (_enableWheelSpin && _wheelTransforms.Count > 0 && _drivingSpeed > 0.01f)
             {
-                // Tốc độ góc (độ/giây) = (v / r) * (180 / PI)
                 float angularSpeedDeg = (_drivingSpeed / Mathf.Max(0.1f, _wheelRadius)) * Mathf.Rad2Deg;
                 float angleStep = angularSpeedDeg * dt;
 
@@ -223,13 +215,11 @@ namespace StreamRushLive.Features.Spawning
                 {
                     if (_wheelTransforms[i] != null)
                     {
-                        // Quay quanh trục X cục bộ của bánh xe
                         _wheelTransforms[i].Rotate(Vector3.right, angleStep, Space.Self);
                     }
                 }
             }
 
-            // 3. Rung nhún động cơ nhẹ tạo cảm giác xe sống động đang nổ máy
             if (_enableEngineRumble)
             {
                 float rumbleOffset = Mathf.Sin((Time.time * _rumbleFrequency) + _rumbleSeed) * _rumbleAmplitude;
@@ -238,7 +228,6 @@ namespace StreamRushLive.Features.Spawning
                 transform.position = currentPos;
             }
 
-            // 4. Tự hủy khi xe đã vượt qua người chơi về phía sau
             if (transform.position.x <= _despawnXThreshold)
             {
                 Destroy(gameObject);
@@ -247,14 +236,12 @@ namespace StreamRushLive.Features.Spawning
 
         public override void OnHitPlayer(GameObject player)
         {
-            // 1. Tắt toàn bộ collider để không kích hoạt va chạm trùng lặp
             Collider[] colliders = GetComponentsInChildren<Collider>();
             for (int i = 0; i < colliders.Length; i++)
             {
                 if (colliders[i] != null) colliders[i].enabled = false;
             }
 
-            // 2. Dừng xe và ghim xe cố định cùng Runner (cả hai đứng yên trước camera trong lúc thế giới trôi lùi)
             _drivingSpeed = 0f;
             _isPinnedToPlayer = true;
             _pinnedPlayerTransform = player != null ? player.transform : null;
@@ -263,7 +250,6 @@ namespace StreamRushLive.Features.Spawning
                 _pinnedOffsetX = Mathf.Clamp(transform.position.x - _pinnedPlayerTransform.position.x, 1.6f, 2.8f);
             }
 
-            // 3. Tồn tại găm phía trước Runner trong toàn bộ thời gian thế giới cuộn ngược rồi biến mất
             Destroy(gameObject, _reverseWorldDuration);
         }
     }

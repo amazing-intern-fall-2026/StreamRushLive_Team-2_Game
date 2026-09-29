@@ -161,8 +161,8 @@ namespace StreamRushLive.Features.Spawning
             }
 
             string message = string.IsNullOrEmpty(sender)
-                ? $"+{energyBonus:F0}% Năng lượng từ Tim!"
-                : $"{sender} đã thả tim! +{energyBonus:F0}%";
+                ? $"+{energyBonus:F0}% Energy (Likes)"
+                : $"{sender} Liked! +{energyBonus:F0}%";
 
             hudManager?.ShowStatusPopup(message, true);
         }
