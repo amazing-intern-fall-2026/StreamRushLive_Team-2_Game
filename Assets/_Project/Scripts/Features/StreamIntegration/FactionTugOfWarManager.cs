@@ -196,29 +196,46 @@ namespace SteamRush.Features.StreamIntegration
             Debug.Log($"[FactionTugOfWarManager] Debug Anti Energy: {_antiLikes}/{max} (delta: {(delta >= 0 ? "+" : "")}{delta})");
         }
 
-        // Doi phe qua chat: #FAN/#Blue -> Fan, #ANTI/#Red -> Anti (khong phan biet hoa thuong).
-        public void OnChatCommand(string userId, string message)
+        // Doi phe qua chat: blue/#blue/fan/#fan -> Fan, red/#red/anti/#anti -> Anti (khong phan biet hoa thuong).
+        // Tra ve true CHI KHI thanh vien thay doi (vao phe lan dau hoac doi sang phe khac).
+        public bool OnChatCommand(string userId, string message)
         {
             if (string.IsNullOrEmpty(message))
             {
-                return;
-            }
-
-            if (!_followerGate.CanSendCommand(userId))
-            {
-                return;
+                return false;
             }
 
             string normalized = message.Trim().ToLowerInvariant();
 
+            FactionType target;
             if (normalized == "blue" || normalized == "#blue" || normalized == "#fan" || normalized == "fan")
             {
-                SetFaction(userId, FactionType.Fan);
+                target = FactionType.Fan;
             }
             else if (normalized == "red" || normalized == "#red" || normalized == "#anti" || normalized == "anti")
             {
-                SetFaction(userId, FactionType.Anti);
+                target = FactionType.Anti;
             }
+            else
+            {
+                return false; // khong phai lenh phe
+            }
+
+            // Chi kiem tra Follow khi that su la lenh phe, de comment binh thuong cua
+            // nguoi chua Follow khong bi log/publish event moi lan.
+            if (!_followerGate.CanSendCommand(userId))
+            {
+                return false;
+            }
+
+            // Khong dung GetFaction: no tra mac dinh Fan cho nguoi chua co phe.
+            if (_userFactions.TryGetValue(userId, out FactionType current) && current == target)
+            {
+                return false; // nhan lai dung phe cu
+            }
+
+            SetFaction(userId, target);
+            return true;
         }
 
         // Doi phe theo hanh vi donate (GDD v1.3 muc 4): tang qua bay -> Anti, tang Khien/Mau -> Fan.
