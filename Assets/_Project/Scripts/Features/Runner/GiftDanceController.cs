@@ -63,12 +63,16 @@ namespace SteamRush.Features.Runner
         /// Bắt đầu nhảy. Trả về false nếu đang nhảy sẵn (bấm lại bị bỏ qua, không reset 60s)
         /// hoặc Animator/layer chưa sẵn sàng.
         /// </summary>
-        public bool TriggerDance()
+        /// <param name="overrideDuration">
+        /// Ghi đè _danceDuration mặc định (vd. VictoryCeremonyController muốn nhảy "vô thời hạn"
+        /// tới hết phiên live). Bỏ trống hoặc &lt;= 0 thì dùng _danceDuration như cũ.
+        /// </param>
+        public bool TriggerDance(float overrideDuration = -1f)
         {
             if (_animator == null || _danceLayerIndex < 0) return false;
             if (IsDancing) return false;
 
-            _remainingTime = _danceDuration;
+            _remainingTime = overrideDuration > 0f ? overrideDuration : _danceDuration;
 
             // Layer weight 0 vẫn chạy ngầm state machine, nên phải ép về đầu clip để dance
             // luôn bắt đầu từ frame đầu thay vì giữa chừng.

@@ -57,6 +57,13 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
+            // Da qua Cong Ve Dich (GDD v1.4.1 - Victory Celebration): khoa het phim test QA,
+            // tai su dung co IsVictoryStopped da co san thay vi them co rieng.
+            if (_speedManager != null && _speedManager.IsVictoryStopped)
+            {
+                return;
+            }
+
             HandleJump();
             HandleSlideAndDuck();
             HandleSprint();

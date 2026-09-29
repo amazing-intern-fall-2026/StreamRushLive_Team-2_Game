@@ -26,6 +26,12 @@ namespace SteamRush.Track
         [SerializeField] private UnityEvent<int> _relayCompleted = new UnityEvent<int>();
         public UnityEvent<int> RelayCompleted => _relayCompleted;
 
+        // Ban 1 lan duy nhat khi TotalDistanceMeters cham GoalDistanceMeters (GDD v1.4.1 muc 7 -
+        // Cong Ve Dich). FinishLineArchway nghe su kien nay de spawn cong / kich hoat Victory.
+        [SerializeField] private UnityEvent _goalReached = new UnityEvent();
+        public UnityEvent GoalReached => _goalReached;
+        private bool _goalReachedFired;
+
         [SerializeField] private HUDManager _hudManager;
 
         public float CurrentLegDistanceMeters { get; private set; }
@@ -69,6 +75,12 @@ namespace SteamRush.Track
             if (_hudManager != null)
             {
                 _hudManager.UpdateLegProgress(TotalDistanceMeters, GoalDistanceMeters);
+            }
+
+            if (!_goalReachedFired && TotalDistanceMeters >= GoalDistanceMeters)
+            {
+                _goalReachedFired = true;
+                _goalReached.Invoke();
             }
         }
 

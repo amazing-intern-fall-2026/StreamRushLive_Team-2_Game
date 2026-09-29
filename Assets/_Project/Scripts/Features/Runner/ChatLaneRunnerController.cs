@@ -113,6 +113,22 @@ namespace SteamRush.Features.Runner
         private float _fastTimer;
         private float _fastEnergyAccumulator;
 
+        // Khoa dieu khien (GDD v1.4.1 - Victory Celebration): goi khi Runner bang qua Cong Ve Dich,
+        // khong con nhan lenh chat nao nua (doi lan/nhay/fast deu bi chan).
+        private bool _controlsLocked;
+        public bool IsControlsLocked => _controlsLocked;
+
+        public void SetControlsLocked(bool locked)
+        {
+            _controlsLocked = locked;
+            if (locked)
+            {
+                _commandQueue.Clear();
+                StopFast();
+            }
+            Debug.Log($"[ChatLaneRunner] ControlsLocked = {locked}");
+        }
+
         private void Awake()
         {
             _speedManager = FindFirstObjectByType<WorldSpeedManager>() ?? WorldSpeedManager.Instance;
@@ -169,7 +185,15 @@ namespace SteamRush.Features.Runner
             // 8m/s -> 1.0x (chạy đều), 18m/s -> 2.25x (bứt tốc cuồng nhiệt xé gió)
             if (_animator != null)
             {
-                if (currentSpeed <= 0.2f)
+                // Victory (GDD v1.4.1): Animator.speed la toc do phat CHUNG cho moi layer, khong
+                // rieng Base Layer - neu de "<=0.2f -> speed=0" ap dung luc World dung han sau khi
+                // ve dich se dong bang luon ca layer Dance dang chay, gay hien tuong "nhay 1 lan roi
+                // dung yen" thay vi loop. Ep speed=1 binh thuong de Dance van chay tiep du World=0.
+                if (_speedManager != null && _speedManager.IsVictoryStopped)
+                {
+                    _animator.speed = 1f;
+                }
+                else if (currentSpeed <= 0.2f)
                 {
                     _animator.speed = 0f;
                 }
@@ -250,6 +274,7 @@ namespace SteamRush.Features.Runner
 
         private void EnqueueCommand(string command)
         {
+            if (_controlsLocked) return;
             if (string.IsNullOrWhiteSpace(command)) return;
 
             string normalized = command.Trim().ToLowerInvariant();
