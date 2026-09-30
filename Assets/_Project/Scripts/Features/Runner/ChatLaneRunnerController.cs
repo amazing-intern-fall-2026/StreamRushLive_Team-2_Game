@@ -58,14 +58,32 @@ namespace SteamRush.Features.Runner
         [SerializeField] private float _extraControlLockDuration = 0.25f;
 
         private float _controlLockTimer = 0f;
+        private bool _controlsLocked;
 
         /// <summary>
-        /// Runner có đang bị khóa điều khiển (do va chạm bị đẩy lùi, choáng hoặc thế giới đang cuộn ngược) không.
+        /// Khóa điều khiển (GDD v1.4.1 - Victory Celebration): Runner cán đích, không nhận lệnh di chuyển.
+        /// </summary>
+        public bool IsControlsLocked => _controlsLocked;
+
+        public void SetControlsLocked(bool locked)
+        {
+            _controlsLocked = locked;
+            if (locked)
+            {
+                _commandQueue.Clear();
+                StopFast();
+            }
+            Debug.Log($"[ChatLaneRunner] ControlsLocked = {locked}");
+        }
+
+        /// <summary>
+        /// Runner có đang bị khóa điều khiển (do va chạm bị đẩy lùi, choáng, về đích hoặc thế giới đang cuộn ngược) không.
         /// </summary>
         public bool IsControlLocked
         {
             get
             {
+                if (_controlsLocked) return true;
                 if (!_lockControlOnKnockback) return false;
 
                 if (_controlLockTimer > 0f || IsKnockingBack) return true;
@@ -153,6 +171,22 @@ namespace SteamRush.Features.Runner
         private float _fastTimer;
         private float _fastEnergyAccumulator;
 
+        // Khoa dieu khien (GDD v1.4.1 - Victory Celebration): goi khi Runner bang qua Cong Ve Dich,
+        // khong con nhan lenh chat nao nua (doi lan/nhay/fast deu bi chan).
+        private bool _controlsLocked;
+        public bool IsControlsLocked => _controlsLocked;
+
+        public void SetControlsLocked(bool locked)
+        {
+            _controlsLocked = locked;
+            if (locked)
+            {
+                _commandQueue.Clear();
+                StopFast();
+            }
+            Debug.Log($"[ChatLaneRunner] ControlsLocked = {locked}");
+        }
+
         private void Awake()
         {
             _speedManager = FindFirstObjectByType<WorldSpeedManager>() ?? WorldSpeedManager.Instance;
@@ -207,7 +241,15 @@ namespace SteamRush.Features.Runner
 
             if (_animator != null)
             {
-                if (currentSpeed <= 0.2f)
+                // Victory (GDD v1.4.1): Animator.speed la toc do phat CHUNG cho moi layer, khong
+                // rieng Base Layer - neu de "<=0.2f -> speed=0" ap dung luc World dung han sau khi
+                // ve dich se dong bang luon ca layer Dance dang chay, gay hien tuong "nhay 1 lan roi
+                // dung yen" thay vi loop. Ep speed=1 binh thuong de Dance van chay tiep du World=0.
+                if (_speedManager != null && _speedManager.IsVictoryStopped)
+                {
+                    _animator.speed = 1f;
+                }
+                else if (currentSpeed <= 0.2f)
                 {
                     _animator.speed = 0f;
                 }

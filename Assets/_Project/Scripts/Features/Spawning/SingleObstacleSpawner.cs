@@ -85,6 +85,17 @@ namespace StreamRushLive.Features.Spawning
 
         public bool IsUnlimitedModeActive => _isUnlimitedModeActive;
 
+        // Khoa toan bo spawn (GDD v1.4.1 - Victory Celebration): goi khi Runner bang qua Cong Ve
+        // Dich, khong con xe/item nao duoc sinh them du chat con gui lenh gi di nua.
+        private bool _spawningLocked;
+        public bool IsSpawningLocked => _spawningLocked;
+
+        public void SetSpawningLocked(bool locked)
+        {
+            _spawningLocked = locked;
+            Debug.Log($"[SingleObstacleSpawner] SpawningLocked = {locked}");
+        }
+
         private class ActiveObstacle
         {
             public int LaneIndex;
@@ -179,6 +190,8 @@ namespace StreamRushLive.Features.Spawning
         /// </summary>
         public bool TriggerSpawnCarTier(VehicleTier tier, int laneIndex = -1)
         {
+            if (_spawningLocked) return false;
+
             CleanupInactiveObstacles();
 
             if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
@@ -215,6 +228,8 @@ namespace StreamRushLive.Features.Spawning
 
         public bool TriggerSpawnCarOnLane(int laneIndex, VehicleTier? tier = null)
         {
+            if (_spawningLocked) return false;
+
             CleanupInactiveObstacles();
 
             if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
@@ -240,6 +255,8 @@ namespace StreamRushLive.Features.Spawning
 
         public bool TriggerSpawnCarFromAntiLikes(VehicleTier? tier = null)
         {
+            if (_spawningLocked) return false;
+
             CleanupInactiveObstacles();
 
             if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
@@ -524,6 +541,8 @@ namespace StreamRushLive.Features.Spawning
         /// </summary>
         public bool TriggerSpawnFanItem(int laneIndex, bool isShield = false)
         {
+            if (_spawningLocked) return false;
+
             if (playerReference == null)
             {
                 var runner = FindFirstObjectByType<ChatLaneRunnerController>();
