@@ -41,10 +41,22 @@ namespace SteamRush.Features.Runner
         [Header("Speed Commands (fast)")]
         [Tooltip("Tốc độ cuộn thế giới khi nhận lệnh fast (bứt tốc turbo). Mặc định = 18.0 m/s để tạo cảm giác bứt phá xé gió rõ rệt.")]
         [SerializeField] private float _fastTargetSpeed = 18f;
-        [Tooltip("Tốc độ tiêu hao năng lượng Fan mỗi giây khi chạy fast (VD: 25/s thì 100 năng lượng chạy 4s, 50 năng lượng chạy 2s và giảm hết về 0).")]
-        [SerializeField] private float _fastEnergyDrainPerSecond = 25f;
         [Tooltip("Tham chiếu FactionTugOfWarManager để kiểm tra và trừ năng lượng Fan.")]
         [SerializeField] private FactionTugOfWarManager _factionManager;
+
+        [Header("Control Energy Costs (GDD v1.4.1 mục 2.2)")]
+        [Tooltip("Chi phí năng lượng Fan khi đổi làn 1 lần. GDD v1.4.1 = -1% (-10 điểm trên thang 1000).")]
+        [SerializeField] private int _laneChangeEnergyCost = 10;
+        [Tooltip("Chi phí năng lượng Fan khi nhảy 1 lần. GDD v1.4.1 = -2% (-20 điểm trên thang 1000).")]
+        [SerializeField] private int _jumpEnergyCost = 20;
+
+        [Header("Free-Control Buff (Fan Gift - Shift+F1)")]
+        [Tooltip("Thời gian hiệu lực mặc định của Bình Thao Tác Tự Do (giây). GDD v1.4.1 = 30s.")]
+        [SerializeField] private float _freeControlBuffDuration = 30f;
+        private bool _isFreeControlActive;
+        private Coroutine _freeControlCoroutine;
+
+        public bool IsFreeControlActive => _isFreeControlActive;
 
         [Header("Sprint Buff (Fan Gift - F2)")]
         [Tooltip("Thời gian hiệu lực mặc định của Bình Tăng Tốc (giây). GDD v1.4 = 30s.")]
@@ -111,7 +123,6 @@ namespace SteamRush.Features.Runner
 
         private bool _isFastRunning;
         private float _fastTimer;
-        private float _fastEnergyAccumulator;
 
         private void Awake()
         {
@@ -333,16 +344,50 @@ namespace SteamRush.Features.Runner
             }
         }
 
+        // GDD v1.4.1 muc 2.2: kiem tra + tru nang luong Fan cho 1 thao tac dieu khien (doi lan/
+        // nhay). Trong luc Free-Control Buff dang bat, moi thao tac mien phi 100% va bo qua khoa
+        // (duoc phep ngay ca khi Fan = 0%). Goi ham nay TRUOC khi thuc hien hanh dong - neu tra
+        // ve false thi KHONG duoc thuc hien hanh dong (khoa doi lan / khoa nhay).
+        private bool TryPayControlEnergy(int cost)
+        {
+            if (_isFreeControlActive)
+            {
+                return true;
+            }
+
+            if (_factionManager == null)
+            {
+                _factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
+            }
+
+            if (_factionManager == null)
+            {
+                // Chưa nối FactionTugOfWarManager trong scene (vd. scene test riêng) — không khoá,
+                // cho phép thao tác như cũ để không chặn việc test các phần khác.
+                return true;
+            }
+
+            return _factionManager.TrySpendFanEnergy(cost);
+        }
+
         private void TriggerJump()
         {
-            if (_runnerController != null && _runnerController.IsGrounded && !_runnerController.IsDucking)
+            if (_runnerController == null || !_runnerController.IsGrounded || _runnerController.IsDucking)
             {
-                _runnerController.PerformJump();
-                if (_animator != null)
-                {
-                    _animator.SetTrigger("Jump");
-                }
+                return;
             }
+
+            // Kiểm tra + trừ năng lượng TRƯỚC khi nhảy thật sự xảy ra: không đủ (hoặc hết) năng
+            // lượng Fan thì khoá nhảy, Runner buộc phải chịu va chạm nếu phía trước có chướng ngại.
+            if (!TryPayControlEnergy(_jumpEnergyCost))
+            {
+                Debug.LogWarning("[ChatLaneRunner] Hết năng lượng Fan — khoá nhảy.");
+                return;
+            }
+
+            _runnerController.PerformJump();
+            // Không tự SetTrigger("Jump") ở đây nữa — RunnerController.PerformJump() đã tự bắn
+            // Trigger "Jump" cho Animator, gọi lại ở đây sẽ set trigger 2 lần thừa mỗi lần nhảy.
         }
 
         private void SetLane(int targetIndex)
@@ -350,6 +395,13 @@ namespace SteamRush.Features.Runner
             int clampedIndex = Mathf.Clamp(targetIndex, 0, _laneZPositions.Length - 1);
             if (clampedIndex == _currentLaneIndex)
             {
+                return;
+            }
+
+            // Chỉ trừ năng lượng khi lane đích THỰC SỰ khác lane hiện tại (đã check ở trên).
+            if (!TryPayControlEnergy(_laneChangeEnergyCost))
+            {
+                Debug.LogWarning("[ChatLaneRunner] Hết năng lượng Fan — khoá đổi làn.");
                 return;
             }
 
@@ -364,22 +416,20 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
+            if (!TryPayControlEnergy(_laneChangeEnergyCost))
+            {
+                Debug.LogWarning("[ChatLaneRunner] Hết năng lượng Fan — khoá đổi làn.");
+                return;
+            }
+
             _currentLaneIndex = newIndex;
         }
 
         private void TriggerFast()
         {
-            if (_factionManager == null)
-            {
-                _factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
-            }
-
-            if (!_isSprintBuffActive && _factionManager != null && _factionManager.FanLikes <= 0)
-            {
-                Debug.LogWarning($"[ChatLaneRunner] Hết năng lượng Fan ({_factionManager.FanLikes}) để bứt tốc fast!");
-                return;
-            }
-
+            // GDD v1.4.1 muc 2.2: bang tieu hao nang luong Fan chi con Doi Lan va Nhay. Chay Fast
+            // la mien phi (0% nang luong), nen KHONG con kiem tra FanLikes <= 0 truoc khi cho fast
+            // chay nua — chi con logic khoi dong toc do.
             if (_speedManager == null)
             {
                 _speedManager = WorldSpeedManager.Instance ?? FindFirstObjectByType<WorldSpeedManager>();
@@ -387,11 +437,13 @@ namespace SteamRush.Features.Runner
 
             _isFastRunning = true;
             _fastTimer = 0f;
-            _fastEnergyAccumulator = 0f;
 
             _speedManager?.TriggerCommandSpeed(_fastTargetSpeed, 9999f);
         }
 
+        // Da go bo phan tru nang luong Fan theo thoi gian (GDD v1.4.1: fast mien phi). Ham nay chi
+        // con giu 2 viec: (1) huy fast ngay khi Runner dang bi va cham / knockback / recovering,
+        // tru khi dang co Sprint Buff; (2) duy tri toc do fast khi dang co Sprint Buff dang chay.
         private void UpdateFastEnergyDrain()
         {
             if (!_isFastRunning) return;
@@ -412,7 +464,7 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            // Nếu đang có Sprint Buff (Bình Tăng Tốc), KHÔNG tiêu hao năng lượng Fan và duy trì tốc độ
+            // Nếu đang có Sprint Buff (Bình Tăng Tốc), duy trì tốc độ fast liên tục
             if (_isSprintBuffActive)
             {
                 if (_speedManager != null && 
@@ -432,31 +484,7 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            float dt = Time.deltaTime;
-            _fastTimer += dt;
-
-            _fastEnergyAccumulator += _fastEnergyDrainPerSecond * dt;
-
-            if (_fastEnergyAccumulator >= 1f)
-            {
-                int intDrain = Mathf.FloorToInt(_fastEnergyAccumulator);
-                _fastEnergyAccumulator -= intDrain;
-
-                if (_factionManager != null)
-                {
-                    bool stillHasEnergy = _factionManager.TryConsumeFanEnergy(intDrain);
-                    if (!stillHasEnergy || _factionManager.FanLikes <= 0)
-                    {
-                        StopFast();
-                        return;
-                    }
-                }
-            }
-
-            if (_factionManager != null && _factionManager.FanLikes <= 0)
-            {
-                StopFast();
-            }
+            _fastTimer += Time.deltaTime;
         }
 
         private void StopFast()
@@ -464,7 +492,6 @@ namespace SteamRush.Features.Runner
             if (!_isFastRunning) return;
             _isFastRunning = false;
             _fastTimer = 0f;
-            _fastEnergyAccumulator = 0f;
             _speedManager?.CancelCommandSpeed();
         }
 
@@ -521,6 +548,36 @@ namespace SteamRush.Features.Runner
                 StopFast();
                 if (timer != null) timer.DeactivateTimer();
             }
+        }
+
+        /// <summary>
+        /// Kích hoạt quà Bình Thao Tác Tự Do (Free-Control Buff) cho phe Fan trong duration giây
+        /// (mặc định 30s, GDD v1.4.1 mục 3). Trong lúc hiệu lực: Đổi Làn và Nhảy tiêu tốn 0% năng
+        /// lượng Fan, kể cả khi Fan đang ở mức 0% (bỏ qua khoá thao tác — xem TryPayControlEnergy).
+        /// Bấm lại trong lúc buff đang chạy sẽ reset lại đủ duration giây (không cộng dồn).
+        /// </summary>
+        public void ActivateFreeControl(float duration = 30f)
+        {
+            if (_freeControlCoroutine != null)
+            {
+                StopCoroutine(_freeControlCoroutine);
+            }
+            float dur = duration > 0f ? duration : _freeControlBuffDuration;
+            _freeControlCoroutine = StartCoroutine(FreeControlRoutine(dur));
+        }
+
+        private System.Collections.IEnumerator FreeControlRoutine(float duration)
+        {
+            _isFreeControlActive = true;
+            var timer = SteamRush.Features.UI.Views.FreeControlTimerCircle.Instance;
+            if (timer != null) timer.ActivateTimer(duration);
+
+            yield return new WaitForSeconds(duration);
+
+            _isFreeControlActive = false;
+            _freeControlCoroutine = null;
+            var timerEnd = SteamRush.Features.UI.Views.FreeControlTimerCircle.Instance;
+            if (timerEnd != null) timerEnd.DeactivateTimer();
         }
     }
 }
