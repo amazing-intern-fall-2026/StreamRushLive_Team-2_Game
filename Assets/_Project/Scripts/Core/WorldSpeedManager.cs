@@ -368,7 +368,8 @@ namespace SteamRush.Track
         /// </summary>
         public void TriggerCommandSpeed(float targetSpeed, float duration)
         {
-            if (_state == SpeedState.Recovery || _state == SpeedState.ReverseKnockback || _state == SpeedState.Victory) return; // đang ngã / đang bị cuộn ngược / đã kết thúc thì không được đè tốc độ
+            if (_state == SpeedState.ReverseKnockback || _state == SpeedState.Victory) return; // đang bị cuộn ngược / đã kết thúc thì không được đè tốc độ
+            if (_state == SpeedState.Recovery && _recoveryElapsed < _recoveryTotalDuration) return; // đang trong pha ngã dừng va chạm thì chờ hồi phục xong
 
             _commandOverrideTargetSpeed = targetSpeed;
             _commandOverrideTimer = duration;

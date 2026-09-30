@@ -29,17 +29,20 @@ namespace StreamRushLive.Features.Spawning
         public float CurrentJumpForceMultiplier => currentJumpForceMultiplier;
 
         /// <summary>
-        /// Kích hoạt Shield cho Runner.
+        /// Kích hoạt Shield cho Runner (mặc định 15s theo yêu cầu GDD).
         /// Nếu Runner đang có Shield, thời gian sẽ được tính lại từ đầu.
         /// </summary>
-        public void ActivateShield(float duration)
+        public void ActivateShield(float duration = 15f)
         {
+            if (duration <= 0f) duration = 15f;
+
             if (shieldCoroutine != null)
             {
                 StopCoroutine(shieldCoroutine);
             }
 
             shieldCoroutine = StartCoroutine(ShieldTimer(duration));
+            SteamRush.Features.UI.Views.ShieldTimerCircle.Instance?.ActivateTimer(duration);
         }
 
         /// <summary>
@@ -61,6 +64,7 @@ namespace StreamRushLive.Features.Spawning
                 shieldCoroutine = null;
             }
 
+            SteamRush.Features.UI.Views.ShieldTimerCircle.Instance?.DeactivateTimer();
             Debug.Log("[RunnerItemEffects] Shield đã chặn 1 lần va chạm.");
 
             return true;
@@ -76,6 +80,7 @@ namespace StreamRushLive.Features.Spawning
 
             shieldActive = false;
             shieldCoroutine = null;
+            SteamRush.Features.UI.Views.ShieldTimerCircle.Instance?.DeactivateTimer();
 
             Debug.Log("[RunnerItemEffects] Shield đã hết thời gian.");
         }

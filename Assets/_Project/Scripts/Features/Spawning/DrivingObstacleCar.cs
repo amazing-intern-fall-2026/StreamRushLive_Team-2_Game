@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using SteamRush.Track;
@@ -61,7 +62,9 @@ namespace StreamRushLive.Features.Spawning
         private bool _isPinnedToPlayer;
         private Transform _pinnedPlayerTransform;
         private float _pinnedOffsetX;
+        private bool _isDeflectedByShield = false;
 
+        public bool IsDeflectedByShield => _isDeflectedByShield;
         public VehicleTier Tier => _vehicleTier;
         public float KnockbackDistance => _knockbackDistance;
         public float KnockbackDuration => _knockbackDuration;
@@ -162,6 +165,8 @@ namespace StreamRushLive.Features.Spawning
 
         private void Update()
         {
+            if (_isDeflectedByShield) return;
+
             if (_speedManager == null)
             {
                 _speedManager = WorldSpeedManager.Instance ?? FindFirstObjectByType<WorldSpeedManager>();
@@ -236,6 +241,8 @@ namespace StreamRushLive.Features.Spawning
 
         public override void OnHitPlayer(GameObject player)
         {
+            if (_isDeflectedByShield || IsShieldDeflected) return;
+
             Collider[] colliders = GetComponentsInChildren<Collider>();
             for (int i = 0; i < colliders.Length; i++)
             {
@@ -251,6 +258,86 @@ namespace StreamRushLive.Features.Spawning
             }
 
             Destroy(gameObject, _reverseWorldDuration);
+        }
+
+        /// <summary>
+        /// Được gọi khi xe đâm phải Khiên bảo vệ của Runner:
+        /// Xe bị hất văng bốc lên không trung và dạt mạnh sang 2 bên lề đường,
+        /// hoàn toàn không gây sát thương hay trừ điểm cho Runner.
+        /// </summary>
+        public void DeflectByShield(Vector3 runnerPosition)
+        {
+            if (_isDeflectedByShield) return;
+            _isDeflectedByShield = true;
+            IsShieldDeflected = true;
+            _isPinnedToPlayer = false;
+            _drivingSpeed = 0f;
+
+            // Vô hiệu hóa script di chuyển thế giới nếu có để xe tự do bay văng
+            var mover = GetComponent<MovingWorldObject>() ?? GetComponentInParent<MovingWorldObject>();
+            if (mover != null) mover.enabled = false;
+
+            // Vô hiệu hóa toàn bộ colliders để không cản trở Runner
+            Collider[] colliders = GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                if (colliders[i] != null) colliders[i].enabled = false;
+            }
+
+            if (transform.root != null && transform.root != transform)
+            {
+                Collider[] rootColliders = transform.root.GetComponentsInChildren<Collider>(true);
+                for (int i = 0; i < rootColliders.Length; i++)
+                {
+                    if (rootColliders[i] != null) rootColliders[i].enabled = false;
+                }
+            }
+
+            if (_rb != null)
+            {
+                _rb.isKinematic = true;
+                _rb.detectCollisions = false;
+            }
+
+            StartCoroutine(DeflectFlyRoutine(runnerPosition));
+        }
+
+        private IEnumerator DeflectFlyRoutine(Vector3 runnerPosition)
+        {
+            // Xác định hướng văng sang trái (+Z) hoặc phải (-Z)
+            float sideZ = (transform.position.z >= runnerPosition.z) ? 1f : -1f;
+            if (Mathf.Abs(transform.position.z - runnerPosition.z) < 0.2f)
+            {
+                sideZ = Random.value > 0.5f ? 1f : -1f;
+            }
+
+            float vx = 8f;            // Hất mạnh theo chiều phía trước
+            float vy = 15f;           // Bốc cao lên không trung
+            float vz = sideZ * 18f;   // Hất văng dạt mạnh sang 2 bên lề đường
+            float gravity = -28f;
+            Vector3 rotAxis = new Vector3(Random.Range(240f, 420f), Random.Range(100f, 250f), sideZ * Random.Range(300f, 520f));
+
+            Debug.Log($"[DrivingObstacleCar] Xe {gameObject.name} bị khiên hất văng sang {(sideZ > 0 ? "TRÁI" : "PHẢI")}!");
+
+            float elapsed = 0f;
+            float duration = 1.8f;
+
+            while (elapsed < duration)
+            {
+                float dt = Time.deltaTime;
+                elapsed += dt;
+
+                vy += gravity * dt;
+                Vector3 moveDelta = new Vector3(vx, vy, vz) * dt;
+                transform.position += moveDelta;
+                if (_rb != null) _rb.position = transform.position;
+
+                transform.Rotate(rotAxis * dt, Space.World);
+
+                yield return null;
+            }
+
+            Destroy(gameObject);
         }
     }
 }

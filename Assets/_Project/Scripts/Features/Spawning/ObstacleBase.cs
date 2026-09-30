@@ -29,6 +29,7 @@ namespace StreamRushLive.Features.Spawning
         [SerializeField] protected float distancePenaltyMeters = 0f;
 
         private bool _hasCollided = false;
+        private bool _isShieldDeflected = false;
 
         public string ObstacleName => obstacleName;
         public ObstacleType Type => obstacleType;
@@ -36,10 +37,15 @@ namespace StreamRushLive.Features.Spawning
         public float HitStopDuration => hitStopDuration;
         public float DistancePenaltyMeters => distancePenaltyMeters;
         public bool HasCollided => _hasCollided;
+        public bool IsShieldDeflected
+        {
+            get => _isShieldDeflected;
+            set => _isShieldDeflected = value;
+        }
 
         private void OnCollisionEnter(Collision collision)
         {
-            if (_hasCollided) return;
+            if (_hasCollided || _isShieldDeflected) return;
 
             if (IsPlayer(collision.gameObject))
             {
@@ -49,7 +55,7 @@ namespace StreamRushLive.Features.Spawning
 
         private void OnTriggerEnter(Collider other)
         {
-            if (_hasCollided) return;
+            if (_hasCollided || _isShieldDeflected) return;
 
             if (IsPlayer(other.gameObject))
             {
@@ -62,7 +68,20 @@ namespace StreamRushLive.Features.Spawning
         /// </summary>
         public void TriggerHit(GameObject player)
         {
-            if (_hasCollided) return;
+            if (_hasCollided || _isShieldDeflected) return;
+
+            // Kiểm tra nếu Runner đang có Khiên bảo vệ: Chặn hoàn toàn va chạm và đẩy xe văng ra 2 bên!
+            SteamRush.Features.Runner.RunnerCollisionHandler collisionHandler = player != null
+                ? (player.GetComponentInParent<SteamRush.Features.Runner.RunnerCollisionHandler>() ?? player.GetComponent<SteamRush.Features.Runner.RunnerCollisionHandler>())
+                : null;
+
+            if (collisionHandler != null && collisionHandler.HasShieldActive())
+            {
+                _hasCollided = true;
+                _isShieldDeflected = true;
+                collisionHandler.TryConsumeShield(gameObject);
+                return;
+            }
 
             _hasCollided = true;
 
@@ -80,7 +99,6 @@ namespace StreamRushLive.Features.Spawning
             OnHitPlayer(player);
 
             // 3. Báo cho bộ xử lý va chạm trên Player nếu có
-            RunnerCollisionHandler collisionHandler = player.GetComponentInParent<RunnerCollisionHandler>();
             if (collisionHandler != null)
             {
                 collisionHandler.HandleObstacleHitFromSource(this);

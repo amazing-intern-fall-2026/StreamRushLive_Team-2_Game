@@ -245,11 +245,11 @@ namespace SteamRush.Features.StreamIntegration
             string normalized = message.Trim().ToLowerInvariant();
 
             FactionType target;
-            if (normalized == "blue" || normalized == "#blue" || normalized == "#fan" || normalized == "fan")
+            if (normalized == "blue" || normalized == "#blue")
             {
                 target = FactionType.Fan;
             }
-            else if (normalized == "red" || normalized == "#red" || normalized == "#anti" || normalized == "anti")
+            else if (normalized == "red" || normalized == "#red")
             {
                 target = FactionType.Anti;
             }
@@ -275,7 +275,7 @@ namespace SteamRush.Features.StreamIntegration
             return true;
         }
 
-        // Doi phe theo hanh vi donate (GDD v1.3 muc 4): tang qua bay -> Anti, tang Khien/Mau -> Fan.
+        // Đổi phe theo hành vi donate: tặng cản trở/xe -> Anti, tặng Khiên/Năng lượng -> Fan.
         public void OnDonateReceived(string userId, bool isTrapGift)
         {
             if (!_followerGate.CanSendCommand(userId))
@@ -286,9 +286,7 @@ namespace SteamRush.Features.StreamIntegration
             SetFaction(userId, isTrapGift ? FactionType.Anti : FactionType.Fan);
         }
 
-        // Phe Anti nhắn 1, 2, 3 để thả xe cản đường trên làn mong muốn, giá 100 năng lượng / xe.
-        // ===== [Dhuy] BEGIN - F7 Unlimited Mode: bỏ qua trừ năng lượng khi SingleObstacleSpawner
-        // đang ở Unlimited Mode (60s), giữ nguyên hành vi cũ khi không active. =====
+        // Phe Anti thả xe cản đường trên làn chỉ định (1, 2, 3) với chi phí năng lượng quy định.
         public bool TrySpawnAntiObstacleCar(string userId, int laneIndex)
         {
             if (!_followerGate.CanSendCommand(userId))
@@ -315,9 +313,18 @@ namespace SteamRush.Features.StreamIntegration
             EventBus.Publish(new RequestCarSpawnEvent(laneIndex));
             return true;
         }
-        // ===== [Dhuy] END =====
 
-        // Phe Fan nhắn fan 1, fan 2, fan 3 hoặc #shield/#buff để thả item hỗ trợ Runner trên làn mong muốn
+        /// <summary>
+        /// Cộng trực tiếp năng lượng phe Fan (+amount)
+        /// </summary>
+        public void AddFanEnergy(int amount) => DebugAdjustFanEnergy(amount);
+
+        /// <summary>
+        /// Cộng trực tiếp năng lượng phe Anti (+amount)
+        /// </summary>
+        public void AddAntiEnergy(int amount) => DebugAdjustAntiEnergy(amount);
+
+        // Kích hoạt vật phẩm hỗ trợ trực tiếp cho Runner: Khiên 15s hoặc Bình Năng Lượng (+300).
         public bool TrySpawnFanItem(string userId, int laneIndex, bool isShield = false)
         {
             if (!_followerGate.CanSendCommand(userId))
@@ -325,27 +332,39 @@ namespace SteamRush.Features.StreamIntegration
                 return false;
             }
 
-            if (_fanLikes < _fanItemLaneCost)
+            if (isShield)
             {
-                Debug.LogWarning($"[FactionTugOfWarManager] Phe Fan không đủ năng lượng! Cần {_fanItemLaneCost}, hiện có {_fanLikes}.");
-                return false;
-            }
+                if (_fanLikes < _fanItemLaneCost)
+                {
+                    Debug.LogWarning($"[FactionTugOfWarManager] Phe Fan không đủ năng lượng để bật Khiên! Cần {_fanItemLaneCost}, hiện có {_fanLikes}.");
+                    return false;
+                }
 
-            var spawner = FindFirstObjectByType<StreamRushLive.Features.Spawning.SingleObstacleSpawner>();
-            if (spawner == null)
+                _fanLikes -= _fanItemLaneCost;
+                _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+
+                var runner = FindFirstObjectByType<SteamRush.Features.Runner.ChatLaneRunnerController>();
+                var itemEffects = runner != null
+                    ? (runner.GetComponent<StreamRushLive.Features.Spawning.RunnerItemEffects>() ?? runner.GetComponentInChildren<StreamRushLive.Features.Spawning.RunnerItemEffects>())
+                    : FindFirstObjectByType<StreamRushLive.Features.Spawning.RunnerItemEffects>();
+
+                if (itemEffects != null)
+                {
+                    itemEffects.ActivateShield(15f);
+                    Debug.Log($"[FactionTugOfWarManager] Phe Fan ({userId}) tiêu hao {_fanItemLaneCost} năng lượng -> Kích hoạt Khiên bảo vệ (15s) trực tiếp!");
+                }
+                else
+                {
+                    Debug.LogWarning("[FactionTugOfWarManager] Không tìm thấy RunnerItemEffects để kích hoạt Khiên.");
+                }
+                return true;
+            }
+            else
             {
-                Debug.LogWarning("[FactionTugOfWarManager] Không tìm thấy SingleObstacleSpawner để thả item.");
-                return false;
+                DebugAdjustFanEnergy(300);
+                Debug.Log($"[FactionTugOfWarManager] Phe Fan ({userId}) tặng Bình Năng Lượng -> Cộng trực tiếp +300 năng lượng Fan!");
+                return true;
             }
-
-            bool spawned = spawner.TriggerSpawnFanItem(laneIndex, isShield);
-            if (!spawned) return false;
-
-            _fanLikes -= _fanItemLaneCost;
-            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
-
-            Debug.Log($"[FactionTugOfWarManager] Phe Fan ({userId}) tiêu hao {_fanItemLaneCost} năng lượng -> Thả {(isShield ? "Khiên" : "Bình Năng Lượng")} trên Làn {laneIndex}!");
-            return true;
         }
 
         public bool HasFaction(string userId) => _userFactions.ContainsKey(userId);
