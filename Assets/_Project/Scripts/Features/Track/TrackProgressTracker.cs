@@ -102,5 +102,23 @@ namespace SteamRush.Track
                 _hudManager.ShowStatusPopup($"-{distanceDelta:F0}m Quãng đường!", false);
             }
         }
+
+        [ContextMenu("Debug Jump Near Finish Line (50m)")]
+        public void DebugJumpNearGoal(float metersBeforeGoal = 50f)
+        {
+            TotalDistanceMeters = Mathf.Max(0f, GoalDistanceMeters - metersBeforeGoal);
+            _progressChanged.Invoke(CurrentLegDistanceMeters, TotalDistanceMeters, GoalProgress);
+
+            if (_hudManager != null)
+            {
+                _hudManager.UpdateLegProgress(TotalDistanceMeters, GoalDistanceMeters);
+            }
+
+            if (!_goalReachedFired && TotalDistanceMeters >= GoalDistanceMeters)
+            {
+                _goalReachedFired = true;
+                _goalReached.Invoke();
+            }
+        }
     }
 }

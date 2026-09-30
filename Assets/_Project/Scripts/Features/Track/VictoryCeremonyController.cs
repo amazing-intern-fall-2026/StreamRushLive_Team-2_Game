@@ -82,6 +82,12 @@ namespace SteamRush.Track
             StartCoroutine(ShowPopupDelayed());
         }
 
+        [ContextMenu("Debug Trigger Victory")]
+        public void TriggerVictory()
+        {
+            HandleRunnerCrossedFinishLine();
+        }
+
         private IEnumerator ConfettiRoutine()
         {
             for (int i = 0; i < confettiBursts; i++)

@@ -101,5 +101,14 @@ namespace SteamRush.Track
                 RunnerCrossedFinishLine?.Invoke();
             }
         }
+
+        [ContextMenu("Debug Spawn Archway (50m ahead)")]
+        public void DebugSpawnArchway(float distanceAhead = 50f)
+        {
+            if (!_spawned)
+            {
+                SpawnArchway(distanceAhead);
+            }
+        }
     }
 }

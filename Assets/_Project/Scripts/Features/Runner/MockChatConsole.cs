@@ -200,11 +200,11 @@ namespace SteamRush.Features.Runner
             hlg.childForceExpandWidth = true;
             hlg.childForceExpandHeight = true;
 
-            // 4 Nút: Fan +1%, Fan -1%, Anti +1%, Anti -1%
             CreateDebugButton(_energyDebugPanelObj.transform, "Btn_FanPlus", "Fan +1% [F6 / ]]", new Color(0.12f, 0.45f, 0.85f, 0.95f), () => DebugIncreaseFanEnergy(10));
             CreateDebugButton(_energyDebugPanelObj.transform, "Btn_FanMinus", "Fan -1% [Shift+F6 / []", new Color(0.08f, 0.25f, 0.55f, 0.95f), () => DebugDecreaseFanEnergy(10));
             CreateDebugButton(_energyDebugPanelObj.transform, "Btn_AntiPlus", "Anti +1% [F11 / +]", new Color(0.85f, 0.28f, 0.15f, 0.95f), () => DebugIncreaseAntiEnergy(10));
             CreateDebugButton(_energyDebugPanelObj.transform, "Btn_AntiMinus", "Anti -1% [Shift+F11 / -]", new Color(0.55f, 0.15f, 0.08f, 0.95f), () => DebugDecreaseAntiEnergy(10));
+            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_Finish", "🏁 Finish [F12]", new Color(0.92f, 0.65f, 0.1f, 0.95f), () => MockTriggerFinishLineApproach(50f));
         }
 
         private void CreateDebugButton(Transform parent, string name, string label, Color bgColor, UnityEngine.Events.UnityAction action)
@@ -314,7 +314,7 @@ namespace SteamRush.Features.Runner
 
             if (toggleButtonText != null)
             {
-                toggleButtonText.text = isDebugUIVisible ? "❌ Ẩn Debug" : "💬 Debug [F12]";
+                toggleButtonText.text = isDebugUIVisible ? "❌ Hide Debug" : "💬 Debug [~]";
             }
         }
 
@@ -336,13 +336,17 @@ namespace SteamRush.Features.Runner
             if (Keyboard.current == null)
                 return;
 
-            // Phím tắt F12 hoặc ` (Backquote/tilde) để bật/tắt toàn bộ khung Debug
-            if (Keyboard.current.f12Key.wasPressedThisFrame || Keyboard.current.backquoteKey.wasPressedThisFrame)
+            bool isShift = Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed;
+
+            if (Keyboard.current.backquoteKey.wasPressedThisFrame)
             {
                 ToggleDebugUI();
             }
 
-            bool isShift = Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed;
+            if (Keyboard.current.f12Key.wasPressedThisFrame)
+            {
+                MockTriggerFinishLineApproach(50f);
+            }
 
             if (Keyboard.current.f1Key.wasPressedThisFrame)
                 MockDonateShield();
@@ -631,6 +635,7 @@ namespace SteamRush.Features.Runner
                 ClearInputField();
                 return;
             }
+
 
             // 2. Kiểm tra lệnh spawn xe cản đường của phe Anti (100 năng lượng / xe):
             // TH A: Cú pháp trực tiếp: "#anti 1", "anti 1", "#anti 2", "anti 2", "#anti 3", "anti 3", "anti1", "anti2", "anti3"
@@ -1101,6 +1106,24 @@ namespace SteamRush.Features.Runner
                 int percent = GetFactionPercent(factionManager.AntiLikes, isFan: false);
                 hudManager?.ShowStatusPopup($"[Debug] Anti -{amount} (-1%) (Hiện có: {factionManager.AntiLikes} - {percent}%)", false);
             }
+        }
+
+        [ContextMenu("Debug Trigger Finish Line (50m ahead)")]
+        public void MockTriggerFinishLineApproach(float distanceAhead = 50f)
+        {
+            var progressTracker = FindFirstObjectByType<SteamRush.Track.TrackProgressTracker>();
+            if (progressTracker != null)
+            {
+                progressTracker.DebugJumpNearGoal(distanceAhead);
+            }
+
+            var archway = FindFirstObjectByType<SteamRush.Track.FinishLineArchway>();
+            if (archway != null)
+            {
+                archway.DebugSpawnArchway(distanceAhead);
+            }
+
+            Debug.Log($"[MockChatConsole] F12 -> Jumped to {distanceAhead:F0}m before Finish Line!");
         }
 
         private void ClearInputField()
