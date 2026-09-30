@@ -359,13 +359,13 @@ namespace SteamRush.Features.Runner
             if (Keyboard.current.f4Key.wasPressedThisFrame)
             {
                 if (isShift) MockAntiEnergyBottle();
-                else MockSpawnPickupTruck();
+                else MockActivatePickupTruckPhase();
             }
 
             if (Keyboard.current.f5Key.wasPressedThisFrame)
             {
                 if (isShift) MockNewFollower();
-                else MockSpawnHeavyTruck();
+                else MockActivateHeavyTruckPhase();
             }
 
             if (Keyboard.current.f7Key.wasPressedThisFrame)
@@ -879,6 +879,37 @@ namespace SteamRush.Features.Runner
             }
         }
 
+        public void MockActivatePickupTruckPhase(string sender = "Phe Anti")
+        {
+            if (obstacleSpawner == null)
+            {
+                obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
+            }
+
+            if (obstacleSpawner == null)
+            {
+                Debug.LogWarning("[MockChatConsole] Không tìm thấy SingleObstacleSpawner.");
+                return;
+            }
+
+            obstacleSpawner.ActivatePickupTruckPhase();
+
+            if (hudManager == null)
+            {
+                hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+            }
+
+            hudManager?.ShowAntiAction(
+                sender,
+                "Pickup Truck Rush (60s)");
+
+            hudManager?.ShowStatusPopup(
+            "Giai đoạn Xe Bán Tải bắt đầu - 60s",
+            false);
+
+            Debug.Log("[MockChatConsole] F4 -> Pickup Truck Phase 60s activated.");
+        }
+
         public void MockSpawnHeavyTruck(string sender = "Phe Anti")
         {
             if (obstacleSpawner == null) obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
@@ -891,6 +922,37 @@ namespace SteamRush.Features.Runner
                     hudManager?.ShowAntiAction(sender, "Spawned Heavy Truck");
                 }
             }
+        }
+
+        public void MockActivateHeavyTruckPhase(string sender = "Phe Anti")
+        {
+            if (obstacleSpawner == null)
+            {
+                obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
+            }
+
+            if (obstacleSpawner == null)
+            {
+                Debug.LogWarning("[MockChatConsole] Không tìm thấy SingleObstacleSpawner.");
+                return;
+            }
+
+            obstacleSpawner.ActivateHeavyTruckPhase();
+
+            if (hudManager == null)
+            {
+                hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+            }
+
+            hudManager?.ShowAntiAction(
+                sender,
+                "Heavy Truck Onslaught (60s)");
+
+            hudManager?.ShowStatusPopup(
+            "Giai đoạn Xe Tải Hạng Nặng bắt đầu - 60s",
+            false);
+
+            Debug.Log("[MockChatConsole] F5 -> Heavy Truck Phase 60s activated.");
         }
 
         public void MockFanEnergyBottle(string sender = "Viewer_Fan")
