@@ -58,23 +58,6 @@ namespace SteamRush.Features.Runner
         [SerializeField] private float _extraControlLockDuration = 0.25f;
 
         private float _controlLockTimer = 0f;
-        private bool _controlsLocked;
-
-        /// <summary>
-        /// Khóa điều khiển (GDD v1.4.1 - Victory Celebration): Runner cán đích, không nhận lệnh di chuyển.
-        /// </summary>
-        public bool IsControlsLocked => _controlsLocked;
-
-        public void SetControlsLocked(bool locked)
-        {
-            _controlsLocked = locked;
-            if (locked)
-            {
-                _commandQueue.Clear();
-                StopFast();
-            }
-            Debug.Log($"[ChatLaneRunner] ControlsLocked = {locked}");
-        }
 
         /// <summary>
         /// Runner có đang bị khóa điều khiển (do va chạm bị đẩy lùi, choáng, về đích hoặc thế giới đang cuộn ngược) không.
