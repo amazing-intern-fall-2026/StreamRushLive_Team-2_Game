@@ -92,7 +92,10 @@ namespace SteamRush.Features.Runner
             {
                 _controlLockTimer = _knockbackTotalDuration + Mathf.Max(0f, _extraControlLockDuration);
                 _commandQueue.Clear();
-                StopFast();
+                if (!_isSprintBuffActive)
+                {
+                    StopFast();
+                }
                 _zVelocity = 0f;
 
                 if (_rb != null)
@@ -347,7 +350,7 @@ namespace SteamRush.Features.Runner
         {
             if (IsControlLocked) return;
             
-            if (command == "j" || command == "nhay" || command == "up")
+            if (command == "j")
             {
                 command = "jump";
             }
@@ -357,16 +360,6 @@ namespace SteamRush.Features.Runner
                 case "jump":
                     TriggerJump();
                     _commandCooldownTimer = _nonLaneCommandDelay;
-                    break;
-
-                case "left":
-                    ChangeLane(-1);
-                    _commandCooldownTimer = _laneChangeSmoothTime;
-                    break;
-
-                case "right":
-                    ChangeLane(1);
-                    _commandCooldownTimer = _laneChangeSmoothTime;
                     break;
 
                 case "1":
@@ -382,11 +375,6 @@ namespace SteamRush.Features.Runner
                 case "3":
                     SetLane(2);
                     _commandCooldownTimer = _laneChangeSmoothTime;
-                    break;
-
-                case "fast":
-                    TriggerFast();
-                    _commandCooldownTimer = _nonLaneCommandDelay;
                     break;
 
                 default:
@@ -464,39 +452,13 @@ namespace SteamRush.Features.Runner
 
         private void UpdateFastEnergyDrain()
         {
-            if (!_isFastRunning) return;
-
-            // Detect if CommandOverride was externally cancelled (e.g. collision -> Recovery -> Normal)
-            // while _isFastRunning is still true. Sync controller state with speed manager.
-            if (_speedManager != null && !_speedManager.IsCommandOverrideActive &&
-                !_speedManager.IsRecovering && !_speedManager.IsReverseKnockingBack &&
-                !_isSprintBuffActive)
-            {
-                StopFast();
-                return;
-            }
-
-            if (_speedManager != null && (_speedManager.IsReverseKnockingBack || _speedManager.IsRecovering))
-            {
-                if (!_isSprintBuffActive)
-                {
-                    StopFast();
-                }
-                return;
-            }
-
-            if (_collisionHandler != null && _collisionHandler.IsHandlingHit)
-            {
-                if (!_isSprintBuffActive)
-                {
-                    return;
-                }
-            }
-
             if (_isSprintBuffActive)
             {
+                _isFastRunning = true;
+
+                // Nếu đang bị giật lùi (ReverseKnockback), tạm thời để WorldSpeedManager xử lý hiệu ứng giật lùi.
+                // Ngay khi thoát giật lùi và pha dừng va chạm, lập tức tái kích hoạt CommandSpeed 18 m/s!
                 if (_speedManager != null &&
-                    !_speedManager.IsRecovering &&
                     !_speedManager.IsReverseKnockingBack &&
                     !_speedManager.IsCommandOverrideActive)
                 {
@@ -505,9 +467,25 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            if (_speedManager != null && (_speedManager.IsRecovering || _speedManager.IsReverseKnockingBack))
+            if (!_isFastRunning) return;
+
+            // Detect if CommandOverride was externally cancelled (e.g. collision -> Recovery -> Normal)
+            // while _isFastRunning is still true. Sync controller state with speed manager.
+            if (_speedManager != null && !_speedManager.IsCommandOverrideActive &&
+                !_speedManager.IsRecovering && !_speedManager.IsReverseKnockingBack)
             {
                 StopFast();
+                return;
+            }
+
+            if (_speedManager != null && (_speedManager.IsReverseKnockingBack || _speedManager.IsRecovering))
+            {
+                StopFast();
+                return;
+            }
+
+            if (_collisionHandler != null && _collisionHandler.IsHandlingHit)
+            {
                 return;
             }
 

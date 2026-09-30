@@ -232,11 +232,11 @@ namespace SteamRush.Features.StreamIntegration
 
             if (_factionManager.GetFaction(userId) == FactionType.Fan)
             {
-                ShowPopup($"[{displayName}] đã gia nhập phe FAN (Blue)! (Ủng hộ Runner)", true);
+                ShowPopup($"[{displayName}] đã gia nhập Blue Team! (Ủng hộ Runner)", true);
             }
             else
             {
-                ShowPopup($"[{displayName}] đã gia nhập phe ANTI (Red)! (Cản đường Runner)", false);
+                ShowPopup($"[{displayName}] đã gia nhập Red Team! (Cản đường Runner)", false);
             }
         }
 

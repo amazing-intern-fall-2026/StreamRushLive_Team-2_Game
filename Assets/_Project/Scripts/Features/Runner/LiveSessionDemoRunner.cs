@@ -55,6 +55,34 @@ namespace SteamRush.Features.Runner
         public int TotalRoomViewers => totalRoomViewers;
         public int TotalRoomLikes => totalRoomLikes;
 
+        [Header("Livestream Delay Simulation")]
+        [Tooltip("Bật/tắt giả lập độ trễ truyền phát livestream (Broadcast & Network Latency)")]
+        [SerializeField] private bool enableStreamDelay = true;
+        [Tooltip("Độ trễ tối thiểu (giây) của khán giả phòng live (VD: 1.5s)")]
+        [SerializeField] private float streamDelayMin = 1.5f;
+        [Tooltip("Độ trễ tối đa (giây) của khán giả phòng live (VD: 3.0s)")]
+        [SerializeField] private float streamDelayMax = 3.0f;
+
+        public bool EnableStreamDelay
+        {
+            get => enableStreamDelay;
+            set => enableStreamDelay = value;
+        }
+
+        public float StreamDelayMin
+        {
+            get => streamDelayMin;
+            set => streamDelayMin = Mathf.Max(0f, value);
+        }
+
+        public float StreamDelayMax
+        {
+            get => streamDelayMax;
+            set => streamDelayMax = Mathf.Max(streamDelayMin, value);
+        }
+
+        public float CurrentAverageDelay => enableStreamDelay ? (streamDelayMin + streamDelayMax) * 0.5f : 0f;
+
         private static readonly string[] BaseFanNames = new string[]
         {
             "LinhDan_99", "MinhVu_Pro", "HoangLong_Gamer", "ThuTrang_Cute", "BaoNam_Fan",
@@ -110,6 +138,12 @@ namespace SteamRush.Features.Runner
             {
                 ToggleLiveDemo();
             }
+
+            if (Keyboard.current.kKey.wasPressedThisFrame)
+            {
+                enableStreamDelay = !enableStreamDelay;
+                Debug.Log($"[LiveSessionDemoRunner] Livestream Broadcast Delay: {(enableStreamDelay ? $"BẬT ({streamDelayMin:F1}s - {streamDelayMax:F1}s)" : "TẮT (0s)")}");
+            }
         }
 
         public void ToggleLiveDemo()
@@ -146,12 +180,7 @@ namespace SteamRush.Features.Runner
             if (!isRunning) return;
             isRunning = false;
 
-            if (_chatRoutine != null) StopCoroutine(_chatRoutine);
-            if (_giftRoutine != null) StopCoroutine(_giftRoutine);
-            if (_queueRoutine != null) StopCoroutine(_queueRoutine);
-            if (_joinRoutine != null) StopCoroutine(_joinRoutine);
-            if (_switchRoutine != null) StopCoroutine(_switchRoutine);
-            if (_likeRoutine != null) StopCoroutine(_likeRoutine);
+            StopAllCoroutines();
 
             _chatRoutine = null;
             _giftRoutine = null;
@@ -161,6 +190,42 @@ namespace SteamRush.Features.Runner
             _likeRoutine = null;
 
             Debug.Log("<color=#FF8800><b>[LiveSessionDemoRunner] --- ĐÃ TẠM DỪNG PHIÊN LIVE DEMO (Bấm phím L hoặc P để Tiếp Tục) ---</b></color>");
+        }
+
+        private void OnDestroy()
+        {
+            StopLiveDemo();
+        }
+
+        /// <summary>
+        /// Điều phối thực thi hành động của khán giả qua cơ chế giả lập độ trễ livestream (Broadcast Latency).
+        /// Nếu bật enableStreamDelay, hành động sẽ được thực thi sau một khoảng thời gian trễ ngẫu nhiên [streamDelayMin, streamDelayMax].
+        /// </summary>
+        public void DispatchViewerAction(System.Action action)
+        {
+            if (action == null || !isRunning) return;
+
+            if (!enableStreamDelay || streamDelayMax <= 0.01f)
+            {
+                action.Invoke();
+                return;
+            }
+
+            float delay = Random.Range(streamDelayMin, streamDelayMax);
+            StartCoroutine(ExecuteDelayedAction(action, delay));
+        }
+
+        private IEnumerator ExecuteDelayedAction(System.Action action, float delay)
+        {
+            if (delay > 0f)
+            {
+                yield return new WaitForSeconds(delay);
+            }
+
+            if (isRunning)
+            {
+                action?.Invoke();
+            }
         }
 
         private void InitInitialFactionMembers()
@@ -239,7 +304,7 @@ namespace SteamRush.Features.Runner
                         ? BaseFanNames[Random.Range(0, BaseFanNames.Length)]
                         : $"Fan_{_viewerSerial}";
 
-                    console.SimulateViewerChat(newViewer, "blue");
+                    DispatchViewerAction(() => console.SimulateViewerChat(newViewer, "blue"));
                 }
                 else
                 {
@@ -247,7 +312,7 @@ namespace SteamRush.Features.Runner
                         ? BaseAntiNames[Random.Range(0, BaseAntiNames.Length)]
                         : $"Anti_{_viewerSerial}";
 
-                    console.SimulateViewerChat(newViewer, "red");
+                    DispatchViewerAction(() => console.SimulateViewerChat(newViewer, "red"));
                 }
             }
         }
@@ -275,7 +340,7 @@ namespace SteamRush.Features.Runner
                     if (fanMembers.Count > 2)
                     {
                         string memberToSwitch = fanMembers[Random.Range(0, fanMembers.Count)];
-                        console.SimulateViewerChat(memberToSwitch, "red");
+                        DispatchViewerAction(() => console.SimulateViewerChat(memberToSwitch, "red"));
                     }
                 }
                 else
@@ -284,7 +349,7 @@ namespace SteamRush.Features.Runner
                     if (antiMembers.Count > 2)
                     {
                         string memberToSwitch = antiMembers[Random.Range(0, antiMembers.Count)];
-                        console.SimulateViewerChat(memberToSwitch, "blue");
+                        DispatchViewerAction(() => console.SimulateViewerChat(memberToSwitch, "blue"));
                     }
                 }
             }
@@ -316,23 +381,19 @@ namespace SteamRush.Features.Runner
                     string fanUser = BaseFanNames[Random.Range(0, BaseFanNames.Length)];
                     float roll = Random.value;
 
-                    if (roll < 0.65f)
+                    if (roll < 0.70f)
                     {
                         int lane = Random.Range(1, 4);
-                        console.SimulateViewerChat(fanUser, lane.ToString());
+                        DispatchViewerAction(() => console.SimulateViewerChat(fanUser, lane.ToString()));
                     }
-                    else if (roll < 0.85f)
+                    else if (roll < 0.90f)
                     {
-                        string dir = Random.value < 0.5f ? "left" : "right";
-                        console.SimulateViewerChat(fanUser, dir);
-                    }
-                    else if (roll < 0.95f)
-                    {
-                        console.SimulateViewerChat(fanUser, "jump");
+                        string jumpCmd = Random.value < 0.5f ? "jump" : "j";
+                        DispatchViewerAction(() => console.SimulateViewerChat(fanUser, jumpCmd));
                     }
                     else
                     {
-                        console.SimulateViewerChat(fanUser, "fast");
+                        DispatchViewerAction(() => console.SimulateViewerChat(fanUser, "blue"));
                     }
                 }
                 else
@@ -343,11 +404,11 @@ namespace SteamRush.Features.Runner
                     if (roll < 0.85f)
                     {
                         int lane = Random.Range(1, 4);
-                        console.SimulateViewerChat(antiUser, lane.ToString());
+                        DispatchViewerAction(() => console.SimulateViewerChat(antiUser, lane.ToString()));
                     }
                     else
                     {
-                        console.SimulateViewerChat(antiUser, "#anti");
+                        DispatchViewerAction(() => console.SimulateViewerChat(antiUser, "red"));
                     }
                 }
             }
@@ -378,23 +439,23 @@ namespace SteamRush.Features.Runner
 
                     if (roll < 0.35f)
                     {
-                        console.MockDonateShield(sender);
+                        DispatchViewerAction(() => console.MockDonateShield(sender));
                     }
                     else if (roll < 0.60f)
                     {
-                        console.MockFanEnergyBottle(sender);
+                        DispatchViewerAction(() => console.MockFanEnergyBottle(sender));
                     }
                     else if (roll < 0.80f)
                     {
-                        console.MockActivateFanSprintBuff(sender);
+                        DispatchViewerAction(() => console.MockActivateFanSprintBuff(sender));
                     }
                     else if (roll < 0.90f)
                     {
-                        console.MockBuyVipTicket(sender);
+                        DispatchViewerAction(() => console.MockBuyVipTicket(sender));
                     }
                     else
                     {
-                        console.MockGiftDance(sender);
+                        DispatchViewerAction(() => console.MockGiftDance(sender));
                     }
                 }
                 else
@@ -404,23 +465,23 @@ namespace SteamRush.Features.Runner
 
                     if (roll < 0.35f)
                     {
-                        console.MockSpawnPickupTruck(sender);
+                        DispatchViewerAction(() => console.MockSpawnPickupTruck(sender));
                     }
                     else if (roll < 0.60f)
                     {
-                        console.MockAntiEnergyBottle(sender);
+                        DispatchViewerAction(() => console.MockAntiEnergyBottle(sender));
                     }
                     else if (roll < 0.80f)
                     {
-                        console.MockSpawnHeavyTruck(sender);
+                        DispatchViewerAction(() => console.MockSpawnHeavyTruck(sender));
                     }
                     else if (roll < 0.90f)
                     {
-                        console.MockWeatherHazard(sender);
+                        DispatchViewerAction(() => console.MockWeatherHazard(sender));
                     }
                     else
                     {
-                        console.MockActivateAntiCarUnlimited(sender);
+                        DispatchViewerAction(() => console.MockActivateAntiCarUnlimited(sender));
                     }
                 }
             }
@@ -445,11 +506,11 @@ namespace SteamRush.Features.Runner
                 string newFollower = BaseFanNames[Random.Range(0, BaseFanNames.Length)];
                 if (Random.value < 0.85f)
                 {
-                    console.MockNewFollower(newFollower);
+                    DispatchViewerAction(() => console.MockNewFollower(newFollower));
                 }
                 else
                 {
-                    console.MockBuyVipTicket(newFollower);
+                    DispatchViewerAction(() => console.MockBuyVipTicket(newFollower));
                 }
             }
         }
@@ -470,7 +531,7 @@ namespace SteamRush.Features.Runner
             };
             boxStyle.normal.textColor = Color.white;
 
-            int boxWidth = 380;
+            int boxWidth = 460;
             GUI.color = new Color(0.1f, 0.1f, 0.15f, 0.88f);
             GUI.Box(new Rect(Screen.width - boxWidth - 10, 10, boxWidth, 28), "", boxStyle);
             GUI.color = Color.white;
@@ -493,7 +554,9 @@ namespace SteamRush.Features.Runner
             textStyle.normal.textColor = Color.white;
 
             string likesText = totalRoomLikes >= 1000 ? $"{(totalRoomLikes / 1000f):F1}k" : totalRoomLikes.ToString();
-            string info = $"{totalRoomViewers:N0} Viewers | <color=#FF4D88>❤️ {likesText}</color> | <color=#38B6FF>Fan: {fanCount}</color> vs <color=#FF4D4D>Anti: {antiCount}</color> (L/P)";
+            string viewersText = SteamRush.Features.UI.FactionTugOfWarUI.FormatNumberShorthand(totalRoomViewers);
+            string delayInfo = enableStreamDelay ? $" | <color=#FFD700>📶 {((streamDelayMin + streamDelayMax) * 0.5f):F1}s (K)</color>" : " | <color=#888888>📶 0s (K)</color>";
+            string info = $"{viewersText} Viewers | <color=#FF4D88>❤️ {likesText}</color> | <color=#38B6FF>Blue Team: {SteamRush.Features.UI.FactionTugOfWarUI.FormatNumberShorthand(fanCount)}</color> vs <color=#FF4D4D>Red Team: {SteamRush.Features.UI.FactionTugOfWarUI.FormatNumberShorthand(antiCount)}</color>{delayInfo}";
             GUI.Label(new Rect(Screen.width - boxWidth + 55, 12, boxWidth - 60, 24), info, textStyle);
         }
     }

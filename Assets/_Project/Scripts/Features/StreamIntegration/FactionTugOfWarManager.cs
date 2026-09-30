@@ -228,11 +228,11 @@ namespace SteamRush.Features.StreamIntegration
             string normalized = message.Trim().ToLowerInvariant();
 
             FactionType target;
-            if (normalized == "blue" || normalized == "#blue" || normalized == "#fan" || normalized == "fan")
+            if (normalized == "blue" || normalized == "#blue")
             {
                 target = FactionType.Fan;
             }
-            else if (normalized == "red" || normalized == "#red" || normalized == "#anti" || normalized == "anti")
+            else if (normalized == "red" || normalized == "#red")
             {
                 target = FactionType.Anti;
             }
