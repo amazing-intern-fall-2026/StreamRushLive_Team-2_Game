@@ -12,12 +12,9 @@ namespace SteamRush.Features.StreamIntegration
         Anti
     }
 
-    // Quan ly "keo co" 2 phe Fan/Anti (GDD v1.3 muc 4 - Hai phe). Tra cuu phe theo userId O(1)
-    // qua Dictionary. KHONG goi thang SingleObstacleSpawner.cs (DangHuy, S1-23) - chi Publish
-    // RequestCarSpawnEvent qua EventBus khi du dieu kien; 1 adapter rieng se noi 2 ben sau khi
-    // S1-23 co san (xem ghi chu trong EventBus.cs).
-    // Bao du lieu ra ngoai (UI) qua UnityEvent - FactionTugOfWarUI la View thuan, khong tu doc
-    // Dictionary cua class nay.
+    /// <summary>
+    /// Manages the tug-of-war balance between Fan and Anti factions, member memberships, and ability costs.
+    /// </summary>
     public class FactionTugOfWarManager : MonoBehaviour
     {
         [Tooltip("Ngưỡng năng lượng để phe Anti tự động sinh xe cản đường (Full thanh = AntiMaxValue). Mặc định = 1000.")]
@@ -38,9 +35,6 @@ namespace SteamRush.Features.StreamIntegration
         [SerializeField] private FactionMemberCountsChangedEvent _factionMemberCountsChanged = new FactionMemberCountsChangedEvent();
         public FactionMemberCountsChangedEvent FactionMemberCountsChanged => _factionMemberCountsChanged;
 
-        // GDD v1.3 muc 2: "Khan gia DA FOLLOW moi duoc tu do chon gia nhap 1 trong 2 phe" - Like/
-        // doi phe/donate deu phai qua Gate nay truoc, giong het cach ChatRunnerQueueManager dang
-        // dung cho lenh dieu khien. Chua gan IFollowerStatusProvider that -> mac dinh cho qua (mock).
         private readonly FollowerGate _followerGate = new FollowerGate();
 
         private readonly Dictionary<string, FactionType> _userFactions = new Dictionary<string, FactionType>();
@@ -89,13 +83,11 @@ namespace SteamRush.Features.StreamIntegration
             _fanLikes = _initialFanLikes > 0 ? _initialFanLikes : 100;
             _antiLikes = _initialAntiLikes;
 
-            // Tự động đồng bộ ngưỡng spawn xe tự động bằng đúng dung lượng full thanh Anti (Full thanh mới spawn xe)
             var ui = FindFirstObjectByType<SteamRush.Features.UI.FactionTugOfWarUI>();
             if (ui != null && ui.AntiMaxValue > 0)
             {
                 _antiCarThreshold = ui.AntiMaxValue;
             }
-            // Trừ số lượng bằng với số lượng như lúc player spawn xe (_antiCarLaneCost = 100)
             _antiCarCost = _antiCarLaneCost;
         }
 
@@ -105,7 +97,6 @@ namespace SteamRush.Features.StreamIntegration
             _factionMemberCountsChanged.Invoke(FanMemberCount, AntiMemberCount);
         }
 
-        // Doc phe hien tai cua 1 nguoi dung - chua tung xuat hien thi mac dinh _defaultFaction.
         public FactionType GetFaction(string userId)
         {
             return _userFactions.TryGetValue(userId, out FactionType faction) ? faction : _defaultFaction;
@@ -127,6 +118,35 @@ namespace SteamRush.Features.StreamIntegration
             else
             {
                 _antiLikes++;
+                CheckAntiCarThreshold();
+            }
+
+            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+        }
+
+        /// <summary>
+        /// Cộng lượt thích (Likes) theo phe (hỗ trợ cộng dồn theo batch từ khán giả tap tim)
+        /// </summary>
+        public void AddLikes(FactionType faction, int amount = 1)
+        {
+            if (amount <= 0) return;
+
+            int maxFan = 1000;
+            int maxAnti = _antiCarThreshold > 0 ? _antiCarThreshold : 1000;
+            var ui = FindFirstObjectByType<SteamRush.Features.UI.FactionTugOfWarUI>();
+            if (ui != null)
+            {
+                if (ui.FanMaxValue > 0) maxFan = ui.FanMaxValue;
+                if (ui.AntiMaxValue > 0) maxAnti = ui.AntiMaxValue;
+            }
+
+            if (faction == FactionType.Fan)
+            {
+                _fanLikes = Mathf.Clamp(_fanLikes + amount, 0, maxFan);
+            }
+            else
+            {
+                _antiLikes = Mathf.Clamp(_antiLikes + amount, 0, maxAnti);
                 CheckAntiCarThreshold();
             }
 
@@ -213,29 +233,46 @@ namespace SteamRush.Features.StreamIntegration
             Debug.Log($"[FactionTugOfWarManager] Debug Anti Energy: {_antiLikes}/{max} (delta: {(delta >= 0 ? "+" : "")}{delta})");
         }
 
-        // Doi phe qua chat: #FAN/#Blue -> Fan, #ANTI/#Red -> Anti (khong phan biet hoa thuong).
-        public void OnChatCommand(string userId, string message)
+        // Doi phe qua chat: blue/#blue/fan/#fan -> Fan, red/#red/anti/#anti -> Anti (khong phan biet hoa thuong).
+        // Tra ve true CHI KHI thanh vien thay doi (vao phe lan dau hoac doi sang phe khac).
+        public bool OnChatCommand(string userId, string message)
         {
             if (string.IsNullOrEmpty(message))
             {
-                return;
-            }
-
-            if (!_followerGate.CanSendCommand(userId))
-            {
-                return;
+                return false;
             }
 
             string normalized = message.Trim().ToLowerInvariant();
 
+            FactionType target;
             if (normalized == "blue" || normalized == "#blue" || normalized == "#fan" || normalized == "fan")
             {
-                SetFaction(userId, FactionType.Fan);
+                target = FactionType.Fan;
             }
             else if (normalized == "red" || normalized == "#red" || normalized == "#anti" || normalized == "anti")
             {
-                SetFaction(userId, FactionType.Anti);
+                target = FactionType.Anti;
             }
+            else
+            {
+                return false; // khong phai lenh phe
+            }
+
+            // Chi kiem tra Follow khi that su la lenh phe, de comment binh thuong cua
+            // nguoi chua Follow khong bi log/publish event moi lan.
+            if (!_followerGate.CanSendCommand(userId))
+            {
+                return false;
+            }
+
+            // Khong dung GetFaction: no tra mac dinh Fan cho nguoi chua co phe.
+            if (_userFactions.TryGetValue(userId, out FactionType current) && current == target)
+            {
+                return false; // nhan lai dung phe cu
+            }
+
+            SetFaction(userId, target);
+            return true;
         }
 
         // Doi phe theo hanh vi donate (GDD v1.3 muc 4): tang qua bay -> Anti, tang Khien/Mau -> Fan.
@@ -309,6 +346,18 @@ namespace SteamRush.Features.StreamIntegration
 
             Debug.Log($"[FactionTugOfWarManager] Phe Fan ({userId}) tiêu hao {_fanItemLaneCost} năng lượng -> Thả {(isShield ? "Khiên" : "Bình Năng Lượng")} trên Làn {laneIndex}!");
             return true;
+        }
+
+        public bool HasFaction(string userId) => _userFactions.ContainsKey(userId);
+
+        public List<string> GetMembersOfFaction(FactionType faction)
+        {
+            var list = new List<string>();
+            foreach (var kvp in _userFactions)
+            {
+                if (kvp.Value == faction) list.Add(kvp.Key);
+            }
+            return list;
         }
 
         public void SetFaction(string userId, FactionType faction)

@@ -3,23 +3,41 @@ using SteamRush.Core;
 
 namespace SteamRush.Features.StreamIntegration
 {
-    // StreamIntegration se cung cap trang thai Follow that qua interface nay (module chua ton
-    // tai - chua co IStreamAdapter/TikTokLiveAdapter/MockStreamSimulator nao trong code).
+    // StreamIntegration se cung cap trang thai Follow that qua interface nay.
     public interface IFollowerStatusProvider
     {
         bool IsFollower(string userId);
     }
 
     // Chan quyen vao hang doi / gui lenh chat - chi Follower moi duoc phep (GDD v1.3 muc 3).
-    // Neu chua gan IFollowerStatusProvider that, mac dinh cho qua (mock) kem Debug.Log canh bao,
-    // de test duoc trong scene ca nhan ma khong can cho module StreamIntegration.
+    // Thu tu chon nguon follower: provider truyen qua constructor -> provider dung chung
+    // (SetSharedProvider) -> neu ca hai deu chua co thi cho qua (mock) de test scene ca nhan.
     public class FollowerGate
     {
+        // [TikTok] Provider dung chung: TikTokFollowerRegistry tu dang ky khi ket noi, nen cac
+        // class dang "new FollowerGate()" (FactionTugOfWarManager, ChatRunnerQueueManager) tu dung
+        // duoc follower that ma khong phai sua tung noi.
+        private static IFollowerStatusProvider _sharedProvider;
+
         private readonly IFollowerStatusProvider _followerStatusProvider;
 
         public FollowerGate(IFollowerStatusProvider followerStatusProvider = null)
         {
             _followerStatusProvider = followerStatusProvider;
+        }
+
+        public static void SetSharedProvider(IFollowerStatusProvider provider)
+        {
+            _sharedProvider = provider;
+        }
+
+        // Chi go neu provider dang gan chinh la provider nay (tranh go nham cua nguoi khac).
+        public static void ClearSharedProvider(IFollowerStatusProvider provider)
+        {
+            if (_sharedProvider == provider)
+            {
+                _sharedProvider = null;
+            }
         }
 
         public bool CanJoinQueue(string userId)
@@ -45,12 +63,14 @@ namespace SteamRush.Features.StreamIntegration
 
         private bool IsFollower(string userId)
         {
-            if (_followerStatusProvider == null)
+            IFollowerStatusProvider provider = _followerStatusProvider ?? _sharedProvider;
+
+            if (provider == null)
             {
                 return true;
             }
 
-            return _followerStatusProvider.IsFollower(userId);
+            return provider.IsFollower(userId);
         }
     }
 }

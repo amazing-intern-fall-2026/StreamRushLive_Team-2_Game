@@ -1,0 +1,500 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using SteamRush.Features.StreamIntegration;
+
+namespace SteamRush.Features.Runner
+{
+    /// <summary>
+    /// Simulates a TikTok Live session with real-time audience interaction, likes, faction tug-of-war, and queue handovers.
+    /// </summary>
+    public class LiveSessionDemoRunner : MonoBehaviour
+    {
+        public static LiveSessionDemoRunner Instance { get; private set; }
+
+        [Header("Operation State")]
+        [Tooltip("Automatically start live simulation upon entering Play Mode")]
+        [SerializeField] private bool autoStart = true;
+        [SerializeField] private bool isRunning = false;
+
+        [Header("Interaction Pace (Seconds)")]
+        [SerializeField] private float chatIntervalMin = 0.8f;
+        [SerializeField] private float chatIntervalMax = 2.0f;
+        [SerializeField] private float giftIntervalMin = 4.0f;
+        [SerializeField] private float giftIntervalMax = 8.5f;
+        [SerializeField] private float queueIntervalMin = 12.0f;
+        [SerializeField] private float queueIntervalMax = 22.0f;
+
+        [Header("Audience & Faction Simulation")]
+        [SerializeField] private int initialFanCount = 6;
+        [SerializeField] private int initialAntiCount = 8;
+        [SerializeField] private float joinIntervalMin = 2.0f;
+        [SerializeField] private float joinIntervalMax = 4.5f;
+        [SerializeField] private float switchIntervalMin = 4.0f;
+        [SerializeField] private float switchIntervalMax = 7.5f;
+        [SerializeField] private int totalRoomViewers = 1240;
+
+        [Header("Live Likes Simulation")]
+        [Tooltip("Enable/disable continuous audience like tapping simulation")]
+        [SerializeField] private bool enableLikeSimulation = true;
+        [Tooltip("Minimum interval between like taps in seconds")]
+        [SerializeField] private float likeIntervalMin = 0.25f;
+        [Tooltip("Maximum interval between like taps in seconds")]
+        [SerializeField] private float likeIntervalMax = 0.60f;
+        [Tooltip("Minimum likes per tap batch")]
+        [SerializeField] private int minLikesPerBatch = 2;
+        [Tooltip("Maximum likes per tap batch")]
+        [SerializeField] private int maxLikesPerBatch = 8;
+        [Tooltip("Ratio of likes attributed to Fan faction (0.52 = 52% Fan vs 48% Anti)")]
+        [Range(0f, 1f)] [SerializeField] private float fanLikeRatio = 0.52f;
+        [Tooltip("Total accumulated likes in the live room")]
+        [SerializeField] private int totalRoomLikes = 15400;
+
+        public bool IsRunning => isRunning;
+        public int TotalRoomViewers => totalRoomViewers;
+        public int TotalRoomLikes => totalRoomLikes;
+
+        private static readonly string[] BaseFanNames = new string[]
+        {
+            "LinhDan_99", "MinhVu_Pro", "HoangLong_Gamer", "ThuTrang_Cute", "BaoNam_Fan",
+            "GamerHuy_Live", "ThanhHa_98", "QuangHuy_Speed", "KhanhVy_Official", "TuanKiet_Racer",
+            "CoBeMuaDong", "ThanhNienNghiemTuc", "Gamer_Chi", "Phuong_Thao", "Duc_Anh",
+            "Hai_Dang", "Ngoc_Mai", "Hung_Master", "Top1_Sever", "BeHeo_Unnie", "AnhBaCongNghe",
+            "MaiAnh_Cute", "TrangBong_Fan", "MinhTri_Pro", "GiaBao_Gamer", "ThienAn_99"
+        };
+
+        private static readonly string[] BaseAntiNames = new string[]
+        {
+            "AntiFan_ChinhHieu", "TrumPhaGame", "XeDien_Pro", "ChuyenGiaGank", "QuayXe_99",
+            "BaoXe_Anti", "ThanhNi_Anti", "KingOfTroll", "ChongFan_Cung", "XeBanTai_01",
+            "TruckMaster", "GhostRider", "Anti_Alex", "TrollXe_Vip", "PhaDam_Sever", "LopTruongAnti",
+            "HackerXe_Vip", "SieuPha_Team", "TrumGank_No1", "BaoCat_Anti", "DenDo_Team"
+        };
+
+        private Coroutine _chatRoutine;
+        private Coroutine _giftRoutine;
+        private Coroutine _queueRoutine;
+        private Coroutine _joinRoutine;
+        private Coroutine _switchRoutine;
+        private Coroutine _likeRoutine;
+
+        private int _viewerSerial = 100;
+
+        private void Awake()
+        {
+            if (Instance == null)
+            {
+                Instance = this;
+            }
+            else if (Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+        }
+
+        private void Start()
+        {
+            if (autoStart)
+            {
+                StartLiveDemo();
+            }
+        }
+
+        private void Update()
+        {
+            if (Keyboard.current == null) return;
+
+            if (Keyboard.current.lKey.wasPressedThisFrame || Keyboard.current.pKey.wasPressedThisFrame)
+            {
+                ToggleLiveDemo();
+            }
+        }
+
+        public void ToggleLiveDemo()
+        {
+            if (isRunning)
+            {
+                StopLiveDemo();
+            }
+            else
+            {
+                StartLiveDemo();
+            }
+        }
+
+        public void StartLiveDemo()
+        {
+            if (isRunning) return;
+            isRunning = true;
+
+            Debug.Log("<color=#00FF88><b>[LiveSessionDemoRunner] >>> BẮT ĐẦU PHIÊN LIVE DEMO THẬT! (Bấm phím L hoặc P để Dừng) <<<</b></color>");
+
+            InitInitialFactionMembers();
+
+            _chatRoutine = StartCoroutine(SimulateChatLoop());
+            _giftRoutine = StartCoroutine(SimulateGiftLoop());
+            _queueRoutine = StartCoroutine(SimulateQueueLoop());
+            _joinRoutine = StartCoroutine(SimulateAudienceJoinLoop());
+            _switchRoutine = StartCoroutine(SimulateFactionSwitchLoop());
+            _likeRoutine = StartCoroutine(SimulateLikeLoop());
+        }
+
+        public void StopLiveDemo()
+        {
+            if (!isRunning) return;
+            isRunning = false;
+
+            if (_chatRoutine != null) StopCoroutine(_chatRoutine);
+            if (_giftRoutine != null) StopCoroutine(_giftRoutine);
+            if (_queueRoutine != null) StopCoroutine(_queueRoutine);
+            if (_joinRoutine != null) StopCoroutine(_joinRoutine);
+            if (_switchRoutine != null) StopCoroutine(_switchRoutine);
+            if (_likeRoutine != null) StopCoroutine(_likeRoutine);
+
+            _chatRoutine = null;
+            _giftRoutine = null;
+            _queueRoutine = null;
+            _joinRoutine = null;
+            _switchRoutine = null;
+            _likeRoutine = null;
+
+            Debug.Log("<color=#FF8800><b>[LiveSessionDemoRunner] --- ĐÃ TẠM DỪNG PHIÊN LIVE DEMO (Bấm phím L hoặc P để Tiếp Tục) ---</b></color>");
+        }
+
+        private void InitInitialFactionMembers()
+        {
+            var factionMgr = FindFirstObjectByType<FactionTugOfWarManager>();
+            if (factionMgr == null) return;
+
+            for (int i = 0; i < initialFanCount; i++)
+            {
+                string name = i < BaseFanNames.Length ? BaseFanNames[i] : $"Fan_{i + 1}";
+                factionMgr.SetFaction(name, FactionType.Fan);
+            }
+
+            for (int i = 0; i < initialAntiCount; i++)
+            {
+                string name = i < BaseAntiNames.Length ? BaseAntiNames[i] : $"Anti_{i + 1}";
+                factionMgr.SetFaction(name, FactionType.Anti);
+            }
+        }
+
+        private IEnumerator SimulateLikeLoop()
+        {
+            yield return new WaitForSeconds(0.8f);
+
+            var factionMgr = FindFirstObjectByType<FactionTugOfWarManager>();
+
+            while (isRunning)
+            {
+                if (!enableLikeSimulation)
+                {
+                    yield return new WaitForSeconds(0.5f);
+                    continue;
+                }
+
+                yield return new WaitForSeconds(Random.Range(likeIntervalMin, likeIntervalMax));
+
+                if (factionMgr == null)
+                {
+                    factionMgr = FindFirstObjectByType<FactionTugOfWarManager>();
+                    if (factionMgr == null) continue;
+                }
+
+                int likes = Random.Range(minLikesPerBatch, maxLikesPerBatch + 1);
+                totalRoomLikes += likes;
+
+                bool isFan = Random.value < fanLikeRatio;
+                factionMgr.AddLikes(isFan ? FactionType.Fan : FactionType.Anti, likes);
+            }
+        }
+
+        private IEnumerator SimulateAudienceJoinLoop()
+        {
+            yield return new WaitForSeconds(1.0f);
+
+            var console = MockChatConsole.Instance ?? FindFirstObjectByType<MockChatConsole>();
+
+            while (isRunning)
+            {
+                yield return new WaitForSeconds(Random.Range(joinIntervalMin, joinIntervalMax));
+
+                if (console == null)
+                {
+                    console = MockChatConsole.Instance ?? FindFirstObjectByType<MockChatConsole>();
+                    if (console == null) continue;
+                }
+
+                totalRoomViewers += Random.Range(3, 14);
+
+                _viewerSerial++;
+                string newViewer;
+                bool joinFan = Random.value < 0.55f;
+
+                if (joinFan)
+                {
+                    newViewer = Random.value < 0.6f && _viewerSerial < 150
+                        ? BaseFanNames[Random.Range(0, BaseFanNames.Length)]
+                        : $"Fan_{_viewerSerial}";
+
+                    console.SimulateViewerChat(newViewer, "blue");
+                }
+                else
+                {
+                    newViewer = Random.value < 0.6f && _viewerSerial < 150
+                        ? BaseAntiNames[Random.Range(0, BaseAntiNames.Length)]
+                        : $"Anti_{_viewerSerial}";
+
+                    console.SimulateViewerChat(newViewer, "red");
+                }
+            }
+        }
+
+        private IEnumerator SimulateFactionSwitchLoop()
+        {
+            yield return new WaitForSeconds(3.5f);
+
+            var console = MockChatConsole.Instance ?? FindFirstObjectByType<MockChatConsole>();
+            var factionMgr = FindFirstObjectByType<FactionTugOfWarManager>();
+
+            while (isRunning)
+            {
+                yield return new WaitForSeconds(Random.Range(switchIntervalMin, switchIntervalMax));
+
+                if (console == null) console = MockChatConsole.Instance ?? FindFirstObjectByType<MockChatConsole>();
+                if (factionMgr == null) factionMgr = FindFirstObjectByType<FactionTugOfWarManager>();
+                if (console == null || factionMgr == null) continue;
+
+                bool fanToAnti = Random.value < 0.5f;
+
+                if (fanToAnti)
+                {
+                    var fanMembers = factionMgr.GetMembersOfFaction(FactionType.Fan);
+                    if (fanMembers.Count > 2)
+                    {
+                        string memberToSwitch = fanMembers[Random.Range(0, fanMembers.Count)];
+                        console.SimulateViewerChat(memberToSwitch, "red");
+                    }
+                }
+                else
+                {
+                    var antiMembers = factionMgr.GetMembersOfFaction(FactionType.Anti);
+                    if (antiMembers.Count > 2)
+                    {
+                        string memberToSwitch = antiMembers[Random.Range(0, antiMembers.Count)];
+                        console.SimulateViewerChat(memberToSwitch, "blue");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Luồng khán giả chat lệnh điều khiển / thả xe liên tục (nhịp 0.8s - 2.0s)
+        /// </summary>
+        private IEnumerator SimulateChatLoop()
+        {
+            yield return new WaitForSeconds(1.5f);
+
+            var console = MockChatConsole.Instance ?? FindFirstObjectByType<MockChatConsole>();
+
+            while (isRunning)
+            {
+                yield return new WaitForSeconds(Random.Range(chatIntervalMin, chatIntervalMax));
+
+                if (console == null)
+                {
+                    console = MockChatConsole.Instance ?? FindFirstObjectByType<MockChatConsole>();
+                    if (console == null) continue;
+                }
+
+                bool isFan = Random.value < 0.60f;
+
+                if (isFan)
+                {
+                    string fanUser = BaseFanNames[Random.Range(0, BaseFanNames.Length)];
+                    float roll = Random.value;
+
+                    if (roll < 0.65f)
+                    {
+                        int lane = Random.Range(1, 4);
+                        console.SimulateViewerChat(fanUser, lane.ToString());
+                    }
+                    else if (roll < 0.85f)
+                    {
+                        string dir = Random.value < 0.5f ? "left" : "right";
+                        console.SimulateViewerChat(fanUser, dir);
+                    }
+                    else if (roll < 0.95f)
+                    {
+                        console.SimulateViewerChat(fanUser, "jump");
+                    }
+                    else
+                    {
+                        console.SimulateViewerChat(fanUser, "fast");
+                    }
+                }
+                else
+                {
+                    string antiUser = BaseAntiNames[Random.Range(0, BaseAntiNames.Length)];
+                    float roll = Random.value;
+
+                    if (roll < 0.85f)
+                    {
+                        int lane = Random.Range(1, 4);
+                        console.SimulateViewerChat(antiUser, lane.ToString());
+                    }
+                    else
+                    {
+                        console.SimulateViewerChat(antiUser, "#anti");
+                    }
+                }
+            }
+        }
+
+        private IEnumerator SimulateGiftLoop()
+        {
+            yield return new WaitForSeconds(3.0f);
+
+            var console = MockChatConsole.Instance ?? FindFirstObjectByType<MockChatConsole>();
+
+            while (isRunning)
+            {
+                yield return new WaitForSeconds(Random.Range(giftIntervalMin, giftIntervalMax));
+
+                if (console == null)
+                {
+                    console = MockChatConsole.Instance ?? FindFirstObjectByType<MockChatConsole>();
+                    if (console == null) continue;
+                }
+
+                bool isFanGift = Random.value < 0.50f;
+
+                if (isFanGift)
+                {
+                    string sender = BaseFanNames[Random.Range(0, BaseFanNames.Length)];
+                    float roll = Random.value;
+
+                    if (roll < 0.35f)
+                    {
+                        console.MockDonateShield(sender);
+                    }
+                    else if (roll < 0.60f)
+                    {
+                        console.MockFanEnergyBottle(sender);
+                    }
+                    else if (roll < 0.80f)
+                    {
+                        console.MockActivateFanSprintBuff(sender);
+                    }
+                    else if (roll < 0.90f)
+                    {
+                        console.MockBuyVipTicket(sender);
+                    }
+                    else
+                    {
+                        console.MockGiftDance(sender);
+                    }
+                }
+                else
+                {
+                    string sender = BaseAntiNames[Random.Range(0, BaseAntiNames.Length)];
+                    float roll = Random.value;
+
+                    if (roll < 0.35f)
+                    {
+                        console.MockSpawnPickupTruck(sender);
+                    }
+                    else if (roll < 0.60f)
+                    {
+                        console.MockAntiEnergyBottle(sender);
+                    }
+                    else if (roll < 0.80f)
+                    {
+                        console.MockSpawnHeavyTruck(sender);
+                    }
+                    else if (roll < 0.90f)
+                    {
+                        console.MockWeatherHazard(sender);
+                    }
+                    else
+                    {
+                        console.MockActivateAntiCarUnlimited(sender);
+                    }
+                }
+            }
+        }
+
+        private IEnumerator SimulateQueueLoop()
+        {
+            yield return new WaitForSeconds(5.0f);
+
+            var console = MockChatConsole.Instance ?? FindFirstObjectByType<MockChatConsole>();
+
+            while (isRunning)
+            {
+                yield return new WaitForSeconds(Random.Range(queueIntervalMin, queueIntervalMax));
+
+                if (console == null)
+                {
+                    console = MockChatConsole.Instance ?? FindFirstObjectByType<MockChatConsole>();
+                    if (console == null) continue;
+                }
+
+                string newFollower = BaseFanNames[Random.Range(0, BaseFanNames.Length)];
+                if (Random.value < 0.7f)
+                {
+                    console.MockNewFollower(newFollower);
+                }
+                else
+                {
+                    console.MockBuyNormalTicket(newFollower);
+                }
+            }
+        }
+
+        private void OnGUI()
+        {
+            if (!isRunning) return;
+
+            var factionMgr = FindFirstObjectByType<FactionTugOfWarManager>();
+            int fanCount = factionMgr != null ? factionMgr.FanMemberCount : initialFanCount;
+            int antiCount = factionMgr != null ? factionMgr.AntiMemberCount : initialAntiCount;
+
+            GUIStyle boxStyle = new GUIStyle(GUI.skin.box)
+            {
+                fontSize = 11,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter
+            };
+            boxStyle.normal.textColor = Color.white;
+
+            int boxWidth = 380;
+            GUI.color = new Color(0.1f, 0.1f, 0.15f, 0.88f);
+            GUI.Box(new Rect(Screen.width - boxWidth - 10, 10, boxWidth, 28), "", boxStyle);
+            GUI.color = Color.white;
+
+            GUIStyle redDotStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 12,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleLeft
+            };
+            redDotStyle.normal.textColor = new Color(1f, 0.25f, 0.25f);
+            GUI.Label(new Rect(Screen.width - boxWidth, 12, 55, 24), "● LIVE", redDotStyle);
+
+            GUIStyle textStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 11,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleLeft
+            };
+            textStyle.normal.textColor = Color.white;
+
+            string likesText = totalRoomLikes >= 1000 ? $"{(totalRoomLikes / 1000f):F1}k" : totalRoomLikes.ToString();
+            string info = $"{totalRoomViewers:N0} Viewers | <color=#FF4D88>❤️ {likesText}</color> | <color=#38B6FF>Fan: {fanCount}</color> vs <color=#FF4D4D>Anti: {antiCount}</color> (L/P)";
+            GUI.Label(new Rect(Screen.width - boxWidth + 55, 12, boxWidth - 60, 24), info, textStyle);
+        }
+    }
+}

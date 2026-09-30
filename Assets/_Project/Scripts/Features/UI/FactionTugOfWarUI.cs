@@ -51,8 +51,22 @@ namespace SteamRush.Features.UI
             }
             if (_manager != null)
             {
+                _manager.FactionMemberCountsChanged.RemoveListener(SetMemberCounts);
+                _manager.FactionMemberCountsChanged.AddListener(SetMemberCounts);
+                _manager.FactionValuesChanged.RemoveListener(SetFactionValues);
+                _manager.FactionValuesChanged.AddListener(SetFactionValues);
+
                 SetMemberCounts(_manager.FanMemberCount, _manager.AntiMemberCount);
                 SetFactionValues(_manager.FanLikes, _manager.AntiLikes);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_manager != null)
+            {
+                _manager.FactionMemberCountsChanged.RemoveListener(SetMemberCounts);
+                _manager.FactionValuesChanged.RemoveListener(SetFactionValues);
             }
         }
 

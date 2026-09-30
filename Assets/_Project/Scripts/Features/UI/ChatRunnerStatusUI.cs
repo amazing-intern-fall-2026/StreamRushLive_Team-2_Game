@@ -61,26 +61,26 @@ namespace SteamRush.Features.UI
                 var nextRunner = _queueManager.PeekNextRunner();
                 string nextDisplay = nextRunner.HasValue
                     ? (nextRunner.Value.isVip ? $"<color=#FFD700>{nextRunner.Value.name}</color>" : $"<color=#FFFFFF>{nextRunner.Value.name}</color>")
-                    : "<color=#888888>(Trống)</color>";
+                    : "<color=#888888>(Empty)</color>";
 
                 int queue = _queueManager.QueuedCount;
                 float progress = _queueManager.LegProgress;
                 float legMax = _queueManager.LegDistanceMeters;
                 float speed = _speedManager != null ? _speedManager.CurrentSpeed : 0f;
 
-                string statusText = _queueManager.IsWaitingForFollower ? "<color=#FF4444>[CHỜ FOLLOWER]</color>" : "<color=#44FF44>[CHẠY]</color>";
+                string statusText = _queueManager.IsWaitingForFollower ? "<color=#FF4444>[WAITING]</color>" : "<color=#44FF44>[RUNNING]</color>";
                 string speedTag = "";
                 if (speed > 10.0f)
                 {
-                    speedTag = " <color=#FF4500><b>[BỨT TỐC!]</b></color>";
+                    speedTag = " <color=#FF4500><b>[BOOST!]</b></color>";
                 }
 
-                _runnerInfoLabel.text = $"<b>{statusText}</b> {runnerDisplay} | <b>Kế tiếp:</b> {nextDisplay} | <b>Đợi:</b> {queue} | <b>Chặng:</b> {progress:F0}/{legMax:F0}m | <b>Tốc độ:</b> {speed:F1} m/s{speedTag}";
+                _runnerInfoLabel.text = $"<b>{statusText}</b> {runnerDisplay} | <b>Next:</b> {nextDisplay} | <b>Queue:</b> {queue} | <b>Leg:</b> {progress:F0}/{legMax:F0}m | <b>Speed:</b> {speed:F1} m/s{speedTag}";
             }
 
             if (_controlsGuideLabel != null)
             {
-                _controlsGuideLabel.text = "<b>Lệnh:</b> <color=#80D0FF>1/2/3</color> làn - <color=#FFA500>fast</color> - <color=#00BFFF>#fan</color> - <color=#FF6347>#anti</color> | <b>[F9]</b> Vé Thường | <b>[F10]</b> Vé VIP";
+                _controlsGuideLabel.text = "<b>Cmds:</b> <color=#80D0FF>1/2/3</color> lane - <color=#FFA500>fast</color> - <color=#00BFFF>#fan</color> - <color=#FF6347>#anti</color> | <b>[F9]</b> Ticket | <b>[F10]</b> VIP";
             }
         }
     }

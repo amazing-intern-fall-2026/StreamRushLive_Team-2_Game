@@ -28,7 +28,7 @@ namespace SteamRush.Features.Runner
         [Header("Mock Settings")]
         [SerializeField] private float shieldDuration = 20f;
 
-        [Header("Gift Icons (khu Gift/Donate riêng)")]
+        [Header("Gift Icons (Dedicated Gift/Donate Area)")]
         [SerializeField] private Sprite shieldGiftIcon;
         [SerializeField] private Sprite energyGiftIcon;
 
@@ -40,11 +40,14 @@ namespace SteamRush.Features.Runner
         [SerializeField] private TMP_Text toggleButtonText;
         [SerializeField] private bool isDebugUIVisible = true;
 
+        public static MockChatConsole Instance { get; private set; }
+
         private GameObject _quickHelpBarObj;
         private GameObject _energyDebugPanelObj;
 
         private void Awake()
         {
+            Instance = this;
             if (itemEffects == null)
             {
                 itemEffects = GetComponent<RunnerItemEffects>();
@@ -108,7 +111,6 @@ namespace SteamRush.Features.Runner
                 _quickHelpBarObj = statusUI.gameObject;
             }
 
-            // 1. Cân chỉnh RectTransform phù hợp với màn hình dọc 1080x1920 (Portrait)
             if (chatInputField != null)
             {
                 RectTransform inputRect = chatInputField.GetComponent<RectTransform>();
@@ -135,7 +137,6 @@ namespace SteamRush.Features.Runner
                 }
             }
 
-            // 2. Tạo hoặc liên kết Nút Bật/Tắt UI Debug nếu chưa có
             if (toggleDebugButton == null)
             {
                 Canvas canvas = chatInputField != null ? chatInputField.GetComponentInParent<Canvas>() : FindFirstObjectByType<Canvas>();
@@ -154,7 +155,6 @@ namespace SteamRush.Features.Runner
                 }
             }
 
-            // 3. Tạo hoặc liên kết Panel Nút Tăng/Giảm Năng Lượng 2 Phe
             if (_energyDebugPanelObj == null)
             {
                 Canvas canvas = chatInputField != null ? chatInputField.GetComponentInParent<Canvas>() : FindFirstObjectByType<Canvas>();
@@ -200,11 +200,11 @@ namespace SteamRush.Features.Runner
             hlg.childForceExpandWidth = true;
             hlg.childForceExpandHeight = true;
 
-            // 4 Nút: Fan +1%, Fan -1%, Anti +1%, Anti -1%
             CreateDebugButton(_energyDebugPanelObj.transform, "Btn_FanPlus", "Fan +1% [F6 / ]]", new Color(0.12f, 0.45f, 0.85f, 0.95f), () => DebugIncreaseFanEnergy(10));
             CreateDebugButton(_energyDebugPanelObj.transform, "Btn_FanMinus", "Fan -1% [Shift+F6 / []", new Color(0.08f, 0.25f, 0.55f, 0.95f), () => DebugDecreaseFanEnergy(10));
             CreateDebugButton(_energyDebugPanelObj.transform, "Btn_AntiPlus", "Anti +1% [F11 / +]", new Color(0.85f, 0.28f, 0.15f, 0.95f), () => DebugIncreaseAntiEnergy(10));
             CreateDebugButton(_energyDebugPanelObj.transform, "Btn_AntiMinus", "Anti -1% [Shift+F11 / -]", new Color(0.55f, 0.15f, 0.08f, 0.95f), () => DebugDecreaseAntiEnergy(10));
+            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_Finish", "🏁 Finish [F12]", new Color(0.92f, 0.65f, 0.1f, 0.95f), () => MockTriggerFinishLineApproach(50f));
         }
 
         private void CreateDebugButton(Transform parent, string name, string label, Color bgColor, UnityEngine.Events.UnityAction action)
@@ -307,14 +307,13 @@ namespace SteamRush.Features.Runner
                 RectTransform btnRect = toggleDebugButton.GetComponent<RectTransform>();
                 if (btnRect != null)
                 {
-                    // Khi thanh debug mở: Đẩy nút lên trên (Y: 195). Khi đóng: Nút hạ xuống góc dưới (Y: 20) gọn gàng
                     btnRect.anchoredPosition = new Vector2(-20f, isDebugUIVisible ? 195f : 20f);
                 }
             }
 
             if (toggleButtonText != null)
             {
-                toggleButtonText.text = isDebugUIVisible ? "❌ Ẩn Debug" : "💬 Debug [F12]";
+                toggleButtonText.text = isDebugUIVisible ? "❌ Hide Debug" : "💬 Debug [~]";
             }
         }
 
@@ -336,13 +335,17 @@ namespace SteamRush.Features.Runner
             if (Keyboard.current == null)
                 return;
 
-            // Phím tắt F12 hoặc ` (Backquote/tilde) để bật/tắt toàn bộ khung Debug
-            if (Keyboard.current.f12Key.wasPressedThisFrame || Keyboard.current.backquoteKey.wasPressedThisFrame)
+            bool isShift = Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed;
+
+            if (Keyboard.current.backquoteKey.wasPressedThisFrame)
             {
                 ToggleDebugUI();
             }
 
-            bool isShift = Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed;
+            if (Keyboard.current.f12Key.wasPressedThisFrame)
+            {
+                MockTriggerFinishLineApproach(50f);
+            }
 
             // F1: Spawn Khiên Bảo Vệ. Shift+F1: Bình Thao Tác Tự Do (Free-Control Buff 30s, GDD v1.4.1 mục 3).
             if (Keyboard.current.f1Key.wasPressedThisFrame)
@@ -351,7 +354,6 @@ namespace SteamRush.Features.Runner
                 else MockDonateShield();
             }
 
-            // F2: Bình Tăng Tốc (Sprint Buff 30s) cho phe Fan. Shift+F2: Toggle Debug tự do.
             if (Keyboard.current.f2Key.wasPressedThisFrame)
             {
                 if (isShift) MockToggleSprintBuffDebug();
@@ -380,7 +382,10 @@ namespace SteamRush.Features.Runner
                 MockActivateAntiCarUnlimited();
 
             if (Keyboard.current.f8Key.wasPressedThisFrame)
-                MockGiftDance();
+            {
+                if (isShift) MockWeatherHazard();
+                else MockGiftDance();
+            }
 
             if (Keyboard.current.f9Key.wasPressedThisFrame)
                 MockBuyNormalTicket();
@@ -388,15 +393,15 @@ namespace SteamRush.Features.Runner
             if (Keyboard.current.f10Key.wasPressedThisFrame)
                 MockBuyVipTicket();
 
-            // Phím 9: Toggle Sprint Buff Debug (Fan), Phím 0: Toggle Unlimited Mode Debug (Anti)
+            if (Keyboard.current.digit8Key.wasPressedThisFrame)
+                MockWeatherHazard();
+
             if (Keyboard.current.digit9Key.wasPressedThisFrame)
                 MockToggleSprintBuffDebug();
 
             if (Keyboard.current.digit0Key.wasPressedThisFrame)
                 MockToggleUnlimitedModeDebug();
 
-            // ===== Phím tắt Debug Tăng / Giảm Năng Lượng 2 Phe =====
-            // Phím F6 (Fan) tăng/giảm 1% (10 điểm) và F11 (Anti) tăng/giảm 100 điểm
             if (Keyboard.current.f6Key.wasPressedThisFrame)
             {
                 if (isShift) DebugDecreaseFanEnergy(10);
@@ -409,7 +414,6 @@ namespace SteamRush.Features.Runner
                 else DebugIncreaseAntiEnergy(10);
             }
 
-            // Phím [ / ] (Fan -1% / Fan +1%) và - / = (Anti -1% / Anti +1%) khi không focus khung gõ text
             bool isChatFocused = chatInputField != null && chatInputField.isFocused;
             if (!isChatFocused)
             {
@@ -442,7 +446,6 @@ namespace SteamRush.Features.Runner
                 {
                     if (chatInputField.isFocused)
                     {
-                        // Người dùng đang nhập trong ô chat và bấm Enter -> Thực thi ngay lập tức
                         string text = chatInputField.text;
                         if (!string.IsNullOrWhiteSpace(text))
                         {
@@ -455,7 +458,6 @@ namespace SteamRush.Features.Runner
                     }
                     else
                     {
-                        // Nếu đang ẩn mà bấm Enter -> Tự động bật khung debug lên và focus
                         if (!isDebugUIVisible)
                         {
                             ToggleDebugUI();
@@ -485,13 +487,10 @@ namespace SteamRush.Features.Runner
             return name;
         }
 
-        // Tách chuỗi chat thành (tên follower, nội dung lệnh)
-        // Hỗ trợ: "Viewer_Chi #fan", "Bao: #anti", "Top1_Dung: 1", hoặc "#fan" (tự động gán tên follower rõ ràng)
         private (string followerName, string command) ParseFollowerAndInput(string rawInput)
         {
             string trimmed = rawInput.Trim();
 
-            // TH 1: Có dấu ':' như "Viewer_Chi: #fan" hoặc "Bao: anti 2"
             int colonIdx = trimmed.IndexOf(':');
             if (colonIdx > 0 && colonIdx < trimmed.Length - 1)
             {
@@ -504,7 +503,6 @@ namespace SteamRush.Features.Runner
                 }
             }
 
-            // TH 2: Dấu cách phân cách tên và lệnh, ví dụ "Viewer_Chi #fan" hoặc "Top1_Dung #anti"
             int firstSpace = trimmed.IndexOf(' ');
             if (firstSpace > 0)
             {
@@ -524,8 +522,6 @@ namespace SteamRush.Features.Runner
                 }
             }
 
-            // TH 3: Người dùng chỉ gõ lệnh trực tiếp (ví dụ "#fan", "#anti", "1", "fast", "blue", "red")
-            // Nếu là lệnh đổi phe (#fan/#anti/blue/red) -> xoay vòng sang một follower mới để giả lập nhiều khán giả khác nhau tham gia
             string cmdLower = trimmed.ToLowerInvariant();
             if (cmdLower == "#fan" || cmdLower == "#blue" || cmdLower == "blue" || cmdLower == "fan" ||
                 cmdLower == "#anti" || cmdLower == "#red" || cmdLower == "red" || cmdLower == "anti")
@@ -535,13 +531,24 @@ namespace SteamRush.Features.Runner
                 return (newFollower, trimmed);
             }
 
-            // Còn lại nếu đã có follower gần nhất thì dùng, chưa có thì lấy từ danh sách
             if (string.IsNullOrEmpty(_lastActiveFollowerName))
             {
                 _lastActiveFollowerName = GetOrRotateFollowerName();
             }
 
             return (_lastActiveFollowerName, trimmed);
+        }
+
+        public void SimulateViewerChat(string viewerName, string command)
+        {
+            _lastSubmittedFrame = -1;
+            OnChatSubmitted($"{viewerName} {command}");
+        }
+
+        public void ExecuteChatCommand(string rawInput)
+        {
+            _lastSubmittedFrame = -1;
+            OnChatSubmitted(rawInput);
         }
 
         private void OnChatSubmitted(string rawInput)
@@ -564,31 +571,32 @@ namespace SteamRush.Features.Runner
             var (followerName, command) = ParseFollowerAndInput(rawInput);
             string trimmedCmd = command.Trim().ToLowerInvariant();
 
-            // 1. Kiểm tra lệnh đổi phe: blue / red / #blue / #red / #fan / #anti (hiển thị rõ tên Follower)
             if (trimmedCmd == "blue" || trimmedCmd == "#blue" || trimmedCmd == "#fan" || trimmedCmd == "fan")
             {
+                bool isSwitching = factionManager != null && factionManager.HasFaction(followerName) && factionManager.GetFaction(followerName) == FactionType.Anti;
                 factionManager?.SetFaction(followerName, FactionType.Fan);
-                hudManager?.ShowStatusPopup($"[{followerName}] đã gia nhập phe FAN (Blue)! (Ủng hộ Runner)", true);
+                string actionText = isSwitching ? "Switched to Fan" : "Joined Fan";
+                hudManager?.ShowFanAction(followerName, actionText);
                 ClearInputField();
                 return;
             }
             else if (trimmedCmd == "red" || trimmedCmd == "#red" || trimmedCmd == "#anti" || trimmedCmd == "anti")
             {
+                bool isSwitching = factionManager != null && factionManager.HasFaction(followerName) && factionManager.GetFaction(followerName) == FactionType.Fan;
                 factionManager?.SetFaction(followerName, FactionType.Anti);
-                hudManager?.ShowStatusPopup($"[{followerName}] đã gia nhập phe ANTI (Red)! (Cản đường Runner)", false);
+                string actionText = isSwitching ? "Switched to Anti" : "Joined Anti";
+                hudManager?.ShowAntiAction(followerName, actionText);
                 ClearInputField();
                 return;
             }
 
-            // Kiểm tra lệnh quà Bình Tăng Tốc (Sprint Buff) phe Fan qua chat
             if (trimmedCmd == "sprint" || trimmedCmd == "#sprint" || trimmedCmd == "tangtoc" || trimmedCmd == "#tangtoc" || trimmedCmd == "buff")
             {
-                MockActivateFanSprintBuff();
+                MockActivateFanSprintBuff(followerName);
                 ClearInputField();
                 return;
             }
 
-            // Quà Bình Năng Lượng Fan (+30%) và Anti (+50%) qua chat
             if (trimmedCmd == "fanenergy" || trimmedCmd == "#fanenergy" || trimmedCmd == "napblue" || trimmedCmd == "#napblue")
             {
                 MockFanEnergyBottle(followerName);
@@ -602,27 +610,25 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            // Kiểm tra lệnh gọi xe phân cấp GDD v1.4 trực tiếp qua chat
             if (trimmedCmd == "xecon" || trimmedCmd == "#xecon" || trimmedCmd == "sedan" || trimmedCmd == "#sedan")
             {
-                MockSpawnSedanCar();
+                MockSpawnSedanCar(followerName);
                 ClearInputField();
                 return;
             }
             if (trimmedCmd == "xebantai" || trimmedCmd == "#xebantai" || trimmedCmd == "pickup" || trimmedCmd == "#pickup")
             {
-                MockSpawnPickupTruck();
+                MockSpawnPickupTruck(followerName);
                 ClearInputField();
                 return;
             }
             if (trimmedCmd == "xetai" || trimmedCmd == "#xetai" || trimmedCmd == "truck" || trimmedCmd == "#truck" || trimmedCmd == "bus" || trimmedCmd == "#bus")
             {
-                MockSpawnHeavyTruck();
+                MockSpawnHeavyTruck(followerName);
                 ClearInputField();
                 return;
             }
 
-            // Kiểm tra lệnh mua vé hàng chờ qua chat: #ve / #ticket (Thường) và #vip / #vevip (VIP)
             if (trimmedCmd == "ve" || trimmedCmd == "#ve" || trimmedCmd == "ticket" || trimmedCmd == "#ticket" || trimmedCmd == "vethuong" || trimmedCmd == "#vethuong")
             {
                 MockBuyNormalTicket(followerName);
@@ -636,8 +642,14 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            // 2. Kiểm tra lệnh spawn xe cản đường của phe Anti (100 năng lượng / xe):
-            // TH A: Cú pháp trực tiếp: "#anti 1", "anti 1", "#anti 2", "anti 2", "#anti 3", "anti 3", "anti1", "anti2", "anti3"
+            if (trimmedCmd == "weather" || trimmedCmd == "#weather" || trimmedCmd == "rain" || trimmedCmd == "#rain" ||
+                trimmedCmd == "fog" || trimmedCmd == "#fog" || trimmedCmd == "env" || trimmedCmd == "#env" ||
+                trimmedCmd == "thoitiet" || trimmedCmd == "#thoitiet" || trimmedCmd == "mua" || trimmedCmd == "#mua")
+            {
+                MockWeatherHazard(followerName);
+                ClearInputField();
+                return;
+            }
             int antiLane = -1;
             if (trimmedCmd.StartsWith("#anti") || trimmedCmd.StartsWith("anti"))
             {
@@ -646,7 +658,6 @@ namespace SteamRush.Features.Runner
                 else if (rest == "2" || rest == "lane 2" || rest == "giua" || rest == "mid" || rest == "center") antiLane = 2;
                 else if (rest == "3" || rest == "lane 3" || rest == "phai" || rest == "right") antiLane = 3;
             }
-            // TH B: Follower đã ở phe Anti và gõ "1", "2", "3"
             else if (factionManager != null && factionManager.GetFaction(followerName) == FactionType.Anti)
             {
                 if (trimmedCmd == "1" || trimmedCmd == "left" || trimmedCmd == "trai") antiLane = 1;
@@ -661,15 +672,15 @@ namespace SteamRush.Features.Runner
                 {
                     if (!obstacleSpawner.CanSpawnObstacle())
                     {
-                        hudManager?.ShowStatusPopup($"[{followerName}] (Phe Anti): Đang có tối đa 2 xe cản đường cùng lúc! Hãy đợi xe trước vượt qua.", false);
+                        hudManager?.ShowAntiAction(followerName, "Max 2 Cars On Track!");
                         ClearInputField();
                         return;
                     }
 
                     if (!obstacleSpawner.CanSpawnObstacleOnLane(antiLane))
                     {
-                        string occupiedLaneName = antiLane == 1 ? "1 (Trái)" : (antiLane == 2 ? "2 (Giữa)" : "3 (Phải)");
-                        hudManager?.ShowStatusPopup($"[{followerName}] (Phe Anti): Làn {occupiedLaneName} đang có vật cản cản đường!", false);
+                        string occupiedLaneName = antiLane == 1 ? "1 (Left)" : (antiLane == 2 ? "2 (Mid)" : "3 (Right)");
+                        hudManager?.ShowAntiAction(followerName, $"Lane {occupiedLaneName} Occupied!");
                         ClearInputField();
                         return;
                     }
@@ -680,21 +691,18 @@ namespace SteamRush.Features.Runner
                     bool success = factionManager.TrySpawnAntiObstacleCar(followerName, antiLane);
                     if (success)
                     {
-                        string laneName = antiLane == 1 ? "Trái (1)" : (antiLane == 2 ? "Giữa (2)" : "Phải (3)");
-                        hudManager?.ShowStatusPopup($"[{followerName}] (Phe Anti) thả xe Làn {laneName}! (-{factionManager.AntiCarLaneCost} Anti)", false);
+                        string laneName = antiLane == 1 ? "Left (1)" : (antiLane == 2 ? "Mid (2)" : "Right (3)");
+                        hudManager?.ShowAntiAction(followerName, $"Spawned Car (Lane {laneName})");
                     }
                     else
                     {
-                        hudManager?.ShowStatusPopup($"[{followerName}] (Phe Anti) không đủ 100 năng lượng! (Hiện có {factionManager.AntiLikes})", false);
+                        hudManager?.ShowAntiAction(followerName, $"Need 100 Energy ({factionManager.AntiLikes})");
                     }
                 }
                 ClearInputField();
                 return;
             }
 
-            // 2.5 Kiểm tra lệnh spawn item hỗ trợ của phe Fan (50 năng lượng / item):
-            // Cú pháp: "#fan 1", "fan 1", "#fan 2", "fan 2", "#fan 3", "fan 3", "fan1", "fan2", "fan3",
-            //          "#shield 1", "shield 1", "#buff 1", "buff 1", "#item 1", "item 1"...
             int fanLane = -1;
             bool isFanShield = false;
 
@@ -712,7 +720,7 @@ namespace SteamRush.Features.Runner
                 if (rest == "1" || rest == "lane 1" || rest == "trai" || rest == "left") fanLane = 1;
                 else if (rest == "2" || rest == "lane 2" || rest == "giua" || rest == "mid" || rest == "center") fanLane = 2;
                 else if (rest == "3" || rest == "lane 3" || rest == "phai" || rest == "right") fanLane = 3;
-                else fanLane = 2; // mặc định làn giữa
+                else fanLane = 2;
             }
             else if (trimmedCmd.StartsWith("#buff") || trimmedCmd.StartsWith("buff") || trimmedCmd.StartsWith("#item") || trimmedCmd.StartsWith("item"))
             {
@@ -730,20 +738,19 @@ namespace SteamRush.Features.Runner
                     bool success = factionManager.TrySpawnFanItem(followerName, fanLane, isFanShield);
                     if (success)
                     {
-                        string laneName = fanLane == 1 ? "Trái (1)" : (fanLane == 2 ? "Giữa (2)" : "Phải (3)");
-                        string itemName = isFanShield ? "Khiên Bảo Vệ" : "Bình Năng Lượng";
-                        hudManager?.ShowStatusPopup($"[{followerName}] (Phe Fan) thả {itemName} Làn {laneName}! (-{factionManager.FanItemLaneCost} Fan)", true);
+                        string laneName = fanLane == 1 ? "Left (1)" : (fanLane == 2 ? "Mid (2)" : "Right (3)");
+                        string itemName = isFanShield ? "Shield" : "Energy Bottle";
+                        hudManager?.ShowFanAction(followerName, $"Spawned {itemName} (Lane {laneName})");
                     }
                     else
                     {
-                        hudManager?.ShowStatusPopup($"[{followerName}] (Phe Fan) không đủ {factionManager.FanItemLaneCost} năng lượng! (Hiện có {factionManager.FanLikes})", true);
+                        hudManager?.ShowFanAction(followerName, $"Need {factionManager.FanItemLaneCost} Energy!");
                     }
                 }
                 ClearInputField();
                 return;
             }
 
-            // 3. Lọc và thực thi chuỗi lệnh di chuyển (left, right, fast, 1, 2, 3...) cho Runner (phe Fan)
             List<string> commands = _sanitizer.SanitizeAndParse(command);
             if (commands != null && commands.Count > 0)
             {
@@ -752,7 +759,27 @@ namespace SteamRush.Features.Runner
 
                 if (chatLaneRunner != null)
                 {
+                    if (chatLaneRunner.IsControlLocked)
+                    {
+                        ClearInputField();
+                        return;
+                    }
+
                     chatLaneRunner.ExecuteCommands(commands);
+
+                    string firstCmd = commands[0].ToLowerInvariant();
+                    string actionDesc = firstCmd switch
+                    {
+                        "1" => "Lane 1 (Left)",
+                        "2" => "Lane 2 (Mid)",
+                        "3" => "Lane 3 (Right)",
+                        "left" => "Dodge Left",
+                        "right" => "Dodge Right",
+                        "jump" or "j" or "nhay" or "up" => "Jump",
+                        "fast" => "Sprint",
+                        _ => $"Cmd: {firstCmd}"
+                    };
+                    hudManager?.ShowFanAction(followerName, actionDesc);
                 }
                 else
                 {
@@ -763,7 +790,7 @@ namespace SteamRush.Features.Runner
             ClearInputField();
         }
 
-        private void MockDonateShield()
+        public void MockDonateShield(string sender = "Khán Giả")
         {
             if (obstacleSpawner == null)
             {
@@ -782,17 +809,17 @@ namespace SteamRush.Features.Runner
             if (success)
             {
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-                hudManager?.ShowStatusPopup($"[Khán giả] tặng Khiên Bảo Vệ trên Làn {randomLane}!", true);
-                Debug.Log($"[MockChatConsole] F1 -> Spawn Shield item trên Làn {randomLane}.");
+                hudManager?.ShowFanAction(sender, $"Shield (Lane {randomLane})");
+                Debug.Log($"[MockChatConsole] F1 -> Spawn Shield item on Lane {randomLane}.");
             }
             else
             {
-                Debug.LogWarning("[MockChatConsole] F1 -> Spawn Shield thất bại (thiếu prefab hoặc Player reference).");
+                Debug.LogWarning("[MockChatConsole] F1 -> Spawn Shield failed.");
             }
         }
 
         // Quà Bình Tăng Tốc (Sprint Buff - Phe Fan, F2): Chạy nhanh 30s không tốn năng lượng
-        private void MockActivateFanSprintBuff()
+        public void MockActivateFanSprintBuff(string sender = "Phe Fan")
         {
             if (chatLaneRunner == null)
             {
@@ -809,7 +836,7 @@ namespace SteamRush.Features.Runner
             {
                 chatLaneRunner.ActivateSprintBuff(30f);
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-                hudManager?.ShowStatusPopup("[Phe Fan] BÌNH TĂNG TỐC kích hoạt 30s! Bứt phá không tốn năng lượng!", true);
+                hudManager?.ShowFanAction(sender, "Speed Boost (30s)");
             }
         }
 
@@ -851,10 +878,10 @@ namespace SteamRush.Features.Runner
             chatLaneRunner.SetSprintBuffDebug(newState);
 
             if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-            hudManager?.ShowStatusPopup(newState ? "[DEBUG] Bình Tăng Tốc (Sprint Buff): BẬT (phím 9)" : "[DEBUG] Bình Tăng Tốc (Sprint Buff): TẮT (phím 9)", true);
+            hudManager?.ShowFanAction("DEBUG", newState ? "Sprint: ON" : "Sprint: OFF");
         }
 
-        public void MockSpawnSedanCar()
+        public void MockSpawnSedanCar(string sender = "Phe Anti")
         {
             if (obstacleSpawner == null) obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
             if (obstacleSpawner != null)
@@ -863,12 +890,12 @@ namespace SteamRush.Features.Runner
                 if (success)
                 {
                     if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-                    hudManager?.ShowStatusPopup("[F3 - ANTI] Thả Xe Con Húc! (-20% NL, -100m)", false);
+                    hudManager?.ShowAntiAction(sender, "Spawned Sedan");
                 }
             }
         }
 
-        public void MockSpawnPickupTruck()
+        public void MockSpawnPickupTruck(string sender = "Phe Anti")
         {
             if (obstacleSpawner == null) obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
             if (obstacleSpawner != null)
@@ -877,12 +904,12 @@ namespace SteamRush.Features.Runner
                 if (success)
                 {
                     if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-                    hudManager?.ShowStatusPopup("[F4 - ANTI] Thả Xe Bán Tải! (-40% NL, -200m)", false);
+                    hudManager?.ShowAntiAction(sender, "Spawned Pickup");
                 }
             }
         }
 
-        public void MockSpawnHeavyTruck()
+        public void MockSpawnHeavyTruck(string sender = "Phe Anti")
         {
             if (obstacleSpawner == null) obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
             if (obstacleSpawner != null)
@@ -891,7 +918,7 @@ namespace SteamRush.Features.Runner
                 if (success)
                 {
                     if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-                    hudManager?.ShowStatusPopup("[F5 - ANTI] Thả Xe Tải Hạng Nặng! (-60% NL, -400m)", false);
+                    hudManager?.ShowAntiAction(sender, "Spawned Heavy Truck");
                 }
             }
         }
@@ -902,11 +929,10 @@ namespace SteamRush.Features.Runner
             if (factionManager != null)
             {
                 factionManager.OnChatCommand(sender, "#fan");
-                factionManager.DebugAdjustFanEnergy(300); // +30% (+300 điểm)
+                factionManager.DebugAdjustFanEnergy(300);
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-                int percent = GetFactionPercent(factionManager.FanLikes, isFan: true);
-                hudManager?.ShowStatusPopup($"[{sender}] tặng [Bình Năng Lượng Fan] +30% (+300)! (Hiện có: {factionManager.FanLikes} - {percent}%)", true);
-                Debug.Log($"[MockChatConsole] {sender} tặng Bình Năng Lượng Fan +30% (+300)! (Total: {factionManager.FanLikes})");
+                hudManager?.ShowFanAction(sender, "Fan Energy +30% (+300)");
+                Debug.Log($"[MockChatConsole] {sender} Fan Energy +30% (+300). (Total: {factionManager.FanLikes})");
             }
             else
             {
@@ -920,11 +946,10 @@ namespace SteamRush.Features.Runner
             if (factionManager != null)
             {
                 factionManager.OnChatCommand(sender, "#anti");
-                factionManager.DebugAdjustAntiEnergy(500); // +50% (+500 điểm)
+                factionManager.DebugAdjustAntiEnergy(500);
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-                int percent = GetFactionPercent(factionManager.AntiLikes, isFan: false);
-                hudManager?.ShowStatusPopup($"[{sender}] tặng [Bình Năng Lượng Anti] +50% (+500)! (Hiện có: {factionManager.AntiLikes} - {percent}%)", false);
-                Debug.Log($"[MockChatConsole] {sender} tặng Bình Năng Lượng Anti +50% (+500)! (Total: {factionManager.AntiLikes})");
+                hudManager?.ShowAntiAction(sender, "Anti Energy +50% (+500)");
+                Debug.Log($"[MockChatConsole] {sender} Anti Energy +50% (+500). (Total: {factionManager.AntiLikes})");
             }
             else
             {
@@ -932,17 +957,17 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        private void MockNewFollower()
+        public void MockNewFollower(string customUserId = null)
         {
             if (queueManager == null)
                 queueManager = FindFirstObjectByType<ChatRunnerQueueManager>();
 
             if (queueManager != null)
             {
-                string newId = "Follower_" + Random.Range(100, 999);
+                string newId = string.IsNullOrEmpty(customUserId) ? ("Follower_" + Random.Range(100, 999)) : customUserId;
                 queueManager.TryEnqueueFollower(newId);
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-                hudManager?.ShowStatusPopup($"[{newId}] vừa Follow kênh và vào hàng đợi!", true);
+                hudManager?.ShowFanAction(newId, "Followed & Queued");
                 Debug.Log($"[MockChatConsole] F5 -> Enqueued new follower: {newId}");
             }
             else
@@ -951,7 +976,7 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        private void MockActivateAntiCarUnlimited()
+        public void MockActivateAntiCarUnlimited(string sender = "Phe Anti")
         {
             if (obstacleSpawner == null)
             {
@@ -968,17 +993,16 @@ namespace SteamRush.Features.Runner
             {
                 obstacleSpawner.ActivateUnlimitedMode();
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-                hudManager?.ShowStatusPopup("[Phe Anti] QUÀ XE KHÔNG GIỚI HẠN kích hoạt 60s!", false);
-                Debug.Log("[MockChatConsole] F7 -> Kích hoạt Thả Xe Không Giới Hạn (60s). Không spawn xe.");
+                hudManager?.ShowAntiAction(sender, "Unlimited Cars (60s)");
+                Debug.Log("[MockChatConsole] F7 -> Unlimited Cars (60s) activated.");
             }
             else
             {
-                Debug.Log("[MockChatConsole] F7 -> Thả Xe Không Giới Hạn đang hoạt động.");
+                Debug.Log("[MockChatConsole] F7 -> Unlimited Cars already active.");
             }
         }
 
-        // F8: Điệu nhảy meme ngẫu nhiên (Gift Dance 60s)
-        private void MockGiftDance()
+        public void MockGiftDance(string sender = "Khán Giả")
         {
             if (giftDance == null)
             {
@@ -997,12 +1021,27 @@ namespace SteamRush.Features.Runner
 
             if (giftDance.TriggerDance())
             {
-                hudManager?.ShowStatusPopup($"[Khán giả] tặng Điệu Nhảy! Runner nhảy {giftDance.Duration:F0}s!", true);
+                hudManager?.ShowFanAction(sender, $"Dance ({giftDance.Duration:F0}s)");
             }
         }
 
-        // F9/F10: Mua vé hàng chờ tiếp sức (Ticket System)
-        private void MockBuyNormalTicket(string customUserId = null)
+        public void MockWeatherHazard(string sender = "Viewer_Anti")
+        {
+            var weatherManager = SteamRush.Features.Environment.WeatherHazardManager.Instance ?? FindFirstObjectByType<SteamRush.Features.Environment.WeatherHazardManager>();
+            if (weatherManager == null)
+            {
+                var go = new GameObject("WeatherHazardManager");
+                weatherManager = go.AddComponent<SteamRush.Features.Environment.WeatherHazardManager>();
+            }
+
+            weatherManager.TriggerWeatherHazard(60f);
+
+            if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+            hudManager?.ShowAntiAction(sender, "Rain & Fog (60s)");
+            Debug.Log($"[MockChatConsole] {sender} Weather Hazard 60s (FX_Rain & Fog -3.5f).");
+        }
+
+        public void MockBuyNormalTicket(string customUserId = null)
         {
             if (queueManager == null)
             {
@@ -1019,10 +1058,10 @@ namespace SteamRush.Features.Runner
             queueManager.TryEnqueueFollower(newId);
 
             if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-            hudManager?.ShowStatusPopup($"[{newId}] (Phe Fan) mua VÉ THƯỜNG -> Vào cuối hàng chờ!", true);
+            hudManager?.ShowFanAction(newId, "Normal Ticket");
         }
 
-        private void MockBuyVipTicket(string customUserId = null)
+        public void MockBuyVipTicket(string customUserId = null)
         {
             if (queueManager == null)
             {
@@ -1039,10 +1078,9 @@ namespace SteamRush.Features.Runner
             queueManager.TryEnqueuePriorityFollower(newId);
 
             if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-            hudManager?.ShowStatusPopup($"[{newId}] (Phe Fan) mua VÉ VIP -> Chen lên vị trí ưu tiên kế tiếp (Slot #2)!", true, null, new Color(1f, 0.85f, 0.1f, 1f));
+            hudManager?.ShowFanAction(newId, "VIP Ticket (Slot #2)");
         }
 
-        // Phím 0: Toggle Unlimited Mode tự do để QA test
         private void MockToggleUnlimitedModeDebug()
         {
             if (obstacleSpawner == null)
@@ -1060,7 +1098,7 @@ namespace SteamRush.Features.Runner
             obstacleSpawner.SetUnlimitedModeDebug(newState);
 
             if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-            hudManager?.ShowStatusPopup(newState ? "[DEBUG] Unlimited Mode: BẬT (phím 0)" : "[DEBUG] Unlimited Mode: TẮT (phím 0)", false);
+            hudManager?.ShowStatusPopup(newState ? "[DEBUG] Unlimited Mode: ON" : "[DEBUG] Unlimited Mode: OFF", false);
         }
 
         private SteamRush.Features.UI.FactionTugOfWarUI _cachedFactionUI;
@@ -1078,7 +1116,6 @@ namespace SteamRush.Features.Runner
             return Mathf.Clamp(Mathf.RoundToInt(100f * likes / max), 0, 100);
         }
 
-        // Phím tắt Debug Tăng / Giảm Năng Lượng 2 Phe
         public void DebugIncreaseFanEnergy(int amount = 10)
         {
             if (factionManager == null) factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
@@ -1087,7 +1124,7 @@ namespace SteamRush.Features.Runner
                 factionManager.DebugAdjustFanEnergy(amount);
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
                 int percent = GetFactionPercent(factionManager.FanLikes, isFan: true);
-                hudManager?.ShowStatusPopup($"[Debug] Fan +{amount} (+1%) (Hiện có: {factionManager.FanLikes} - {percent}%)", true);
+                hudManager?.ShowStatusPopup($"[Debug] Fan +{amount} (+1%) ({factionManager.FanLikes} | {percent}%)", true);
             }
         }
 
@@ -1099,7 +1136,7 @@ namespace SteamRush.Features.Runner
                 factionManager.DebugAdjustFanEnergy(-amount);
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
                 int percent = GetFactionPercent(factionManager.FanLikes, isFan: true);
-                hudManager?.ShowStatusPopup($"[Debug] Fan -{amount} (-1%) (Hiện có: {factionManager.FanLikes} - {percent}%)", true);
+                hudManager?.ShowStatusPopup($"[Debug] Fan -{amount} (-1%) ({factionManager.FanLikes} | {percent}%)", true);
             }
         }
 
@@ -1111,7 +1148,7 @@ namespace SteamRush.Features.Runner
                 factionManager.DebugAdjustAntiEnergy(amount);
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
                 int percent = GetFactionPercent(factionManager.AntiLikes, isFan: false);
-                hudManager?.ShowStatusPopup($"[Debug] Anti +{amount} (+1%) (Hiện có: {factionManager.AntiLikes} - {percent}%)", false);
+                hudManager?.ShowStatusPopup($"[Debug] Anti +{amount} (+1%) ({factionManager.AntiLikes} | {percent}%)", false);
             }
         }
 
@@ -1123,8 +1160,26 @@ namespace SteamRush.Features.Runner
                 factionManager.DebugAdjustAntiEnergy(-amount);
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
                 int percent = GetFactionPercent(factionManager.AntiLikes, isFan: false);
-                hudManager?.ShowStatusPopup($"[Debug] Anti -{amount} (-1%) (Hiện có: {factionManager.AntiLikes} - {percent}%)", false);
+                hudManager?.ShowStatusPopup($"[Debug] Anti -{amount} (-1%) ({factionManager.AntiLikes} | {percent}%)", false);
             }
+        }
+
+        [ContextMenu("Debug Trigger Finish Line (50m ahead)")]
+        public void MockTriggerFinishLineApproach(float distanceAhead = 50f)
+        {
+            var progressTracker = FindFirstObjectByType<SteamRush.Track.TrackProgressTracker>();
+            if (progressTracker != null)
+            {
+                progressTracker.DebugJumpNearGoal(distanceAhead);
+            }
+
+            var archway = FindFirstObjectByType<SteamRush.Track.FinishLineArchway>();
+            if (archway != null)
+            {
+                archway.DebugSpawnArchway(distanceAhead);
+            }
+
+            Debug.Log($"[MockChatConsole] F12 -> Jumped to {distanceAhead:F0}m before Finish Line!");
         }
 
         private void ClearInputField()

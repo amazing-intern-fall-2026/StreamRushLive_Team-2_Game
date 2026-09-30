@@ -85,6 +85,17 @@ namespace StreamRushLive.Features.Spawning
 
         public bool IsUnlimitedModeActive => _isUnlimitedModeActive;
 
+        // Khoa toan bo spawn (GDD v1.4.1 - Victory Celebration): goi khi Runner bang qua Cong Ve
+        // Dich, khong con xe/item nao duoc sinh them du chat con gui lenh gi di nua.
+        private bool _spawningLocked;
+        public bool IsSpawningLocked => _spawningLocked;
+
+        public void SetSpawningLocked(bool locked)
+        {
+            _spawningLocked = locked;
+            Debug.Log($"[SingleObstacleSpawner] SpawningLocked = {locked}");
+        }
+
         private class ActiveObstacle
         {
             public int LaneIndex;
@@ -179,6 +190,8 @@ namespace StreamRushLive.Features.Spawning
         /// </summary>
         public bool TriggerSpawnCarTier(VehicleTier tier, int laneIndex = -1)
         {
+            if (_spawningLocked) return false;
+
             CleanupInactiveObstacles();
 
             if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
@@ -215,6 +228,8 @@ namespace StreamRushLive.Features.Spawning
 
         public bool TriggerSpawnCarOnLane(int laneIndex, VehicleTier? tier = null)
         {
+            if (_spawningLocked) return false;
+
             CleanupInactiveObstacles();
 
             if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
@@ -240,6 +255,8 @@ namespace StreamRushLive.Features.Spawning
 
         public bool TriggerSpawnCarFromAntiLikes(VehicleTier? tier = null)
         {
+            if (_spawningLocked) return false;
+
             CleanupInactiveObstacles();
 
             if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
@@ -440,7 +457,6 @@ namespace StreamRushLive.Features.Spawning
             carInstance.name = $"ObstacleCar_{tier}_{prefabToSpawn.name}";
             try { carInstance.tag = "Obstacle"; } catch { }
 
-            // 1. Tắt toàn bộ Collider con có sẵn trên prefab để tránh lỗi MeshCollider non-convex vượt giới hạn 256 polygon
             Collider[] existingColliders = carInstance.GetComponentsInChildren<Collider>(true);
             for (int i = 0; i < existingColliders.Length; i++)
             {
@@ -450,7 +466,6 @@ namespace StreamRushLive.Features.Spawning
                 }
             }
 
-            // 2. Gán BoxCollider Trigger chuẩn trên root GameObject theo đúng kích thước phân cấp xe
             var box = carInstance.GetComponent<BoxCollider>();
             if (box == null) box = carInstance.AddComponent<BoxCollider>();
             box.isTrigger = true;
@@ -472,7 +487,6 @@ namespace StreamRushLive.Features.Spawning
                     break;
             }
 
-            // 3. Thêm Kinematic Rigidbody để tối ưu hóa chuyển động Trigger trong PhysX
             var rb = carInstance.GetComponent<Rigidbody>();
             if (rb == null) rb = carInstance.AddComponent<Rigidbody>();
             rb.isKinematic = true;
@@ -527,6 +541,8 @@ namespace StreamRushLive.Features.Spawning
         /// </summary>
         public bool TriggerSpawnFanItem(int laneIndex, bool isShield = false)
         {
+            if (_spawningLocked) return false;
+
             if (playerReference == null)
             {
                 var runner = FindFirstObjectByType<ChatLaneRunnerController>();

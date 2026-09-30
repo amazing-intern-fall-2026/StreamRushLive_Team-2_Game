@@ -16,6 +16,10 @@ namespace SteamRush.Features.UI
         [SerializeField] private GiftToastQueue giftToastQueue;
         [SerializeField] private GiftToastQueue topBannerQueue;
 
+        [Header("Dual-Wing Action Feeds")]
+        [SerializeField] private GiftToastQueue fanFeedQueue;
+        [SerializeField] private GiftToastQueue antiFeedQueue;
+
         [Header("Next Runner HUD / Preview")]
         [SerializeField] private TMPro.TMP_Text nextRunnerLabel;
         [SerializeField] private Color nextRunnerNormalColor = Color.white;
@@ -123,6 +127,38 @@ namespace SteamRush.Features.UI
         public void ShowGiftToast(string viewerName, string itemName, Sprite giftIcon, Color? iconColor = null)
         {
             // Disabled: Khong hien thi Gift Toast
+        }
+
+        /// <summary>
+        /// Hiển thị thông báo hành động / donate của Phe Fan bên cánh trái.
+        /// </summary>
+        public void ShowFanAction(string sender, string action, Sprite icon = null)
+        {
+            if (fanFeedQueue == null)
+            {
+                // Fallback nếu chưa gắn container riêng
+                ShowStatusPopup($"[{sender}] {action}", true, icon);
+                return;
+            }
+
+            string displaySender = string.IsNullOrEmpty(sender) ? string.Empty : $"[{sender}]";
+            fanFeedQueue.Show(displaySender, action, icon, _buffAccentColor, _buffAccentColor, true);
+        }
+
+        /// <summary>
+        /// Hiển thị thông báo hành động / donate của Phe Anti bên cánh phải.
+        /// </summary>
+        public void ShowAntiAction(string sender, string action, Sprite icon = null)
+        {
+            if (antiFeedQueue == null)
+            {
+                // Fallback nếu chưa gắn container riêng
+                ShowStatusPopup($"[{sender}] {action}", false, icon);
+                return;
+            }
+
+            string displaySender = string.IsNullOrEmpty(sender) ? string.Empty : $"[{sender}]";
+            antiFeedQueue.Show(displaySender, action, icon, _debuffAccentColor, _debuffAccentColor, true);
         }
     }
 }
