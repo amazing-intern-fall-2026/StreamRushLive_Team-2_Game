@@ -36,9 +36,18 @@ namespace SteamRush.Features.Runner
 
         private bool _isHandlingHit;
         private bool _isHyperDashActive;
+        private float _shieldDeflectImmunityTimer = 0f;
 
         public bool IsHandlingHit => _isHandlingHit;
         public bool IsHyperDashActive => _isHyperDashActive;
+
+        private void Update()
+        {
+            if (_shieldDeflectImmunityTimer > 0f)
+            {
+                _shieldDeflectImmunityTimer -= Time.deltaTime;
+            }
+        }
 
         private void Awake()
         {
@@ -80,6 +89,11 @@ namespace SteamRush.Features.Runner
 
         private void HandleInteraction(GameObject obj)
         {
+            if (_shieldDeflectImmunityTimer > 0f)
+            {
+                return;
+            }
+
             if (_isHyperDashActive)
             {
                 ObstacleBase hyperDashObstacle =
@@ -132,9 +146,13 @@ namespace SteamRush.Features.Runner
 
             if (obstacle != null)
             {
-                if (TryConsumeShield())
+                if (obstacle.IsShieldDeflected)
                 {
-                    Destroy(obstacle.gameObject);
+                    return;
+                }
+
+                if (TryConsumeShield(obstacle.gameObject))
+                {
                     return;
                 }
 
@@ -143,7 +161,7 @@ namespace SteamRush.Features.Runner
                 {
                     obstacle.TriggerHit(gameObject);
                 }
-                else
+                else if (!obstacle.IsShieldDeflected)
                 {
                     StartCoroutine(HandleObstacleHit(obstacle));
                 }
@@ -153,16 +171,20 @@ namespace SteamRush.Features.Runner
 
             // Fallback cho obstacle chưa có ObstacleBase hoặc nhận diện xe DrivingObstacleCar
             StreamRushLive.Features.Spawning.DrivingObstacleCar drivingCar = obj.GetComponentInParent<StreamRushLive.Features.Spawning.DrivingObstacleCar>();
+            if (drivingCar != null && drivingCar.IsShieldDeflected)
+            {
+                return;
+            }
+
             if (drivingCar != null || obj.CompareTag(_obstacleTag)
                 || obj.transform.root.CompareTag(_obstacleTag)
                 || obj.name.Contains("Barrier")
                 || obj.name.Contains("Obstacle")
                 || obj.name.Contains("Car"))
             {
-                if (TryConsumeShield())
+                GameObject targetObj = drivingCar != null ? drivingCar.gameObject : obj.transform.root.gameObject;
+                if (TryConsumeShield(targetObj))
                 {
-                    if (drivingCar != null) Destroy(drivingCar.gameObject);
-                    else Destroy(obj.transform.root.gameObject);
                     return;
                 }
 
@@ -180,9 +202,15 @@ namespace SteamRush.Features.Runner
         /// </summary>
         public void HandleObstacleHitFromSource(ObstacleBase obstacle)
         {
-            if (_isHandlingHit)
+            if (_isHandlingHit || _shieldDeflectImmunityTimer > 0f)
             {
                 return;
+            }
+
+            if (obstacle != null)
+            {
+                if (obstacle.IsShieldDeflected) return;
+                if (TryConsumeShield(obstacle.gameObject)) return;
             }
 
             StartCoroutine(HandleObstacleHit(obstacle));
@@ -337,45 +365,119 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Kiểm tra Runner có Shield hay không.
-        /// Nếu có, Shield sẽ bị tiêu hao và va chạm không gây trừ cự ly hay năng lượng.
+        /// Kiểm tra nhanh xem Runner có đang được bảo vệ bởi Khiên hay không.
         /// </summary>
-        private bool TryConsumeShield()
+        public bool HasShieldActive()
         {
-            RunnerItemEffects itemEffects =
-                GetComponent<RunnerItemEffects>();
+            RunnerItemEffects itemEffects = GetComponent<RunnerItemEffects>() ?? GetComponentInParent<RunnerItemEffects>();
+            return itemEffects != null && itemEffects.IsShieldActive;
+        }
 
-            if (itemEffects == null)
-            {
-                itemEffects =
-                    GetComponentInParent<RunnerItemEffects>();
-            }
+        /// <summary>
+        /// Kiểm tra Runner có Shield hay không.
+        /// Nếu có, Shield sẽ chặn 1 đòn va chạm của xe/vật cản, đồng thời đẩy xe văng dạt sang 2 bên lề đường,
+        /// bảo toàn hoàn toàn cự ly tiến trình (-0m) và năng lượng (-0%).
+        /// </summary>
+        public bool TryConsumeShield(GameObject obstacleObj = null)
+        {
+            RunnerItemEffects itemEffects = GetComponent<RunnerItemEffects>() ?? GetComponentInParent<RunnerItemEffects>();
 
-            if (itemEffects == null)
+            if (itemEffects == null || !itemEffects.IsShieldActive)
             {
                 return false;
             }
 
-            if (!itemEffects.IsShieldActive)
-            {
-                return false;
-            }
-
-            bool blocked =
-                itemEffects.ConsumeShield();
-
+            bool blocked = itemEffects.ConsumeShield();
             if (blocked)
             {
-                HUDManager hud =
-                    FindFirstObjectByType<HUDManager>();
+                // Miễn nhiễm ngắn 0.8s để chống lại mọi va chạm dư thừa từ các collider phụ của cùng chiếc xe vừa bị đẩy văng
+                _shieldDeflectImmunityTimer = 0.8f;
 
-                hud?.ShowStatusPopup(
-                    "Shield Blocked!",
-                    true
-                );
+                if (obstacleObj != null)
+                {
+                    DeflectObstacle(obstacleObj);
+                }
+
+                HUDManager hud = FindFirstObjectByType<HUDManager>();
+                hud?.ShowStatusPopup("Khiên Đỡ Đòn & Đẩy Văng Xe!", true);
+                Debug.Log("[RunnerCollisionHandler] Khiên đã chặn 1 đòn va chạm của xe và đẩy xe văng ra 2 bên!");
             }
 
             return blocked;
+        }
+
+        /// <summary>
+        /// Thực hiện hiệu ứng đẩy xe va chạm văng bốc lên và dạt ra 2 bên lề đường.
+        /// </summary>
+        private void DeflectObstacle(GameObject obstacleObj)
+        {
+            if (obstacleObj == null) return;
+
+            StreamRushLive.Features.Spawning.DrivingObstacleCar drivingCar =
+                obstacleObj.GetComponentInParent<StreamRushLive.Features.Spawning.DrivingObstacleCar>()
+                ?? obstacleObj.GetComponent<StreamRushLive.Features.Spawning.DrivingObstacleCar>()
+                ?? obstacleObj.GetComponentInChildren<StreamRushLive.Features.Spawning.DrivingObstacleCar>();
+
+            if (drivingCar != null)
+            {
+                drivingCar.DeflectByShield(transform.position);
+                return;
+            }
+
+            StartCoroutine(DeflectFlyFallbackRoutine(obstacleObj.transform, transform.position));
+        }
+
+        private IEnumerator DeflectFlyFallbackRoutine(Transform target, Vector3 runnerPos)
+        {
+            if (target == null) yield break;
+
+            var mover = target.GetComponent<MovingWorldObject>() ?? target.GetComponentInParent<MovingWorldObject>();
+            if (mover != null) mover.enabled = false;
+
+            Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                if (colliders[i] != null) colliders[i].enabled = false;
+            }
+
+            Rigidbody rb = target.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.isKinematic = true;
+                rb.detectCollisions = false;
+            }
+
+            float sideZ = (target.position.z >= runnerPos.z) ? 1f : -1f;
+            if (Mathf.Abs(target.position.z - runnerPos.z) < 0.2f)
+            {
+                sideZ = Random.value > 0.5f ? 1f : -1f;
+            }
+
+            float vx = 6f;
+            float vy = 13.5f;
+            float vz = sideZ * 16.5f;
+            float gravity = -26f;
+            Vector3 rotAxis = new Vector3(Random.Range(220f, 380f), Random.Range(90f, 200f), sideZ * Random.Range(280f, 480f));
+
+            float elapsed = 0f;
+            float duration = 1.6f;
+
+            while (elapsed < duration && target != null)
+            {
+                float dt = Time.deltaTime;
+                elapsed += dt;
+
+                vy += gravity * dt;
+                target.position += new Vector3(vx, vy, vz) * dt;
+                target.Rotate(rotAxis * dt, Space.World);
+
+                yield return null;
+            }
+
+            if (target != null)
+            {
+                Destroy(target.gameObject);
+            }
         }
     }
 }

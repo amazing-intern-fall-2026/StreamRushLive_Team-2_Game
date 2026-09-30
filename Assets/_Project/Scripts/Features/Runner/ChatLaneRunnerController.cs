@@ -466,6 +466,16 @@ namespace SteamRush.Features.Runner
         {
             if (!_isFastRunning) return;
 
+            // Detect if CommandOverride was externally cancelled (e.g. collision -> Recovery -> Normal)
+            // while _isFastRunning is still true. Sync controller state with speed manager.
+            if (_speedManager != null && !_speedManager.IsCommandOverrideActive &&
+                !_speedManager.IsRecovering && !_speedManager.IsReverseKnockingBack &&
+                !_isSprintBuffActive)
+            {
+                StopFast();
+                return;
+            }
+
             if (_speedManager != null && (_speedManager.IsReverseKnockingBack || _speedManager.IsRecovering))
             {
                 if (!_isSprintBuffActive)
@@ -477,15 +487,18 @@ namespace SteamRush.Features.Runner
 
             if (_collisionHandler != null && _collisionHandler.IsHandlingHit)
             {
-                return;
+                if (!_isSprintBuffActive)
+                {
+                    return;
+                }
             }
 
             if (_isSprintBuffActive)
             {
-                if (_speedManager != null && 
-                    !_speedManager.IsRecovering && 
-                    !_speedManager.IsReverseKnockingBack && 
-                    _speedManager.CurrentSpeed < _fastTargetSpeed - 0.5f)
+                if (_speedManager != null &&
+                    !_speedManager.IsRecovering &&
+                    !_speedManager.IsReverseKnockingBack &&
+                    !_speedManager.IsCommandOverrideActive)
                 {
                     _speedManager.TriggerCommandSpeed(_fastTargetSpeed, 9999f);
                 }
@@ -531,7 +544,13 @@ namespace SteamRush.Features.Runner
             _isFastRunning = false;
             _fastTimer = 0f;
             _fastEnergyAccumulator = 0f;
-            _speedManager?.CancelCommandSpeed();
+
+            // Always attempt to cancel, even if speed manager already left CommandOverride
+            // (e.g. collision interrupted it). This ensures a clean state reset.
+            if (_speedManager != null)
+            {
+                _speedManager.CancelCommandSpeed();
+            }
         }
 
         public void ActivateSprintBuff(float duration = 30f)

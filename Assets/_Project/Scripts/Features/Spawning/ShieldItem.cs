@@ -13,7 +13,7 @@ namespace StreamRushLive.Features.Spawning
     {
         [Header("Shield Settings")]
         [Tooltip("Shield duration in seconds.")]
-        [SerializeField] private float shieldDuration = 20f;
+        [SerializeField] private float shieldDuration = 15f;
 
         public float ShieldDuration => shieldDuration;
 

@@ -26,11 +26,7 @@ namespace SteamRush.Features.Runner
         [SerializeField] private SingleObstacleSpawner obstacleSpawner;
 
         [Header("Mock Settings")]
-        [SerializeField] private float shieldDuration = 20f;
-
-        [Header("Gift Icons (Dedicated Gift/Donate Area)")]
-        [SerializeField] private Sprite shieldGiftIcon;
-        [SerializeField] private Sprite energyGiftIcon;
+        [SerializeField] private float shieldDuration = 15f;
 
         private readonly ChatCommandSanitizer _sanitizer = new ChatCommandSanitizer();
 
@@ -383,9 +379,6 @@ namespace SteamRush.Features.Runner
                 else MockGiftDance();
             }
 
-            if (Keyboard.current.f9Key.wasPressedThisFrame)
-                MockBuyNormalTicket();
-
             if (Keyboard.current.f10Key.wasPressedThisFrame)
                 MockBuyVipTicket();
 
@@ -625,12 +618,6 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            if (trimmedCmd == "ve" || trimmedCmd == "#ve" || trimmedCmd == "ticket" || trimmedCmd == "#ticket" || trimmedCmd == "vethuong" || trimmedCmd == "#vethuong")
-            {
-                MockBuyNormalTicket(followerName);
-                ClearInputField();
-                return;
-            }
             if (trimmedCmd == "vip" || trimmedCmd == "#vip" || trimmedCmd == "vevip" || trimmedCmd == "#vevip")
             {
                 MockBuyVipTicket(followerName);
@@ -700,7 +687,6 @@ namespace SteamRush.Features.Runner
             }
 
             int fanLane = -1;
-            bool isFanShield = false;
 
             if (trimmedCmd.StartsWith("#fan") || trimmedCmd.StartsWith("fan"))
             {
@@ -709,34 +695,29 @@ namespace SteamRush.Features.Runner
                 else if (rest == "2" || rest == "lane 2" || rest == "giua" || rest == "mid" || rest == "center") fanLane = 2;
                 else if (rest == "3" || rest == "lane 3" || rest == "phai" || rest == "right") fanLane = 3;
             }
-            else if (trimmedCmd.StartsWith("#shield") || trimmedCmd.StartsWith("shield") || trimmedCmd.StartsWith("khien"))
+
+            if (trimmedCmd.StartsWith("#shield") || trimmedCmd.StartsWith("shield") || trimmedCmd.StartsWith("khien") || trimmedCmd.StartsWith("#khien"))
             {
-                isFanShield = true;
-                string rest = trimmedCmd.Replace("#shield", "").Replace("shield", "").Replace("khien", "").Trim();
-                if (rest == "1" || rest == "lane 1" || rest == "trai" || rest == "left") fanLane = 1;
-                else if (rest == "2" || rest == "lane 2" || rest == "giua" || rest == "mid" || rest == "center") fanLane = 2;
-                else if (rest == "3" || rest == "lane 3" || rest == "phai" || rest == "right") fanLane = 3;
-                else fanLane = 2;
+                MockDonateShield(followerName);
+                ClearInputField();
+                return;
             }
-            else if (trimmedCmd.StartsWith("#buff") || trimmedCmd.StartsWith("buff") || trimmedCmd.StartsWith("#item") || trimmedCmd.StartsWith("item"))
+
+            if (trimmedCmd.StartsWith("#buff") || trimmedCmd.StartsWith("buff") || trimmedCmd.StartsWith("#item") || trimmedCmd.StartsWith("item"))
             {
-                string rest = trimmedCmd.Replace("#buff", "").Replace("buff", "").Replace("#item", "").Replace("item", "").Trim();
-                if (rest == "1" || rest == "lane 1" || rest == "trai" || rest == "left") fanLane = 1;
-                else if (rest == "2" || rest == "lane 2" || rest == "giua" || rest == "mid" || rest == "center") fanLane = 2;
-                else if (rest == "3" || rest == "lane 3" || rest == "phai" || rest == "right") fanLane = 3;
-                else fanLane = 2;
+                MockFanEnergyBottle(followerName);
+                ClearInputField();
+                return;
             }
 
             if (fanLane != -1)
             {
                 if (factionManager != null)
                 {
-                    bool success = factionManager.TrySpawnFanItem(followerName, fanLane, isFanShield);
+                    bool success = factionManager.TrySpawnFanItem(followerName, fanLane, false);
                     if (success)
                     {
-                        string laneName = fanLane == 1 ? "Left (1)" : (fanLane == 2 ? "Mid (2)" : "Right (3)");
-                        string itemName = isFanShield ? "Shield" : "Energy Bottle";
-                        hudManager?.ShowFanAction(followerName, $"Spawned {itemName} (Lane {laneName})");
+                        hudManager?.ShowFanAction(followerName, "Bình Năng Lượng (+300)");
                     }
                     else
                     {
@@ -788,29 +769,36 @@ namespace SteamRush.Features.Runner
 
         public void MockDonateShield(string sender = "Khán Giả")
         {
-            if (obstacleSpawner == null)
+            if (chatLaneRunner == null)
             {
-                obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
+                chatLaneRunner = FindFirstObjectByType<ChatLaneRunnerController>();
             }
 
-            if (obstacleSpawner == null)
+            if (itemEffects == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy SingleObstacleSpawner.");
-                return;
+                if (chatLaneRunner != null)
+                {
+                    itemEffects = chatLaneRunner.GetComponent<RunnerItemEffects>()
+                        ?? chatLaneRunner.GetComponentInChildren<RunnerItemEffects>();
+                }
+                if (itemEffects == null)
+                {
+                    itemEffects = FindFirstObjectByType<RunnerItemEffects>();
+                }
             }
 
-            int randomLane = Random.Range(1, 4);
-            bool success = obstacleSpawner.TriggerSpawnFanItem(randomLane, isShield: true);
-
-            if (success)
+            if (itemEffects != null)
             {
+                float duration = shieldDuration > 0f ? shieldDuration : 15f;
+                itemEffects.ActivateShield(duration);
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-                hudManager?.ShowFanAction(sender, $"Shield (Lane {randomLane})");
-                Debug.Log($"[MockChatConsole] F1 -> Spawn Shield item on Lane {randomLane}.");
+                hudManager?.ShowFanAction(sender, $"Khiên Bảo Vệ ({duration:F0}s)");
+                hudManager?.ShowStatusPopup($"Khiên Kích Hoạt ({duration:F0}s)!", true);
+                Debug.Log($"[MockChatConsole] F1 -> {sender} tặng Khiên: Kích hoạt trực tiếp Khiên bảo vệ {duration:F0}s cho Runner.");
             }
             else
             {
-                Debug.LogWarning("[MockChatConsole] F1 -> Spawn Shield failed.");
+                Debug.LogWarning("[MockChatConsole] Không tìm thấy RunnerItemEffects để kích hoạt Khiên!");
             }
         }
 
@@ -906,8 +894,9 @@ namespace SteamRush.Features.Runner
                 factionManager.OnChatCommand(sender, "#fan");
                 factionManager.DebugAdjustFanEnergy(300);
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-                hudManager?.ShowFanAction(sender, "Fan Energy +30% (+300)");
-                Debug.Log($"[MockChatConsole] {sender} Fan Energy +30% (+300). (Total: {factionManager.FanLikes})");
+                hudManager?.ShowFanAction(sender, "Bình Năng Lượng (+300)");
+                hudManager?.ShowStatusPopup("+30% Fan Energy (+300)!", true);
+                Debug.Log($"[MockChatConsole] {sender} tặng Bình Năng Lượng Fan +30% (+300). (Total: {factionManager.FanLikes})");
             }
             else
             {
@@ -923,8 +912,9 @@ namespace SteamRush.Features.Runner
                 factionManager.OnChatCommand(sender, "#anti");
                 factionManager.DebugAdjustAntiEnergy(500);
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-                hudManager?.ShowAntiAction(sender, "Anti Energy +50% (+500)");
-                Debug.Log($"[MockChatConsole] {sender} Anti Energy +50% (+500). (Total: {factionManager.AntiLikes})");
+                hudManager?.ShowAntiAction(sender, "Bình Năng Lượng (+500)");
+                hudManager?.ShowStatusPopup("+50% Anti Energy (+500)!", false);
+                Debug.Log($"[MockChatConsole] {sender} tặng Bình Năng Lượng Anti +50% (+500). (Total: {factionManager.AntiLikes})");
             }
             else
             {
@@ -1016,26 +1006,6 @@ namespace SteamRush.Features.Runner
             Debug.Log($"[MockChatConsole] {sender} Weather Hazard 60s (FX_Rain & Fog -3.5f).");
         }
 
-        public void MockBuyNormalTicket(string customUserId = null)
-        {
-            if (queueManager == null)
-            {
-                queueManager = FindFirstObjectByType<ChatRunnerQueueManager>();
-            }
-
-            if (queueManager == null)
-            {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatRunnerQueueManager.");
-                return;
-            }
-
-            string newId = string.IsNullOrEmpty(customUserId) ? ("Follower_" + Random.Range(100, 999)) : customUserId;
-            queueManager.TryEnqueueFollower(newId);
-
-            if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-            hudManager?.ShowFanAction(newId, "Normal Ticket");
-        }
-
         public void MockBuyVipTicket(string customUserId = null)
         {
             if (queueManager == null)
@@ -1053,7 +1023,7 @@ namespace SteamRush.Features.Runner
             queueManager.TryEnqueuePriorityFollower(newId);
 
             if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-            hudManager?.ShowFanAction(newId, "VIP Ticket (Slot #2)");
+            hudManager?.ShowFanAction(newId, "VIP Baton Pass");
         }
 
         private void MockToggleUnlimitedModeDebug()

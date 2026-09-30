@@ -443,13 +443,13 @@ namespace SteamRush.Features.Runner
                 }
 
                 string newFollower = BaseFanNames[Random.Range(0, BaseFanNames.Length)];
-                if (Random.value < 0.7f)
+                if (Random.value < 0.85f)
                 {
                     console.MockNewFollower(newFollower);
                 }
                 else
                 {
-                    console.MockBuyNormalTicket(newFollower);
+                    console.MockBuyVipTicket(newFollower);
                 }
             }
         }
