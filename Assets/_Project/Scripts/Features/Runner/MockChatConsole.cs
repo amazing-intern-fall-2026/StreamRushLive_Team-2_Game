@@ -343,8 +343,12 @@ namespace SteamRush.Features.Runner
                 MockTriggerFinishLineApproach(50f);
             }
 
+            // F1: Spawn Khiên Bảo Vệ. Shift+F1: Bình Thao Tác Tự Do (Free-Control Buff 30s, GDD v1.4.1 mục 3).
             if (Keyboard.current.f1Key.wasPressedThisFrame)
-                MockDonateShield();
+            {
+                if (isShift) MockActivateFreeControl();
+                else MockDonateShield();
+            }
 
             if (Keyboard.current.f2Key.wasPressedThisFrame)
             {
@@ -718,6 +722,27 @@ namespace SteamRush.Features.Runner
             }
         }
 
+        // Quà Bình Thao Tác Tự Do (Free-Control Buff - Phe Fan, Shift+F1, GDD v1.4.1 mục 3):
+        // Đổi Làn và Nhảy tiêu tốn 0% năng lượng trong 30s, kể cả khi Fan đang ở mức 0%.
+        private void MockActivateFreeControl()
+        {
+            if (chatLaneRunner == null)
+            {
+                chatLaneRunner = FindFirstObjectByType<ChatLaneRunnerController>();
+            }
+
+            if (chatLaneRunner == null)
+            {
+                Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatLaneRunnerController.");
+                return;
+            }
+
+            chatLaneRunner.ActivateFreeControl(30f);
+            if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+            hudManager?.ShowStatusPopup("[Phe Fan] BÌNH THAO TÁC TỰ DO kích hoạt 30s! Đổi Làn & Nhảy miễn phí năng lượng!", true);
+        }
+
+        // Phím 9 hoặc Shift+F2: Toggle Sprint Buff tự do để QA test
         private void MockToggleSprintBuffDebug()
         {
             if (chatLaneRunner == null)

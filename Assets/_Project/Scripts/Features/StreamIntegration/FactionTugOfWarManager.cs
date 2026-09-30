@@ -183,6 +183,23 @@ namespace SteamRush.Features.StreamIntegration
             return _fanLikes > 0;
         }
 
+        // GDD v1.4.1 muc 2.2: tru nang luong Fan theo tung thao tac dieu khien (doi lan -10, nhay
+        // -20). Khac voi TryConsumeFanEnergy (dung cho fast, tru lien tuc theo thoi gian, van tru
+        // duoc mot phan neu khong du): ham nay la "tra tien mot lan cho 1 hanh dong roi rac" - chi
+        // tru DU hoac KHONG tru gi ca, va tra ve false de goi noi (ChatLaneRunnerController) biet
+        // hanh dong co duoc phep thuc hien hay khong (khoa doi lan / khoa nhay khi Fan = 0%).
+        public bool TrySpendFanEnergy(int cost)
+        {
+            if (_fanLikes <= 0)
+            {
+                return false;
+            }
+
+            _fanLikes = Mathf.Max(0, _fanLikes - cost);
+            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+            return true;
+        }
+
         /// <summary>
         /// [DEBUG] Tăng/giảm năng lượng phe Fan (+/- delta). Clamped [0, 1000].
         /// </summary>
@@ -368,4 +385,4 @@ namespace SteamRush.Features.StreamIntegration
             _factionMemberCountsChanged.Invoke(FanMemberCount, AntiMemberCount);
         }
     }
-}
+}   
