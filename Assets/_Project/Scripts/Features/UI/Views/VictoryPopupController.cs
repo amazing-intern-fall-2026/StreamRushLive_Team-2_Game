@@ -28,7 +28,7 @@ namespace SteamRush.Features.UI.Views
 
             if (statsText != null)
             {
-                statsText.text = $"Tổng cự ly: {FormatDistance(totalDistanceMeters, goalDistanceMeters)}\nThời gian hoàn thành: {elapsedTimeText}";
+                statsText.text = $"<size=70%><color=#94A3B8>TOTAL DISTANCE</color></size>\n<b><color=#FFD166>{FormatDistance(totalDistanceMeters, goalDistanceMeters)}</color></b>\n\n<size=70%><color=#94A3B8>CLEAR TIME</color></size>\n<b><color=#38E54D>{elapsedTimeText}</color></b>\n\n<size=60%><color=#F59E0B>★ STREAM RUSH LIVE • RUN COMPLETED ★</color></size>";
             }
 
             if (canvasGroup != null) canvasGroup.alpha = 0f;
@@ -40,8 +40,6 @@ namespace SteamRush.Features.UI.Views
             if (panel != null) sequence.Join(panel.DOScale(1f, animDuration).SetEase(Ease.OutBack));
         }
 
-        // Dung chung quy uoc voi ProgressBarController.SetLegProgress: duoi 1000m hien theo met,
-        // tu 1000m tro len hien theo km - tranh {:F0} lam tron goal nho ve "0" nhu bug da gap.
         private static string FormatDistance(float currentMeters, float targetMeters)
         {
             float clampedMeters = Mathf.Clamp(currentMeters, 0f, targetMeters);
@@ -51,10 +49,14 @@ namespace SteamRush.Features.UI.Views
                 float targetKm = targetMeters / 1000f;
                 if (clampedMeters < 1000f)
                 {
-                    return $"{clampedMeters:F0}m / {targetKm:F0}km";
+                    return $"{clampedMeters:F0}m / {targetKm:N0} km";
                 }
                 float currentKm = clampedMeters / 1000f;
-                return $"{currentKm:F2}km / {targetKm:F0}km";
+                if (currentKm >= targetKm)
+                {
+                    return $"{targetKm:N0} km";
+                }
+                return $"{currentKm:F1} km / {targetKm:N0} km";
             }
 
             return $"{clampedMeters:F0}m / {targetMeters:F0}m";
