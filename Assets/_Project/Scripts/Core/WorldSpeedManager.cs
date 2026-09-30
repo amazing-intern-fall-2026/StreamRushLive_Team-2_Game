@@ -18,6 +18,11 @@ namespace SteamRush.Track
     ///     ép tốc độ về 1 mục tiêu cụ thể trong 1 khoảng thời gian cố định rồi tự trả về bình
     ///     thường. KHÔNG dùng chung với Sprint (Sprint cần giữ phím liên tục + khoá theo Energy,
     ///     khác hẳn ngữ nghĩa 1 lệnh chat kích hoạt tức thì trong khung giờ cố định).
+    ///
+    /// THÊM MỚI cho GDD v1.4.1 (Finish Line Victory):
+    ///   - Victory: khác mọi state khác ở chỗ KHÔNG tự trả về Normal - giảm mượt về 0 rồi giữ
+    ///     nguyên vĩnh viễn (đến khi scene load lại). Mọi API trigger state khác đều bị chặn khi
+    ///     đang Victory để không có gì "đánh thức" thế giới cuộn lại giữa lễ ăn mừng.
     /// </summary>
     public class WorldSpeedManager : MonoBehaviour
     {
@@ -69,7 +74,11 @@ namespace SteamRush.Track
         [Tooltip("Tốc độ tăng/giảm mỗi giây khi đang tiến tới mục tiêu Command Override.")]
         [SerializeField] private float _commandOverrideAccelRate = 24f;
 
-        private enum SpeedState { Normal, SlideTap, SlideHold, Sprint, Recovery, CommandOverride, ReverseKnockback }
+        [Header("Victory (Finish Line - GDD v1.4.1)")]
+        [Tooltip("Thời gian giảm mượt về 0 m/s khi Runner băng qua Cổng Về Đích.")]
+        [SerializeField] private float _victoryDecelDuration = 1.5f;
+
+        private enum SpeedState { Normal, SlideTap, SlideHold, Sprint, Recovery, CommandOverride, ReverseKnockback, Victory }
         private SpeedState _state = SpeedState.Normal;
 
         private float _rampIncreasePerSecond;
@@ -90,6 +99,10 @@ namespace SteamRush.Track
         private float _commandOverrideTimer;
         private float _commandOverrideTargetSpeed;
 
+        // Victory state riêng (GDD v1.4.1)
+        private float _victorySpeedAtStart;
+        private float _victoryElapsed;
+
         /// <summary>
         /// Tốc độ cuộn hiện tại của thế giới. Giữ public set để tương thích ngược với
         /// TrackTileLooper.WorldSpeed (setter cũ) — KHÔNG tự ý gán từ bên ngoài, hãy dùng
@@ -103,6 +116,7 @@ namespace SteamRush.Track
         public bool IsRecovering => _state == SpeedState.Recovery;
         public bool IsReverseKnockingBack => _state == SpeedState.ReverseKnockback;
         public bool IsCommandOverrideActive => _state == SpeedState.CommandOverride;
+        public bool IsVictoryStopped => _state == SpeedState.Victory;
 
         /// <summary>
         /// EnergySystem cần set giá trị này mỗi frame (0-1) trong Update() của nó,
@@ -159,6 +173,10 @@ namespace SteamRush.Track
 
                 case SpeedState.ReverseKnockback:
                     UpdateReverseKnockback(dt, normalTargetSpeed);
+                    break;
+
+                case SpeedState.Victory:
+                    UpdateVictory(dt);
                     break;
 
                 case SpeedState.Normal:
@@ -263,12 +281,23 @@ namespace SteamRush.Track
             }
         }
 
+        /// <summary>
+        /// Giảm đều từ tốc độ lúc kích hoạt về 0 trong _victoryDecelDuration, sau đó GIỮ NGUYÊN 0
+        /// vĩnh viễn - không như Recovery/CommandOverride, state này không tự thoát.
+        /// </summary>
+        private void UpdateVictory(float dt)
+        {
+            _victoryElapsed += dt;
+            float progress = Mathf.Clamp01(_victoryElapsed / _victoryDecelDuration);
+            CurrentSpeed = Mathf.Lerp(_victorySpeedAtStart, 0f, progress);
+        }
+
         // --- PUBLIC INPUT API (RunnerInputHandler) ---
 
         /// <summary>Gọi khi người chơi NHẤP NHẢ phím Slide (Ctrl / S / ↓).</summary>
         public void BeginSlideTap()
         {
-            if (_state == SpeedState.SlideHold || _state == SpeedState.Recovery) return;
+            if (_state == SpeedState.SlideHold || _state == SpeedState.Recovery || _state == SpeedState.Victory) return;
 
             _state = SpeedState.SlideTap;
             _slideTapTimer = _slideTapDuration;
@@ -278,7 +307,7 @@ namespace SteamRush.Track
         /// <summary>Gọi mỗi frame khi người chơi ĐÈ GIỮ phím Slide (đã vượt ngưỡng phân biệt Tap/Hold).</summary>
         public void HoldSlide()
         {
-            if (_state == SpeedState.Recovery) return; // đang ngã thì không cho Slide
+            if (_state == SpeedState.Recovery || _state == SpeedState.Victory) return; // đang ngã / đã kết thúc thì không cho Slide
             _state = SpeedState.SlideHold;
         }
 
@@ -295,7 +324,7 @@ namespace SteamRush.Track
         /// <summary>Gọi mỗi frame khi người chơi GIỮ Shift/E.</summary>
         public void HoldSprint()
         {
-            if (IsSliding || _state == SpeedState.Recovery) return; // Slide/Recovery ưu tiên hơn
+            if (IsSliding || _state == SpeedState.Recovery || _state == SpeedState.Victory) return; // Slide/Recovery/Victory ưu tiên hơn
             if (CurrentEnergyPercent01 < _sprintEnergyLockThreshold) return; // khóa khi thiếu năng lượng
 
             _state = SpeedState.Sprint;
@@ -321,6 +350,8 @@ namespace SteamRush.Track
         /// </param>
         public void TriggerRecovery(float totalRecoveryDuration = -1f)
         {
+            if (_state == SpeedState.Victory) return; // đã kết thúc chặng đua, va chạm không còn ý nghĩa
+
             _recoverySpeedAtImpact = CurrentSpeed;
             _recoveryElapsed = 0f;
             _recoveryTotalDuration = totalRecoveryDuration > 0f ? totalRecoveryDuration : _defaultRecoveryTotalDuration;
@@ -337,7 +368,8 @@ namespace SteamRush.Track
         /// </summary>
         public void TriggerCommandSpeed(float targetSpeed, float duration)
         {
-            if (_state == SpeedState.Recovery || _state == SpeedState.ReverseKnockback) return; // đang ngã hoặc đang bị cuộn ngược đẩy lùi thì không được đè tốc độ
+            if (_state == SpeedState.ReverseKnockback || _state == SpeedState.Victory) return; // đang bị cuộn ngược / đã kết thúc thì không được đè tốc độ
+            if (_state == SpeedState.Recovery && _recoveryElapsed < _recoveryTotalDuration) return; // đang trong pha ngã dừng va chạm thì chờ hồi phục xong
 
             _commandOverrideTargetSpeed = targetSpeed;
             _commandOverrideTimer = duration;
@@ -365,10 +397,28 @@ namespace SteamRush.Track
         /// <param name="duration">Thời lượng giật lùi (mặc định 0.5s).</param>
         public void TriggerReverseWorldKnockback(float peakReverseSpeed = -8.5f, float duration = 0.5f)
         {
+            if (_state == SpeedState.Victory) return; // đã kết thúc chặng đua, va chạm không còn ý nghĩa
+
             _reverseKnockbackElapsed = 0f;
             _reverseKnockbackDuration = Mathf.Max(0.1f, duration);
             _reverseKnockbackPeakSpeed = -Mathf.Abs(peakReverseSpeed);
             _state = SpeedState.ReverseKnockback;
+        }
+
+        /// <summary>
+        /// GDD v1.4.1 mục 7: gọi khi Runner băng qua Cổng Về Đích. Giảm mượt CurrentSpeed từ giá
+        /// trị hiện tại về 0 trong <paramref name="decelDuration"/> giây rồi giữ nguyên vĩnh viễn -
+        /// KHÔNG tự tăng tốc lại như các state khác. Mọi API trigger state khác bị chặn sau khi gọi.
+        /// </summary>
+        public void TriggerVictoryStop(float decelDuration = -1f)
+        {
+            _victorySpeedAtStart = CurrentSpeed;
+            _victoryElapsed = 0f;
+            if (decelDuration > 0f)
+            {
+                _victoryDecelDuration = decelDuration;
+            }
+            _state = SpeedState.Victory;
         }
     }
 }

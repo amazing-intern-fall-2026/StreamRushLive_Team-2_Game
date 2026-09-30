@@ -11,30 +11,11 @@ namespace SteamRush.Features.StreamIntegration
         private static readonly char[] _separatorChars = { ',', '.', '!', '-', '/' };
         private static readonly Dictionary<string, string> _commandAliases = new Dictionary<string, string>
         {
-            { "left", "left" },
-            { "l", "left" },
-            { "a", "left" },
-            { "trai", "left" },
-            { "right", "right" },
-            { "r", "right" },
-            { "d", "right" },
-            { "phai", "right" },
-            { "fast", "fast" },
-            { "f", "fast" },
-            { "w", "fast" },
-            { "jump", "jump" },
-            { "j", "jump" },
-            { "up", "jump" },
-            { "nhay", "jump" },
             { "1", "1" },
-            { "lan1", "1" },
-            { "lane1", "1" },
             { "2", "2" },
-            { "lan2", "2" },
-            { "lane2", "2" },
             { "3", "3" },
-            { "lan3", "3" },
-            { "lane3", "3" }
+            { "jump", "jump" },
+            { "j", "jump" }
         };
         private const int _maxCommands = 3;
 

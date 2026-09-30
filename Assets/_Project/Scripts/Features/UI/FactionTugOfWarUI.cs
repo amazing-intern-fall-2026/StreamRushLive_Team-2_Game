@@ -41,6 +41,17 @@ namespace SteamRush.Features.UI
         {
             EnsureSpriteAssigned(_fanFillImage);
             EnsureSpriteAssigned(_antiFillImage);
+
+            if (_fanMemberCountLabel != null)
+            {
+                _fanMemberCountLabel.textWrappingMode = TextWrappingModes.NoWrap;
+                _fanMemberCountLabel.overflowMode = TextOverflowModes.Overflow;
+            }
+            if (_antiMemberCountLabel != null)
+            {
+                _antiMemberCountLabel.textWrappingMode = TextWrappingModes.NoWrap;
+                _antiMemberCountLabel.overflowMode = TextOverflowModes.Overflow;
+            }
         }
 
         private void Start()
@@ -70,15 +81,42 @@ namespace SteamRush.Features.UI
             }
         }
 
+        /// <summary>
+        /// Rút gọn số lượng người xem/thành viên thành ký tự viết tắt chuẩn (k, M, B).
+        /// VD: 800 -> "800", 1200 -> "1.2k", 15400 -> "15.4k", 100000 -> "100k", 2500000 -> "2.5M".
+        /// </summary>
+        public static string FormatNumberShorthand(long number)
+        {
+            if (number < 0) return "-" + FormatNumberShorthand(-number);
+            if (number < 1000) return number.ToString();
+
+            if (number < 1_000_000)
+            {
+                float val = number / 1000f;
+                return val.ToString(val >= 100f ? "0k" : "0.#k", System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            if (number < 1_000_000_000)
+            {
+                float val = number / 1_000_000f;
+                return val.ToString(val >= 100f ? "0M" : "0.#M", System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            {
+                float val = number / 1_000_000_000f;
+                return val.ToString(val >= 100f ? "0B" : "0.#B", System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+
         public void SetMemberCounts(int fanCount, int antiCount)
         {
             if (_fanMemberCountLabel != null)
             {
-                _fanMemberCountLabel.text = fanCount.ToString();
+                _fanMemberCountLabel.text = FormatNumberShorthand(fanCount);
             }
             if (_antiMemberCountLabel != null)
             {
-                _antiMemberCountLabel.text = antiCount.ToString();
+                _antiMemberCountLabel.text = FormatNumberShorthand(antiCount);
             }
         }
 

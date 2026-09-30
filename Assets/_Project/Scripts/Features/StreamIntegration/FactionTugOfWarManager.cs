@@ -183,6 +183,23 @@ namespace SteamRush.Features.StreamIntegration
             return _fanLikes > 0;
         }
 
+        // GDD v1.4.1 muc 2.2: tru nang luong Fan theo tung thao tac dieu khien (doi lan -10, nhay
+        // -20). Khac voi TryConsumeFanEnergy (dung cho fast, tru lien tuc theo thoi gian, van tru
+        // duoc mot phan neu khong du): ham nay la "tra tien mot lan cho 1 hanh dong roi rac" - chi
+        // tru DU hoac KHONG tru gi ca, va tra ve false de goi noi (ChatLaneRunnerController) biet
+        // hanh dong co duoc phep thuc hien hay khong (khoa doi lan / khoa nhay khi Fan = 0%).
+        public bool TrySpendFanEnergy(int cost)
+        {
+            if (_fanLikes <= 0)
+            {
+                return false;
+            }
+
+            _fanLikes = Mathf.Max(0, _fanLikes - cost);
+            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+            return true;
+        }
+
         /// <summary>
         /// [DEBUG] Tăng/giảm năng lượng phe Fan (+/- delta). Clamped [0, 1000].
         /// </summary>
@@ -216,32 +233,49 @@ namespace SteamRush.Features.StreamIntegration
             Debug.Log($"[FactionTugOfWarManager] Debug Anti Energy: {_antiLikes}/{max} (delta: {(delta >= 0 ? "+" : "")}{delta})");
         }
 
-        // Doi phe qua chat: #FAN/#Blue -> Fan, #ANTI/#Red -> Anti (khong phan biet hoa thuong).
-        public void OnChatCommand(string userId, string message)
+        // Doi phe qua chat: blue/#blue/fan/#fan -> Fan, red/#red/anti/#anti -> Anti (khong phan biet hoa thuong).
+        // Tra ve true CHI KHI thanh vien thay doi (vao phe lan dau hoac doi sang phe khac).
+        public bool OnChatCommand(string userId, string message)
         {
             if (string.IsNullOrEmpty(message))
             {
-                return;
-            }
-
-            if (!_followerGate.CanSendCommand(userId))
-            {
-                return;
+                return false;
             }
 
             string normalized = message.Trim().ToLowerInvariant();
 
-            if (normalized == "blue" || normalized == "#blue" || normalized == "#fan" || normalized == "fan")
+            FactionType target;
+            if (normalized == "blue" || normalized == "#blue")
             {
-                SetFaction(userId, FactionType.Fan);
+                target = FactionType.Fan;
             }
-            else if (normalized == "red" || normalized == "#red" || normalized == "#anti" || normalized == "anti")
+            else if (normalized == "red" || normalized == "#red")
             {
-                SetFaction(userId, FactionType.Anti);
+                target = FactionType.Anti;
             }
+            else
+            {
+                return false; // khong phai lenh phe
+            }
+
+            // Chi kiem tra Follow khi that su la lenh phe, de comment binh thuong cua
+            // nguoi chua Follow khong bi log/publish event moi lan.
+            if (!_followerGate.CanSendCommand(userId))
+            {
+                return false;
+            }
+
+            // Khong dung GetFaction: no tra mac dinh Fan cho nguoi chua co phe.
+            if (_userFactions.TryGetValue(userId, out FactionType current) && current == target)
+            {
+                return false; // nhan lai dung phe cu
+            }
+
+            SetFaction(userId, target);
+            return true;
         }
 
-        // Doi phe theo hanh vi donate (GDD v1.3 muc 4): tang qua bay -> Anti, tang Khien/Mau -> Fan.
+        // Đổi phe theo hành vi donate: tặng cản trở/xe -> Anti, tặng Khiên/Năng lượng -> Fan.
         public void OnDonateReceived(string userId, bool isTrapGift)
         {
             if (!_followerGate.CanSendCommand(userId))
@@ -252,9 +286,7 @@ namespace SteamRush.Features.StreamIntegration
             SetFaction(userId, isTrapGift ? FactionType.Anti : FactionType.Fan);
         }
 
-        // Phe Anti nhắn 1, 2, 3 để thả xe cản đường trên làn mong muốn, giá 100 năng lượng / xe.
-        // ===== [Dhuy] BEGIN - F7 Unlimited Mode: bỏ qua trừ năng lượng khi SingleObstacleSpawner
-        // đang ở Unlimited Mode (60s), giữ nguyên hành vi cũ khi không active. =====
+        // Phe Anti thả xe cản đường trên làn chỉ định (1, 2, 3) với chi phí năng lượng quy định.
         public bool TrySpawnAntiObstacleCar(string userId, int laneIndex)
         {
             if (!_followerGate.CanSendCommand(userId))
@@ -281,9 +313,18 @@ namespace SteamRush.Features.StreamIntegration
             EventBus.Publish(new RequestCarSpawnEvent(laneIndex));
             return true;
         }
-        // ===== [Dhuy] END =====
 
-        // Phe Fan nhắn fan 1, fan 2, fan 3 hoặc #shield/#buff để thả item hỗ trợ Runner trên làn mong muốn
+        /// <summary>
+        /// Cộng trực tiếp năng lượng phe Fan (+amount)
+        /// </summary>
+        public void AddFanEnergy(int amount) => DebugAdjustFanEnergy(amount);
+
+        /// <summary>
+        /// Cộng trực tiếp năng lượng phe Anti (+amount)
+        /// </summary>
+        public void AddAntiEnergy(int amount) => DebugAdjustAntiEnergy(amount);
+
+        // Kích hoạt vật phẩm hỗ trợ trực tiếp cho Runner: Khiên 15s hoặc Bình Năng Lượng (+300).
         public bool TrySpawnFanItem(string userId, int laneIndex, bool isShield = false)
         {
             if (!_followerGate.CanSendCommand(userId))
@@ -291,27 +332,39 @@ namespace SteamRush.Features.StreamIntegration
                 return false;
             }
 
-            if (_fanLikes < _fanItemLaneCost)
+            if (isShield)
             {
-                Debug.LogWarning($"[FactionTugOfWarManager] Phe Fan không đủ năng lượng! Cần {_fanItemLaneCost}, hiện có {_fanLikes}.");
-                return false;
-            }
+                if (_fanLikes < _fanItemLaneCost)
+                {
+                    Debug.LogWarning($"[FactionTugOfWarManager] Phe Fan không đủ năng lượng để bật Khiên! Cần {_fanItemLaneCost}, hiện có {_fanLikes}.");
+                    return false;
+                }
 
-            var spawner = FindFirstObjectByType<StreamRushLive.Features.Spawning.SingleObstacleSpawner>();
-            if (spawner == null)
+                _fanLikes -= _fanItemLaneCost;
+                _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+
+                var runner = FindFirstObjectByType<SteamRush.Features.Runner.ChatLaneRunnerController>();
+                var itemEffects = runner != null
+                    ? (runner.GetComponent<StreamRushLive.Features.Spawning.RunnerItemEffects>() ?? runner.GetComponentInChildren<StreamRushLive.Features.Spawning.RunnerItemEffects>())
+                    : FindFirstObjectByType<StreamRushLive.Features.Spawning.RunnerItemEffects>();
+
+                if (itemEffects != null)
+                {
+                    itemEffects.ActivateShield(15f);
+                    Debug.Log($"[FactionTugOfWarManager] Phe Fan ({userId}) tiêu hao {_fanItemLaneCost} năng lượng -> Kích hoạt Khiên bảo vệ (15s) trực tiếp!");
+                }
+                else
+                {
+                    Debug.LogWarning("[FactionTugOfWarManager] Không tìm thấy RunnerItemEffects để kích hoạt Khiên.");
+                }
+                return true;
+            }
+            else
             {
-                Debug.LogWarning("[FactionTugOfWarManager] Không tìm thấy SingleObstacleSpawner để thả item.");
-                return false;
+                DebugAdjustFanEnergy(300);
+                Debug.Log($"[FactionTugOfWarManager] Phe Fan ({userId}) tặng Bình Năng Lượng -> Cộng trực tiếp +300 năng lượng Fan!");
+                return true;
             }
-
-            bool spawned = spawner.TriggerSpawnFanItem(laneIndex, isShield);
-            if (!spawned) return false;
-
-            _fanLikes -= _fanItemLaneCost;
-            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
-
-            Debug.Log($"[FactionTugOfWarManager] Phe Fan ({userId}) tiêu hao {_fanItemLaneCost} năng lượng -> Thả {(isShield ? "Khiên" : "Bình Năng Lượng")} trên Làn {laneIndex}!");
-            return true;
         }
 
         public bool HasFaction(string userId) => _userFactions.ContainsKey(userId);
@@ -332,4 +385,4 @@ namespace SteamRush.Features.StreamIntegration
             _factionMemberCountsChanged.Invoke(FanMemberCount, AntiMemberCount);
         }
     }
-}
+}   

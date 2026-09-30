@@ -123,6 +123,13 @@ namespace SteamRush.Features.UI
             topBannerQueue.Show(string.Empty, message, icon, iconColor, isBuff ? _buffAccentColor : _debuffAccentColor);
         }
 
+        private void Awake()
+        {
+            // Vô hiệu hóa và ẩn hoàn toàn các container thông báo comment của 2 phe
+            if (fanFeedQueue != null) fanFeedQueue.gameObject.SetActive(false);
+            if (antiFeedQueue != null) antiFeedQueue.gameObject.SetActive(false);
+        }
+
         // Da loai bo thong bao Gift Toast theo yeu cau cua nguoi dung
         public void ShowGiftToast(string viewerName, string itemName, Sprite giftIcon, Color? iconColor = null)
         {
@@ -130,35 +137,19 @@ namespace SteamRush.Features.UI
         }
 
         /// <summary>
-        /// Hiển thị thông báo hành động / donate của Phe Fan bên cánh trái.
+        /// Đã loại bỏ hoàn toàn thông báo comment / hành động của Phe Fan theo yêu cầu.
         /// </summary>
         public void ShowFanAction(string sender, string action, Sprite icon = null)
         {
-            if (fanFeedQueue == null)
-            {
-                // Fallback nếu chưa gắn container riêng
-                ShowStatusPopup($"[{sender}] {action}", true, icon);
-                return;
-            }
-
-            string displaySender = string.IsNullOrEmpty(sender) ? string.Empty : $"[{sender}]";
-            fanFeedQueue.Show(displaySender, action, icon, _buffAccentColor, _buffAccentColor, true);
+            // Disabled: Loại bỏ thông báo comment của Phe Fan
         }
 
         /// <summary>
-        /// Hiển thị thông báo hành động / donate của Phe Anti bên cánh phải.
+        /// Đã loại bỏ hoàn toàn thông báo comment / hành động của Phe Anti theo yêu cầu.
         /// </summary>
         public void ShowAntiAction(string sender, string action, Sprite icon = null)
         {
-            if (antiFeedQueue == null)
-            {
-                // Fallback nếu chưa gắn container riêng
-                ShowStatusPopup($"[{sender}] {action}", false, icon);
-                return;
-            }
-
-            string displaySender = string.IsNullOrEmpty(sender) ? string.Empty : $"[{sender}]";
-            antiFeedQueue.Show(displaySender, action, icon, _debuffAccentColor, _debuffAccentColor, true);
+            // Disabled: Loại bỏ thông báo comment của Phe Anti
         }
     }
 }

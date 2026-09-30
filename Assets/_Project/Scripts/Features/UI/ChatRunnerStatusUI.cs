@@ -80,7 +80,7 @@ namespace SteamRush.Features.UI
 
             if (_controlsGuideLabel != null)
             {
-                _controlsGuideLabel.text = "<b>Cmds:</b> <color=#80D0FF>1/2/3</color> lane - <color=#FFA500>fast</color> - <color=#00BFFF>#fan</color> - <color=#FF6347>#anti</color> | <b>[F9]</b> Ticket | <b>[F10]</b> VIP";
+                _controlsGuideLabel.text = "<b>Cmds:</b> <color=#80D0FF>1/2/3/jump</color> - <color=#00BFFF>blue</color> (Blue Team) - <color=#FF6347>red</color> (Red Team) | <b>[F1]</b> Khiên 15s | <b>[Shift+F3/F4]</b> +Energy | <b>[F10]</b> VIP";
             }
         }
     }
