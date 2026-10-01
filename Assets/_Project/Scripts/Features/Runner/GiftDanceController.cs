@@ -23,9 +23,9 @@ namespace SteamRush.Features.Runner
         [SerializeField] private string _danceLayerName = "Dance";
         [Tooltip("Tên state nhảy (Loop Time bật) bên trong layer Dance.")]
         [SerializeField] private string _danceStateName = "Dance";
-        [Tooltip("Thời gian nhảy (giây). Task Gift Dance = 60s.")]
-        [SerializeField] private float _danceDuration = 60f;
-        [Tooltip("Thời gian blend vào/ra giữa animation chạy và nhảy (giây). Đã tính trong 60s.")]
+        // Dance duration is managed via GiftManager
+        private float _danceDuration = 5f;
+        [Tooltip("Thời gian blend vào/ra giữa animation chạy và nhảy (giây).")]
         [SerializeField] private float _blendTime = 0.25f;
 
         [Header("Victory Dance (GDD v1.4.1 - Finish Line)")]
@@ -41,7 +41,9 @@ namespace SteamRush.Features.Runner
 
         public bool IsDancing => _remainingTime > 0f;
         public float RemainingSeconds => Mathf.Max(0f, _remainingTime);
-        public float Duration => _danceDuration;
+        public float Duration => StreamRushLive.Features.Gifts.GiftManager.Instance != null 
+            ? StreamRushLive.Features.Gifts.GiftManager.Instance.GiftDanceDuration 
+            : _danceDuration;
 
         private void Awake()
         {
@@ -92,7 +94,7 @@ namespace SteamRush.Features.Runner
             if (_animator == null || _danceLayerIndex < 0) return false;
             if (IsDancing) return false;
 
-            _remainingTime = overrideDuration > 0f ? overrideDuration : _danceDuration;
+            _remainingTime = overrideDuration > 0f ? overrideDuration : Duration;
 
             // Layer weight 0 vẫn chạy ngầm state machine, nên phải ép về đầu clip để dance
             // luôn bắt đầu từ frame đầu thay vì giữa chừng.

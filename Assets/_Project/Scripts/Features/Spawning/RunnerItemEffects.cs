@@ -4,14 +4,13 @@ using UnityEngine;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Quản lý các hiệu ứng Item đang tác động lên Runner.
-    /// - Quản lý trạng thái Shield.
-    /// - Shield tồn tại tối đa theo thời gian được cấu hình.
+    /// Quản lý các hiệu ứng Gift (quà tặng trực tiếp từ Viewer) đang tác động lên Runner.
+    /// - Quản lý trạng thái Khiên bảo hộ (Shield).
+    /// - Shield tồn tại tối đa theo thời gian được cấu hình (mặc định 15s).
     /// - Shield chỉ chặn được 1 lần va chạm.
-    /// - Quản lý hiệu ứng High Jump.
-    /// - High Jump tăng JumpForce lên 40% trong thời gian được cấu hình.
+    /// - Quản lý hiệu ứng High Jump / Buffs.
     /// </summary>
-    public class RunnerItemEffects : MonoBehaviour
+    public class RunnerGiftEffects : MonoBehaviour
     {
         [Header("Shield State")]
         [SerializeField] private bool shieldActive = false;
@@ -34,7 +33,12 @@ namespace StreamRushLive.Features.Spawning
         /// </summary>
         public void ActivateShield(float duration = 15f)
         {
-            if (duration <= 0f) duration = 15f;
+            if (duration <= 0f)
+            {
+                duration = StreamRushLive.Features.Gifts.GiftManager.Instance != null 
+                    ? StreamRushLive.Features.Gifts.GiftManager.Instance.ShieldDuration 
+                    : 15f;
+            }
 
             if (shieldCoroutine != null)
             {
@@ -115,7 +119,14 @@ namespace StreamRushLive.Features.Spawning
             currentJumpForceMultiplier = 1f;
             highJumpCoroutine = null;
 
-            Debug.Log("[RunnerItemEffects] High Jump đã hết thời gian.");
+            Debug.Log("[RunnerGiftEffects] High Jump đã hết thời gian.");
         }
+    }
+
+    /// <summary>
+    /// Alias tương thích ngược với các scenes, prefabs và mã nguồn cũ trước khi chuyển sang hệ thống Gift trực tiếp.
+    /// </summary>
+    public class RunnerItemEffects : RunnerGiftEffects
+    {
     }
 }

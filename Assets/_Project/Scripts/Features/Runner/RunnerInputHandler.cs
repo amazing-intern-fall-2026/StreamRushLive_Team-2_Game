@@ -32,6 +32,7 @@ namespace SteamRush.Features.Runner
 
         private RunnerController _controller;
         private WorldSpeedManager _speedManager;
+        private ChatLaneRunnerController _chatLaneRunner;
 
         private float _slideKeyTimer;
         private bool _slideKeyHeldLastFrame;
@@ -45,6 +46,7 @@ namespace SteamRush.Features.Runner
         {
             _controller = GetComponent<RunnerController>();
             _speedManager = FindFirstObjectByType<WorldSpeedManager>();
+            _chatLaneRunner = GetComponent<ChatLaneRunnerController>();
         }
 
         private void Update()
@@ -77,7 +79,14 @@ namespace SteamRush.Features.Runner
 
             if (jumpPressed)
             {
-                _controller.PerformJump();
+                if (_chatLaneRunner != null)
+                {
+                    _chatLaneRunner.TriggerJump();
+                }
+                else
+                {
+                    _controller.PerformJump();
+                }
             }
         }
 

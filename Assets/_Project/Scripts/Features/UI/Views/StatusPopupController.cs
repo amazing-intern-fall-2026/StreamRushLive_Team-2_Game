@@ -30,9 +30,9 @@ namespace SteamRush.Features.UI.Views
             @"[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF\u2300-\u23FF\u2B50-\u2B55\uFE0F]",
             System.Text.RegularExpressions.RegexOptions.Compiled);
 
-        // Màu tạm thời phân biệt buff/debuff khi chưa có icon (GDD: buff = tích cực, debuff = cảnh báo).
-        private static readonly Color BuffColor = new Color(0.4f, 0.85f, 0.45f);
-        private static readonly Color DebuffColor = new Color(0.95f, 0.35f, 0.3f);
+        // Màu phân biệt Blue Team (xanh dương) / Red Team (đỏ).
+        private static readonly Color BuffColor = new Color(0.25f, 0.75f, 1f); // Xanh dương Blue Team
+        private static readonly Color DebuffColor = new Color(1f, 0.3f, 0.25f); // Đỏ Red Team
 
         // Vị trí gốc lấy từ template lúc spawn - không hardcode Vector2.zero vì template có thể đặt ở bất kỳ đâu phía trên đầu runner.
         private Vector2 startAnchoredPosition;
@@ -88,11 +88,28 @@ namespace SteamRush.Features.UI.Views
                 message = EmojiRegex.Replace(message, "").Trim();
             }
 
+            bool isBlue = isBuff;
+            if (!string.IsNullOrEmpty(message))
+            {
+                string lower = message.ToLowerInvariant();
+                if (lower.Contains("blue") || lower.Contains("fan") || lower.Contains("free control") || lower.Contains("shield") || lower.Contains("sprint"))
+                {
+                    isBlue = true;
+                }
+                else if (lower.Contains("red") || lower.Contains("anti") || lower.Contains("car") || lower.Contains("truck") || lower.Contains("sedan") || lower.Contains("pickup"))
+                {
+                    isBlue = false;
+                }
+
+                // Loại bỏ hoàn toàn tiền tố [Red Team] và [Blue Team]
+                message = System.Text.RegularExpressions.Regex.Replace(message, @"\[(Blue|Red)\s*Team\]\s*:?\s*", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+            }
+
             if (label != null)
             {
                 ApplyNoWrap();
                 label.text = message;
-                label.color = isBuff ? BuffColor : DebuffColor;
+                label.color = isBlue ? BuffColor : DebuffColor;
             }
 
             if (textEffect != null)

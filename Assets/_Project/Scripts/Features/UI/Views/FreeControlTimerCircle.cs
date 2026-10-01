@@ -259,7 +259,8 @@ namespace SteamRush.Features.UI.Views
                 containerRect.anchorMax = fanSprintRect.anchorMax;
                 containerRect.pivot = fanSprintRect.pivot;
                 containerRect.sizeDelta = fanSprintRect.sizeDelta;
-                containerRect.anchoredPosition3D = fanSprintRect.anchoredPosition3D + new Vector3(0f, -140f, 0f);
+                // Xếp bên dưới cả FanSprintTimerCircle và ShieldTimerCircle (-128px mỗi vòng)
+                containerRect.anchoredPosition3D = fanSprintRect.anchoredPosition3D + new Vector3(0f, -256f, 0f);
             }
             else
             {
@@ -268,7 +269,7 @@ namespace SteamRush.Features.UI.Views
                 containerRect.anchorMax = new Vector2(0f, 0.80f);
                 containerRect.pivot = new Vector2(0f, 0.5f);
                 containerRect.sizeDelta = new Vector2(116f, 116f);
-                containerRect.anchoredPosition3D = new Vector3(52f, -140f, 0f);
+                containerRect.anchoredPosition3D = new Vector3(53f, -160f, 0f);
             }
 
             canvasGroup = GetComponent<CanvasGroup>();

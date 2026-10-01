@@ -399,8 +399,8 @@ namespace SteamRush.Features.Runner
                 }
 
                 HUDManager hud = FindFirstObjectByType<HUDManager>();
-                hud?.ShowStatusPopup("Khiên Đỡ Đòn & Đẩy Văng Xe!", true);
-                Debug.Log("[RunnerCollisionHandler] Khiên đã chặn 1 đòn va chạm của xe và đẩy xe văng ra 2 bên!");
+                hud?.ShowStatusPopup("Shield Deflected Car!", true);
+                Debug.Log("[RunnerCollisionHandler] Shield blocked obstacle and deflected car away!");
             }
 
             return blocked;

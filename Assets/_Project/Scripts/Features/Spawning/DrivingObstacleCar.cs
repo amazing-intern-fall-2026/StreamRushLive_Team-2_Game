@@ -91,6 +91,27 @@ namespace StreamRushLive.Features.Spawning
         public void ConfigureTier(VehicleTier tier)
         {
             _vehicleTier = tier;
+
+            // Đọc thông số trực tiếp từ GiftManager trên Hierarchy nếu có
+            if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
+            {
+                var cfg = StreamRushLive.Features.Gifts.GiftManager.Instance.GetCarConfig(tier);
+                if (cfg != null)
+                {
+                    obstacleName = cfg.vehicleName;
+                    obstacleType = tier == VehicleTier.HeavyTruck ? ObstacleType.HighBarrier : ObstacleType.LowBarrier;
+                    energyPenaltyPercent = cfg.energyPenaltyPercent;
+                    distancePenaltyMeters = cfg.distancePenaltyMeters;
+                    hitStopDuration = cfg.hitStopDuration;
+                    _knockbackDistance = cfg.knockbackDistance;
+                    _knockbackDuration = cfg.knockbackDuration;
+                    _drivingSpeed = cfg.drivingSpeed;
+                    _reverseWorldPeakSpeed = cfg.reverseWorldPeakSpeed;
+                    _reverseWorldDuration = cfg.reverseWorldDuration;
+                    return;
+                }
+            }
+
             switch (tier)
             {
                 case VehicleTier.SedanCar:

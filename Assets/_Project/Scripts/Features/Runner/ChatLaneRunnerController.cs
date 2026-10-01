@@ -36,21 +36,24 @@ namespace SteamRush.Features.Runner
         [Tooltip("Chi phí năng lượng Fan khi nhảy 1 lần. GDD v1.4.1 = -2% (-20 điểm trên thang 1000).")]
         [SerializeField] private int _jumpEnergyCost = 20;
 
-        [Header("Free-Control Buff (Fan Gift - Shift+F1)")]
-        [Tooltip("Thời gian hiệu lực mặc định của Bình Thao Tác Tự Do (giây). GDD v1.4.1 = 30s.")]
-        [SerializeField] private float _freeControlBuffDuration = 30f;
+        // Buff durations are managed exclusively via GiftManager
+        private float _freeControlBuffDuration = 30f;
         private bool _isFreeControlActive;
         private Coroutine _freeControlCoroutine;
 
         public bool IsFreeControlActive => _isFreeControlActive;
+        public float FreeControlBuffDuration => StreamRushLive.Features.Gifts.GiftManager.Instance != null 
+            ? StreamRushLive.Features.Gifts.GiftManager.Instance.FreeControlDuration 
+            : _freeControlBuffDuration;
 
-        [Header("Sprint Buff (Fan Gift - F2)")]
-        [Tooltip("Thời gian hiệu lực mặc định của Bình Tăng Tốc (giây). GDD v1.4 = 30s.")]
-        [SerializeField] private float _sprintBuffDuration = 30f;
+        private float _sprintBuffDuration = 30f;
         private bool _isSprintBuffActive;
         private Coroutine _sprintBuffCoroutine;
 
         public bool IsSprintBuffActive => _isSprintBuffActive;
+        public float SprintBuffDuration => StreamRushLive.Features.Gifts.GiftManager.Instance != null 
+            ? StreamRushLive.Features.Gifts.GiftManager.Instance.SprintDuration 
+            : _sprintBuffDuration;
 
         [Header("Knockback Settings (GDD v1.2)")]
         [Tooltip("Khoảng cách đẩy lùi Runner (mét) khi va chạm chướng ngại vật theo GDD v1.2.")]
@@ -184,6 +187,9 @@ namespace SteamRush.Features.Runner
             Debug.Log($"[ChatLaneRunner] ControlsLocked = {locked}");
         }
 
+        private SteamRush.Features.UI.HUDManager _hudManager;
+        private float _lastEnergyWarningTime = -10f;
+
         private void Awake()
         {
             _speedManager = FindFirstObjectByType<WorldSpeedManager>() ?? WorldSpeedManager.Instance;
@@ -201,6 +207,11 @@ namespace SteamRush.Features.Runner
             if (_factionManager == null)
             {
                 _factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
+            }
+
+            if (_hudManager == null)
+            {
+                _hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
             }
         }
 
@@ -420,26 +431,39 @@ namespace SteamRush.Features.Runner
             return _factionManager.TrySpendFanEnergy(cost);
         }
 
-        private void TriggerJump()
+        private void NotifyEnergyDepleted(string actionName)
         {
-            if (IsControlLocked) return;
+            if (Time.time - _lastEnergyWarningTime >= 1.2f)
+            {
+                _lastEnergyWarningTime = Time.time;
+                if (_hudManager == null) _hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                _hudManager?.ShowStatusPopup("Out of Energy!", true);
+                _hudManager?.ShowFanAction("Blue Team", "Out of energy!");
+            }
+            Debug.LogWarning($"[ChatLaneRunner] Hết năng lượng Fan/Blue Team — khoá {actionName}.");
+        }
+
+        public bool TriggerJump()
+        {
+            if (IsControlLocked) return false;
 
             if (_runnerController == null || !_runnerController.IsGrounded || _runnerController.IsDucking)
             {
-                return;
+                return false;
             }
 
             // Kiểm tra + trừ năng lượng TRƯỚC khi nhảy thật sự xảy ra: không đủ (hoặc hết) năng
             // lượng Fan thì khoá nhảy, Runner buộc phải chịu va chạm nếu phía trước có chướng ngại.
             if (!TryPayControlEnergy(_jumpEnergyCost))
             {
-                Debug.LogWarning("[ChatLaneRunner] Hết năng lượng Fan — khoá nhảy.");
-                return;
+                NotifyEnergyDepleted("nhảy");
+                return false;
             }
 
             _runnerController.PerformJump();
             // Không tự SetTrigger("Jump") ở đây nữa — RunnerController.PerformJump() đã tự bắn
             // Trigger "Jump" cho Animator, gọi lại ở đây sẽ set trigger 2 lần thừa mỗi lần nhảy.
+            return true;
         }
 
         private void SetLane(int targetIndex)
@@ -455,7 +479,7 @@ namespace SteamRush.Features.Runner
             // Chỉ trừ năng lượng khi lane đích THỰC SỰ khác lane hiện tại (đã check ở trên).
             if (!TryPayControlEnergy(_laneChangeEnergyCost))
             {
-                Debug.LogWarning("[ChatLaneRunner] Hết năng lượng Fan — khoá đổi làn.");
+                NotifyEnergyDepleted("đổi làn");
                 return;
             }
 
@@ -474,7 +498,7 @@ namespace SteamRush.Features.Runner
 
             if (!TryPayControlEnergy(_laneChangeEnergyCost))
             {
-                Debug.LogWarning("[ChatLaneRunner] Hết năng lượng Fan — khoá đổi làn.");
+                NotifyEnergyDepleted("đổi làn");
                 return;
             }
 
@@ -564,7 +588,7 @@ namespace SteamRush.Features.Runner
             {
                 StopCoroutine(_sprintBuffCoroutine);
             }
-            float dur = duration > 0f ? duration : _sprintBuffDuration;
+            float dur = duration > 0f ? duration : SprintBuffDuration;
             _sprintBuffCoroutine = StartCoroutine(SprintBuffRoutine(dur));
         }
 
@@ -618,7 +642,7 @@ namespace SteamRush.Features.Runner
             {
                 StopCoroutine(_freeControlCoroutine);
             }
-            float dur = duration > 0f ? duration : _freeControlBuffDuration;
+            float dur = duration > 0f ? duration : FreeControlBuffDuration;
             _freeControlCoroutine = StartCoroutine(FreeControlRoutine(dur));
         }
 

@@ -36,12 +36,8 @@ namespace StreamRushLive.Features.Spawning
             set => carDrivingSpeed = Mathf.Max(0f, value);
         }
 
-        [Header("Fan Item Settings")]
-        [Tooltip("Prefab Khiên bảo hộ tặng cho Runner.")]
-        [SerializeField] private GameObject shieldItemPrefab;
-
-        [Tooltip("Prefab Năng lượng/Bình tăng tốc tặng cho Runner.")]
-        [SerializeField] private GameObject energyBuffItemPrefab;
+        [HideInInspector] [SerializeField] private GameObject shieldItemPrefab;
+        [HideInInspector] [SerializeField] private GameObject energyBuffItemPrefab;
 
         [Tooltip("Prefab hiệu ứng tia laser đỏ nhấp nháy.")]
         [SerializeField] private GameObject laserIndicatorPrefab;
@@ -537,45 +533,43 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Sinh vật phẩm trợ giúp (Khiên / Bình Năng Lượng) cho Runner của Phe Fan trên làn chỉ định.
+        /// Kích hoạt quà tặng (Khiên / Bình Năng Lượng) trực tiếp cho Runner / Phe Fan thay vì sinh item vật lý rơi trên làn.
+        /// </summary>
+        public bool TriggerActivateFanGift(int laneIndex = 0, bool isShield = false)
+        {
+            if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
+            {
+                if (isShield)
+                {
+                    return StreamRushLive.Features.Gifts.GiftManager.Instance.ActivateShield("Phe Fan");
+                }
+                else
+                {
+                    StreamRushLive.Features.Gifts.GiftManager.Instance.AddBlueEnergy("Phe Fan");
+                    return true;
+                }
+            }
+
+            var runner = FindFirstObjectByType<ChatLaneRunnerController>();
+            if (runner != null)
+            {
+                if (isShield)
+                {
+                    var effects = runner.GetComponent<RunnerGiftEffects>() ?? runner.GetComponentInChildren<RunnerGiftEffects>();
+                    effects?.ActivateShield(15f);
+                    Debug.Log("[SingleObstacleSpawner] Kích hoạt Khiên bảo vệ trực tiếp cho Runner (15s).");
+                }
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Alias tương thích ngược trước khi refactor sang cơ chế kích hoạt Gift trực tiếp.
         /// </summary>
         public bool TriggerSpawnFanItem(int laneIndex, bool isShield = false)
-        {
-            if (_spawningLocked) return false;
-
-            if (playerReference == null)
-            {
-                var runner = FindFirstObjectByType<ChatLaneRunnerController>();
-                if (runner != null) playerReference = runner.transform;
-            }
-
-            if (playerReference == null)
-            {
-                Debug.LogWarning("[SingleObstacleSpawner] Thiếu Player reference để spawn item cho Phe Fan.");
-                return false;
-            }
-
-            float selectedLane = GetLaneOffsetZ(laneIndex);
-            GameObject itemPrefab = isShield ? shieldItemPrefab : (energyBuffItemPrefab != null ? energyBuffItemPrefab : shieldItemPrefab);
-
-            if (itemPrefab == null)
-            {
-                Debug.LogWarning("[SingleObstacleSpawner] Chưa gán prefab Item cho Phe Fan.");
-                return false;
-            }
-
-            Vector3 spawnPos = new Vector3(
-                playerReference.position.x + spawnDistanceAhead,
-                0.8f,
-                selectedLane);
-
-            GameObject itemInstance = Instantiate(itemPrefab, spawnPos, itemPrefab.transform.rotation);
-            itemInstance.name = $"FanItem_{(isShield ? "Shield" : "EnergyBuff")}_Lane{laneIndex}";
-
-            InitializeWorldMovement(itemInstance);
-            Debug.Log($"[SingleObstacleSpawner] Phe Fan đã thả {(isShield ? "Khiên" : "Bình Năng Lượng")} trên làn {laneIndex} (Z={selectedLane:F1}) cách Player {spawnDistanceAhead}m.");
-            return true;
-        }
+            => TriggerActivateFanGift(laneIndex, isShield);
 
         private void InitializeCarMovement(GameObject carInstance, VehicleTier tier = VehicleTier.SedanCar)
         {

@@ -102,14 +102,30 @@ namespace SteamRush.Features.UI
             runnerNameplate.SetTarget(runner);
         }
 
-        // Hiện thông báo buff/debuff nổi lên trên đầu runner rồi tự mờ dần.
-        // isBuff quyết định màu viền/icon của Top Banner (xanh = buff, đỏ = debuff) - chữ tiêu đề luôn trắng
-        // theo đúng mẫu "Cảnh báo xe cản địa" (GDD). icon: null = ẩn ô icon (vd. debuff chưa có icon riêng).
+        // Hiện thông báo nổi lên trên Top Banner / Status Popup.
+        // Tự động loại bỏ các tiền tố "[Red Team]", "[Blue Team]" và gán màu sắc xanh/đỏ tương ứng.
         public void ShowStatusPopup(string message, bool isBuff, Sprite icon = null, Color? iconColor = null)
         {
+            bool isBlueTeam = isBuff;
+            if (!string.IsNullOrEmpty(message))
+            {
+                string lower = message.ToLowerInvariant();
+                if (lower.Contains("blue") || lower.Contains("fan") || lower.Contains("free control") || lower.Contains("shield") || lower.Contains("sprint"))
+                {
+                    isBlueTeam = true;
+                }
+                else if (lower.Contains("red") || lower.Contains("anti") || lower.Contains("car") || lower.Contains("truck") || lower.Contains("sedan") || lower.Contains("pickup"))
+                {
+                    isBlueTeam = false;
+                }
+
+                // Loại bỏ hoàn toàn tiền tố [Red Team] và [Blue Team]
+                message = System.Text.RegularExpressions.Regex.Replace(message, @"\[(Blue|Red)\s*Team\]\s*:?\s*", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+            }
+
             if (statusPopupSpawner != null)
             {
-                statusPopupSpawner.Spawn(message, isBuff, icon, iconColor);
+                statusPopupSpawner.Spawn(message, isBlueTeam, icon, iconColor);
             }
 
             // Top Banner (giữa trên cùng) - thay thế popup nổi trên đầu Runner (đã tắt qua _popupsEnabled)
@@ -120,7 +136,8 @@ namespace SteamRush.Features.UI
                 return;
             }
 
-            topBannerQueue.Show(string.Empty, message, icon, iconColor, isBuff ? _buffAccentColor : _debuffAccentColor);
+            Color accent = isBlueTeam ? _buffAccentColor : _debuffAccentColor;
+            topBannerQueue.Show(string.Empty, message, icon, iconColor, accent);
         }
 
         private void Awake()

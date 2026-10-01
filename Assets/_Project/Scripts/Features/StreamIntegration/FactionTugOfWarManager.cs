@@ -19,12 +19,11 @@ namespace SteamRush.Features.StreamIntegration
     {
         [Tooltip("Ngưỡng năng lượng để phe Anti tự động sinh xe cản đường (Full thanh = AntiMaxValue). Mặc định = 1000.")]
         [SerializeField] private int _antiCarThreshold = 1000;
-        [Tooltip("Chi phí năng lượng trừ khi phe Anti tự động sinh xe cản đường (bằng chi phí player spawn xe = 100).")]
-        [SerializeField] private int _antiCarCost = 100;
-        [Tooltip("Chi phí năng lượng phe Anti để thả xe cản đường theo làn chỉ định (1, 2, 3). Mặc định = 100.")]
-        [SerializeField] private int _antiCarLaneCost = 100;
-        [Tooltip("Chi phí năng lượng phe Fan để thả vật phẩm hỗ trợ (khiên/buff) theo làn chỉ định (1, 2, 3). Mặc định = 50.")]
-        [SerializeField] private int _fanItemLaneCost = 50;
+        // Gift & Ability costs are managed exclusively via GiftManager
+        private int _antiCarCost = 100;
+        private int _antiCarLaneCost = 100;
+        private int _fanItemLaneCost = 0;
+        private int _fanEnergyGiftAmount = 300;
         [SerializeField] private FactionType _defaultFaction = FactionType.Fan;
 
         [Serializable] public class FactionValuesChangedEvent : UnityEvent<int, int> { }
@@ -74,9 +73,33 @@ namespace SteamRush.Features.StreamIntegration
         public int FanLikes => _fanLikes;
         public int AntiLikes => _antiLikes;
         public int AntiCarThreshold => _antiCarThreshold;
-        public int AntiCarCost => _antiCarCost;
-        public int AntiCarLaneCost => _antiCarLaneCost;
-        public int FanItemLaneCost => _fanItemLaneCost;
+        public int AntiCarCost => StreamRushLive.Features.Gifts.GiftManager.Instance != null 
+            ? StreamRushLive.Features.Gifts.GiftManager.Instance.SedanCarCost 
+            : _antiCarCost;
+
+        public int AntiCarLaneCost 
+        { 
+            get => StreamRushLive.Features.Gifts.GiftManager.Instance != null 
+                ? StreamRushLive.Features.Gifts.GiftManager.Instance.SedanCarCost 
+                : _antiCarLaneCost; 
+            set => _antiCarLaneCost = value; 
+        }
+
+        public int FanItemLaneCost 
+        { 
+            get => StreamRushLive.Features.Gifts.GiftManager.Instance != null 
+                ? StreamRushLive.Features.Gifts.GiftManager.Instance.ShieldEnergyCost 
+                : _fanItemLaneCost; 
+            set => _fanItemLaneCost = value; 
+        }
+
+        public int FanEnergyGiftAmount 
+        { 
+            get => StreamRushLive.Features.Gifts.GiftManager.Instance != null 
+                ? StreamRushLive.Features.Gifts.GiftManager.Instance.BlueEnergyBottleAmount 
+                : _fanEnergyGiftAmount; 
+            set => _fanEnergyGiftAmount = value; 
+        }
 
         private void Awake()
         {
@@ -190,12 +213,34 @@ namespace SteamRush.Features.StreamIntegration
         // hanh dong co duoc phep thuc hien hay khong (khoa doi lan / khoa nhay khi Fan = 0%).
         public bool TrySpendFanEnergy(int cost)
         {
-            if (_fanLikes <= 0)
+            if (_fanLikes <= 0 || _fanLikes < cost)
             {
                 return false;
             }
 
             _fanLikes = Mathf.Max(0, _fanLikes - cost);
+            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+            return true;
+        }
+
+        /// <summary>
+        /// Tiêu hao năng lượng phe Anti/Red Team (ví dụ khi thả xe cản đường).
+        /// Trả về false nếu hết năng lượng hoặc không đủ chi phí (khoá thả xe).
+        /// </summary>
+        public bool TrySpendAntiEnergy(int cost)
+        {
+            var spawner = FindFirstObjectByType<StreamRushLive.Features.Spawning.SingleObstacleSpawner>();
+            if (spawner != null && spawner.IsUnlimitedModeActive)
+            {
+                return true;
+            }
+
+            if (_antiLikes <= 0 || _antiLikes < cost)
+            {
+                return false;
+            }
+
+            _antiLikes = Mathf.Max(0, _antiLikes - cost);
             _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
             return true;
         }
@@ -299,7 +344,7 @@ namespace SteamRush.Features.StreamIntegration
 
             if (!isUnlimited)
             {
-                if (_antiLikes < _antiCarLaneCost)
+                if (_antiLikes <= 0 || _antiLikes < _antiCarLaneCost)
                 {
                     Debug.LogWarning($"[FactionTugOfWarManager] Phe Anti không đủ năng lượng! Cần {_antiCarLaneCost}, hiện có {_antiLikes}.");
                     return false;
@@ -324,8 +369,10 @@ namespace SteamRush.Features.StreamIntegration
         /// </summary>
         public void AddAntiEnergy(int amount) => DebugAdjustAntiEnergy(amount);
 
-        // Kích hoạt vật phẩm hỗ trợ trực tiếp cho Runner: Khiên 15s hoặc Bình Năng Lượng (+300).
-        public bool TrySpawnFanItem(string userId, int laneIndex, bool isShield = false)
+        /// <summary>
+        /// Kích hoạt quà tặng (Gift) phe Fan trực tiếp cho Runner: Khiên bảo vệ hoặc Bình Năng Lượng (+300).
+        /// </summary>
+        public bool TryActivateFanGift(string userId, int laneIndex = 0, bool isShield = false)
         {
             if (!_followerGate.CanSendCommand(userId))
             {
@@ -334,38 +381,63 @@ namespace SteamRush.Features.StreamIntegration
 
             if (isShield)
             {
-                if (_fanLikes < _fanItemLaneCost)
+                int cost = StreamRushLive.Features.Gifts.GiftManager.Instance != null 
+                    ? StreamRushLive.Features.Gifts.GiftManager.Instance.ShieldEnergyCost 
+                    : _fanItemLaneCost;
+
+                if (cost > 0 && _fanLikes < cost)
                 {
-                    Debug.LogWarning($"[FactionTugOfWarManager] Phe Fan không đủ năng lượng để bật Khiên! Cần {_fanItemLaneCost}, hiện có {_fanLikes}.");
+                    Debug.LogWarning($"[FactionTugOfWarManager] Phe Fan không đủ năng lượng để bật Khiên! Cần {cost}, hiện có {_fanLikes}.");
                     return false;
                 }
 
-                _fanLikes -= _fanItemLaneCost;
-                _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+                if (cost > 0)
+                {
+                    _fanLikes -= cost;
+                    _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+                }
+
+                if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
+                {
+                    return StreamRushLive.Features.Gifts.GiftManager.Instance.ActivateShield(userId);
+                }
 
                 var runner = FindFirstObjectByType<SteamRush.Features.Runner.ChatLaneRunnerController>();
-                var itemEffects = runner != null
-                    ? (runner.GetComponent<StreamRushLive.Features.Spawning.RunnerItemEffects>() ?? runner.GetComponentInChildren<StreamRushLive.Features.Spawning.RunnerItemEffects>())
-                    : FindFirstObjectByType<StreamRushLive.Features.Spawning.RunnerItemEffects>();
+                var giftEffects = runner != null
+                    ? (runner.GetComponent<StreamRushLive.Features.Spawning.RunnerGiftEffects>() ?? runner.GetComponentInChildren<StreamRushLive.Features.Spawning.RunnerGiftEffects>())
+                    : FindFirstObjectByType<StreamRushLive.Features.Spawning.RunnerGiftEffects>();
 
-                if (itemEffects != null)
+                if (giftEffects != null)
                 {
-                    itemEffects.ActivateShield(15f);
-                    Debug.Log($"[FactionTugOfWarManager] Phe Fan ({userId}) tiêu hao {_fanItemLaneCost} năng lượng -> Kích hoạt Khiên bảo vệ (15s) trực tiếp!");
+                    giftEffects.ActivateShield(15f);
+                    Debug.Log($"[FactionTugOfWarManager] Phe Fan ({userId}) -> Kích hoạt Khiên bảo vệ (15s) trực tiếp!");
                 }
                 else
                 {
-                    Debug.LogWarning("[FactionTugOfWarManager] Không tìm thấy RunnerItemEffects để kích hoạt Khiên.");
+                    Debug.LogWarning("[FactionTugOfWarManager] Không tìm thấy RunnerGiftEffects để kích hoạt Khiên.");
                 }
                 return true;
             }
             else
             {
-                DebugAdjustFanEnergy(300);
-                Debug.Log($"[FactionTugOfWarManager] Phe Fan ({userId}) tặng Bình Năng Lượng -> Cộng trực tiếp +300 năng lượng Fan!");
+                if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
+                {
+                    StreamRushLive.Features.Gifts.GiftManager.Instance.AddBlueEnergy(userId);
+                    return true;
+                }
+
+                int amount = _fanEnergyGiftAmount > 0 ? _fanEnergyGiftAmount : 300;
+                DebugAdjustFanEnergy(amount);
+                Debug.Log($"[FactionTugOfWarManager] Phe Fan ({userId}) tặng Bình Năng Lượng -> Cộng trực tiếp +{amount} năng lượng Fan!");
                 return true;
             }
         }
+
+        /// <summary>
+        /// Alias tương thích ngược trước khi refactor từ Item nhặt trên đường sang Gift trực tiếp.
+        /// </summary>
+        public bool TrySpawnFanItem(string userId, int laneIndex, bool isShield = false)
+            => TryActivateFanGift(userId, laneIndex, isShield);
 
         public bool HasFaction(string userId) => _userFactions.ContainsKey(userId);
 
