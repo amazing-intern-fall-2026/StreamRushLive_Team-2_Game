@@ -226,7 +226,7 @@ namespace SteamRush.Features.StreamIntegration
         /// Xử lý sự kiện Chat/Comment:
         /// - Chọn phe: "blue", "red"
         /// - Điều khiển Runner (phe Blue): "1", "2", "3", "jump", "fast"
-        /// - Thả xe cản đường (phe Red): "1", "2", "3", "#xecon", "#xebantai", "#xetai"
+        /// - Thả xe cản đường (phe Red): "1", "2", "3"
         /// </summary>
         private void HandleChat(SocketIOResponse response)
         {
@@ -241,9 +241,8 @@ namespace SteamRush.Features.StreamIntegration
             string displayName = GetDisplayName(json, userId);
             string trimmedCmd = comment.Trim().ToLowerInvariant();
 
-            // 1. Kiểm tra Lệnh Chọn Phe (Join Team)
-            if (trimmedCmd == "blue" || trimmedCmd == "#blue" || trimmedCmd == "fan" || trimmedCmd == "#fan" ||
-                trimmedCmd == "red" || trimmedCmd == "#red" || trimmedCmd == "anti" || trimmedCmd == "#anti")
+            // 1. Kiểm tra Lệnh Chọn Phe: chỉ chấp nhận "blue" hoặc "red"
+            if (trimmedCmd == "blue" || trimmedCmd == "red")
             {
                 if (_factionManager != null)
                 {
@@ -283,7 +282,7 @@ namespace SteamRush.Features.StreamIntegration
             }
             else
             {
-                // ===== PHE RED (ANTI): THẢ XE CẢN ĐƯỜNG =====
+                // ===== PHE RED (ANTI): THẢ XE CẢN ĐƯỜNG TRÊN LÀN (1, 2, 3) =====
                 if (trimmedCmd == "1" || trimmedCmd == "2" || trimmedCmd == "3")
                 {
                     if (int.TryParse(trimmedCmd, out int laneIndex))
@@ -294,18 +293,6 @@ namespace SteamRush.Features.StreamIntegration
                             _hudManager?.ShowAntiAction(displayName, $"Car on Lane {laneIndex}!");
                         }
                     }
-                }
-                else if (trimmedCmd == "#xecon" || trimmedCmd == "#sedan")
-                {
-                    _giftManager?.SpawnAntiCar(VehicleTier.SedanCar, displayName);
-                }
-                else if (trimmedCmd == "#xebantai" || trimmedCmd == "#pickup")
-                {
-                    _giftManager?.SpawnAntiCar(VehicleTier.PickupTruck, displayName);
-                }
-                else if (trimmedCmd == "#xetai" || trimmedCmd == "#heavy")
-                {
-                    _giftManager?.SpawnAntiCar(VehicleTier.HeavyTruck, displayName);
                 }
             }
         }
