@@ -162,11 +162,15 @@ namespace StreamRushLive.Features.Spawning
             _baseY = transform.position.y;
             _rumbleSeed = Random.Range(0f, 100f);
 
-            // Tìm toàn bộ các cụm bánh xe con (bỏ qua vô lăng Steering_Wheel)
+            // Tìm toàn bộ các cụm bánh xe con (PolygonCity chứa 'wheel', MegaCity chứa '_fl', '_fr', '_rl', '_rr')
             foreach (Transform child in transform)
             {
                 string lowerName = child.name.ToLowerInvariant();
-                if (lowerName.Contains("wheel") && !lowerName.Contains("steering"))
+                bool isWheel = (lowerName.Contains("wheel") || 
+                                lowerName.Contains("_fl") || lowerName.Contains("_fr") || 
+                                lowerName.Contains("_rl") || lowerName.Contains("_rr")) && 
+                               !lowerName.Contains("steering");
+                if (isWheel)
                 {
                     _wheelTransforms.Add(child);
                 }

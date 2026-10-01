@@ -8,8 +8,8 @@ using StreamRushLive.Features.Spawning;
 namespace SteamRush.Features.UI.Views
 {
     /// <summary>
-    /// Vòng tròn đếm ngược Giai đoạn Xe Bán Tải / Xe Tải Hạng Nặng.
-    /// Theo dõi trực tiếp trạng thái từ SingleObstacleSpawner.
+    /// Vòng tròn đếm ngược Giai đoạn Xe Bán Tải / Xe Tải Hạng Nặng (Anti Vehicle Phase).
+    /// Hiển thị thẳng hàng bên phải màn hình (phe Anti / Red Team), đếm ngược thời gian thực từ SingleObstacleSpawner.
     /// </summary>
     public class AntiVehiclePhaseTimerCircle : MonoBehaviour
     {
@@ -21,10 +21,13 @@ namespace SteamRush.Features.UI.Views
             {
                 if (_instance == null)
                 {
-                    _instance = FindFirstObjectByType<AntiVehiclePhaseTimerCircle>(
-                        FindObjectsInactive.Include);
+                    _instance = FindFirstObjectByType<AntiVehiclePhaseTimerCircle>(FindObjectsInactive.Include);
                 }
-
+                if (_instance == null)
+                {
+                    GameObject go = new GameObject("AntiVehiclePhaseTimerCircle");
+                    _instance = go.AddComponent<AntiVehiclePhaseTimerCircle>();
+                }
                 return _instance;
             }
         }
@@ -50,6 +53,8 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private Vector2 circleSize = new Vector2(116f, 116f);
 
         [Header("Colors & Timing")]
+        [SerializeField] private Color pickupRingColor = new Color(1f, 0.55f, 0.1f, 1f); // Cam hổ phách
+        [SerializeField] private Color heavyRingColor = new Color(1f, 0.18f, 0.15f, 1f);  // Đỏ rực
         [SerializeField] private Color activeRingColor = new Color(1f, 0.2f, 0.1f, 1f);
         [SerializeField] private Color bgColor = new Color(0.08f, 0.04f, 0.06f, 0.92f);
         [SerializeField] private Color innerColor = new Color(0.10f, 0.03f, 0.05f, 0.98f);
@@ -57,6 +62,8 @@ namespace SteamRush.Features.UI.Views
         private float _totalDuration = 60f;
         private float _remainingTime = 0f;
         private bool _isActive = false;
+
+        public bool IsActive => _isActive;
 
         private VehicleTier? _displayedPhase;
 
@@ -110,7 +117,7 @@ namespace SteamRush.Features.UI.Views
 
             VehicleTier? currentPhase = obstacleSpawner.ActiveVehiclePhase;
 
-            // Không có Phase
+            // Không có Phase nào đang hoạt động
             if (!currentPhase.HasValue)
             {
                 if (_isActive)
@@ -121,7 +128,7 @@ namespace SteamRush.Features.UI.Views
                 return;
             }
 
-            // Phase mới được kích hoạt hoặc chuyển từ Pickup -> Heavy / Heavy -> Pickup
+            // Phase mới được kích hoạt hoặc chuyển đổi giữa Pickup <-> Heavy
             if (!_isActive || _displayedPhase != currentPhase.Value)
             {
                 ActivateTimer(
@@ -129,14 +136,12 @@ namespace SteamRush.Features.UI.Views
                     obstacleSpawner.VehiclePhaseDuration);
             }
 
-            // Lấy thời gian trực tiếp từ SingleObstacleSpawner
+            // Lấy thời gian còn lại trực tiếp từ SingleObstacleSpawner
             _remainingTime = obstacleSpawner.VehiclePhaseRemainingTime;
 
             if (_totalDuration > 0f && radialFillRing != null)
             {
-                radialFillRing.fillAmount =
-                    Mathf.Clamp01(_remainingTime / _totalDuration);
-
+                radialFillRing.fillAmount = Mathf.Clamp01(_remainingTime / _totalDuration);
                 radialFillRing.color = activeRingColor;
             }
 
@@ -155,6 +160,8 @@ namespace SteamRush.Features.UI.Views
             _totalDuration = duration > 0f ? duration : 60f;
             _remainingTime = _totalDuration;
             _isActive = true;
+
+            activeRingColor = (phase == VehicleTier.HeavyTruck) ? heavyRingColor : pickupRingColor;
 
             if (!gameObject.activeSelf)
             {
@@ -187,6 +194,8 @@ namespace SteamRush.Features.UI.Views
             {
                 timerText.text = $"{Mathf.CeilToInt(_remainingTime)}s";
             }
+
+            TimerCircleVerticalStackManager.RegisterAntiCircle(this, containerRect);
         }
 
         /// <summary>
@@ -196,6 +205,8 @@ namespace SteamRush.Features.UI.Views
         {
             _isActive = false;
             _displayedPhase = null;
+
+            TimerCircleVerticalStackManager.UnregisterAntiCircle(this);
 
             if (containerRect != null)
             {
@@ -210,6 +221,11 @@ namespace SteamRush.Features.UI.Views
             }
         }
 
+        private void OnDisable()
+        {
+            TimerCircleVerticalStackManager.UnregisterAntiCircle(this);
+        }
+
         private void UpdatePhaseLabel(VehicleTier phase)
         {
             if (iconText == null)
@@ -221,14 +237,17 @@ namespace SteamRush.Features.UI.Views
             {
                 case VehicleTier.PickupTruck:
                     iconText.text = "PICKUP";
+                    iconText.color = pickupRingColor;
                     break;
 
                 case VehicleTier.HeavyTruck:
                     iconText.text = "HEAVY";
+                    iconText.color = heavyRingColor;
                     break;
 
                 default:
                     iconText.text = "VEHICLE";
+                    iconText.color = activeRingColor;
                     break;
             }
         }
@@ -259,7 +278,7 @@ namespace SteamRush.Features.UI.Views
             BuildUIIfMissing();
         }
 
-        private void BuildUIIfMissing()
+        public void BuildUIIfMissing()
         {
             if (this == null)
             {
@@ -369,9 +388,7 @@ namespace SteamRush.Features.UI.Views
 
             innerHole.transform.SetParent(containerRect, false);
 
-            RectTransform innerRect =
-                innerHole.GetComponent<RectTransform>();
-
+            RectTransform innerRect = innerHole.GetComponent<RectTransform>();
             innerRect.anchorMin = new Vector2(0.5f, 0.5f);
             innerRect.anchorMax = new Vector2(0.5f, 0.5f);
             innerRect.pivot = new Vector2(0.5f, 0.5f);
@@ -390,9 +407,7 @@ namespace SteamRush.Features.UI.Views
 
             iconObj.transform.SetParent(innerHole.transform, false);
 
-            RectTransform iconRect =
-                iconObj.GetComponent<RectTransform>();
-
+            RectTransform iconRect = iconObj.GetComponent<RectTransform>();
             iconRect.anchorMin = new Vector2(0.5f, 0.5f);
             iconRect.anchorMax = new Vector2(0.5f, 0.5f);
             iconRect.pivot = new Vector2(0.5f, 0.5f);
@@ -415,9 +430,7 @@ namespace SteamRush.Features.UI.Views
 
             textObj.transform.SetParent(innerHole.transform, false);
 
-            RectTransform textRect =
-                textObj.GetComponent<RectTransform>();
-
+            RectTransform textRect = textObj.GetComponent<RectTransform>();
             textRect.anchorMin = new Vector2(0.5f, 0.5f);
             textRect.anchorMax = new Vector2(0.5f, 0.5f);
             textRect.pivot = new Vector2(0.5f, 0.5f);
@@ -440,36 +453,21 @@ namespace SteamRush.Features.UI.Views
             }
 
             int res = 256;
-
-            Texture2D tex = new Texture2D(
-                res,
-                res,
-                TextureFormat.RGBA32,
-                false);
-
+            Texture2D tex = new Texture2D(res, res, TextureFormat.RGBA32, false);
             tex.wrapMode = TextureWrapMode.Clamp;
             tex.filterMode = FilterMode.Bilinear;
 
             float radius = (res - 4) * 0.5f;
-            Vector2 center = new Vector2(
-                res * 0.5f,
-                res * 0.5f);
-
+            Vector2 center = new Vector2(res * 0.5f, res * 0.5f);
             Color[] colors = new Color[res * res];
 
             for (int y = 0; y < res; y++)
             {
                 for (int x = 0; x < res; x++)
                 {
-                    float dist = Vector2.Distance(
-                        new Vector2(x, y),
-                        center);
-
-                    float alpha =
-                        Mathf.Clamp01(radius - dist + 1.5f);
-
-                    colors[y * res + x] =
-                        new Color(1f, 1f, 1f, alpha);
+                    float dist = Vector2.Distance(new Vector2(x, y), center);
+                    float alpha = Mathf.Clamp01(radius - dist + 1.5f);
+                    colors[y * res + x] = new Color(1f, 1f, 1f, alpha);
                 }
             }
 

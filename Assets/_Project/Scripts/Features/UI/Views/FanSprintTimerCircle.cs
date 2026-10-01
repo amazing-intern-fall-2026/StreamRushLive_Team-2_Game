@@ -52,6 +52,8 @@ namespace SteamRush.Features.UI.Views
         private float _remainingTime = 0f;
         private bool _isActive = false;
 
+        public bool IsActive => _isActive;
+
         private static Sprite _circleSprite;
 
         private void Awake()
@@ -161,6 +163,8 @@ namespace SteamRush.Features.UI.Views
                 DOTween.Kill(canvasGroup);
                 canvasGroup.alpha = 1f;
             }
+
+            TimerCircleVerticalStackManager.RegisterFanCircle(this, containerRect);
         }
 
         /// <summary>
@@ -170,6 +174,8 @@ namespace SteamRush.Features.UI.Views
         {
             if (this == null) return;
             _isActive = false;
+
+            TimerCircleVerticalStackManager.UnregisterFanCircle(this);
 
             if (containerRect != null)
             {
@@ -182,6 +188,11 @@ namespace SteamRush.Features.UI.Views
                 DOTween.Kill(canvasGroup);
                 canvasGroup.DOFade(0f, 0.2f);
             }
+        }
+
+        private void OnDisable()
+        {
+            TimerCircleVerticalStackManager.UnregisterFanCircle(this);
         }
 
         [ContextMenu("Rebuild UI")]

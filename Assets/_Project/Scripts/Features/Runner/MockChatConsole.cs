@@ -868,8 +868,14 @@ namespace SteamRush.Features.Runner
             }
         }
 
-public void MockActivatePickupTruckPhase(string sender = "Phe Anti")
+public void MockActivatePickupTruckPhase(string sender = "Red Team")
         {
+            if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
+            {
+                StreamRushLive.Features.Gifts.GiftManager.Instance.ActivatePickupTruckPhase(sender);
+                return;
+            }
+
             if (obstacleSpawner == null)
             {
                 obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
@@ -890,13 +896,11 @@ public void MockActivatePickupTruckPhase(string sender = "Phe Anti")
 
             hudManager?.ShowAntiAction(
                 sender,
-                "Pickup Truck Rush (60s)");
+                $"Pickup Truck Phase ({obstacleSpawner.VehiclePhaseDuration:F0}s)");
 
             hudManager?.ShowStatusPopup(
-            "Giai đoạn Xe Bán Tải bắt đầu - 60s",
-            false);
-
-            Debug.Log("[MockChatConsole] F4 -> Pickup Truck Phase 60s activated.");
+                $"Pickup Truck Phase Started ({obstacleSpawner.VehiclePhaseDuration:F0}s)",
+                false);
         }
 
         public void MockSpawnHeavyTruck(string sender = "Red Team")
@@ -939,8 +943,14 @@ public void MockActivatePickupTruckPhase(string sender = "Phe Anti")
             }
         }
 
-        public void MockActivateHeavyTruckPhase(string sender = "Phe Anti")
+        public void MockActivateHeavyTruckPhase(string sender = "Red Team")
         {
+            if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
+            {
+                StreamRushLive.Features.Gifts.GiftManager.Instance.ActivateHeavyTruckPhase(sender);
+                return;
+            }
+
             if (obstacleSpawner == null)
             {
                 obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
@@ -961,13 +971,11 @@ public void MockActivatePickupTruckPhase(string sender = "Phe Anti")
 
             hudManager?.ShowAntiAction(
                 sender,
-                "Heavy Truck Onslaught (60s)");
+                $"Heavy Truck Phase ({obstacleSpawner.VehiclePhaseDuration:F0}s)");
 
             hudManager?.ShowStatusPopup(
-            "Giai đoạn Xe Tải Hạng Nặng bắt đầu - 60s",
-            false);
-
-            Debug.Log("[MockChatConsole] F5 -> Heavy Truck Phase 60s activated.");
+                $"Heavy Truck Phase Started ({obstacleSpawner.VehiclePhaseDuration:F0}s)",
+                false);
         }
 
         public void MockFanEnergyBottle(string sender = "Viewer_Blue")

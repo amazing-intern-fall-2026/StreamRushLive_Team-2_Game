@@ -96,8 +96,10 @@ namespace StreamRushLive.Features.Spawning
         /// Phase xe đặc biệt có đang hoạt động hay không.
         public bool IsVehiclePhaseActive => _activeVehiclePhase.HasValue;
 
-        /// Thời lượng phase được cấu hình.
-        public float VehiclePhaseDuration => vehiclePhaseDuration;
+        /// Thời lượng phase được cấu hình (ưu tiên lấy từ GiftManager nếu có).
+        public float VehiclePhaseDuration => StreamRushLive.Features.Gifts.GiftManager.Instance != null 
+            ? StreamRushLive.Features.Gifts.GiftManager.Instance.VehiclePhaseDuration 
+            : vehiclePhaseDuration;
 
         /// Thời gian còn lại của phase hiện tại.
         /// Dùng cho Timer UI ở bước sau.
@@ -365,7 +367,7 @@ namespace StreamRushLive.Features.Spawning
             }
 
             _activeVehiclePhase = phase;
-            _vehiclePhaseRemainingTime = Mathf.Max(0f, vehiclePhaseDuration);
+            _vehiclePhaseRemainingTime = Mathf.Max(0f, VehiclePhaseDuration);
 
             _vehiclePhaseCoroutine = StartCoroutine(VehiclePhaseRoutine(phase));
 

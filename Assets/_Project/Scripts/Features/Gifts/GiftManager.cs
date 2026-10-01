@@ -83,6 +83,9 @@ namespace StreamRushLive.Features.Gifts
         [Tooltip("Thời gian kích hoạt Bão Xe (Unlimited Cars) - thả xe liên tục không tốn năng lượng (giây). Mặc định 60s.")]
         [SerializeField] private float _unlimitedCarsDuration = 60f;
 
+        [Tooltip("Duration of Vehicle Special Phases (Pickup Truck & Heavy Truck phases in seconds). Default 60s.")]
+        [SerializeField] private float _vehiclePhaseDuration = 60f;
+
         [Header("Sedan Car")]
         [SerializeField] private AntiCarGiftConfig _sedanConfig = new AntiCarGiftConfig
         {
@@ -149,6 +152,7 @@ namespace StreamRushLive.Features.Gifts
         public int BlueEnergyBottleAmount => _blueEnergyBottleAmount;
         public int RedEnergyBottleAmount => _redEnergyBottleAmount;
         public float UnlimitedCarsDuration => _unlimitedCarsDuration;
+        public float VehiclePhaseDuration => _vehiclePhaseDuration;
 
         public AntiCarGiftConfig SedanConfig => _sedanConfig;
         public AntiCarGiftConfig PickupConfig => _pickupConfig;
@@ -375,6 +379,40 @@ namespace StreamRushLive.Features.Gifts
             }
 
             Debug.LogWarning("[GiftManager] Không tìm thấy SingleObstacleSpawner để kích hoạt Unlimited Cars!");
+            return false;
+        }
+
+        /// <summary>
+        /// Kích hoạt Giai đoạn Xe Bán Tải (Pickup Truck Phase).
+        /// </summary>
+        public bool ActivatePickupTruckPhase(string sender = "Red Team")
+        {
+            ResolveReferences();
+            if (_obstacleSpawner != null)
+            {
+                _obstacleSpawner.ActivatePickupTruckPhase();
+                _hudManager?.ShowAntiAction(sender, $"Pickup Phase ({_vehiclePhaseDuration:F0}s)");
+                _hudManager?.ShowStatusPopup($"Pickup Truck Phase Started ({_vehiclePhaseDuration:F0}s)", false);
+                return true;
+            }
+            Debug.LogWarning("[GiftManager] Không tìm thấy SingleObstacleSpawner để kích hoạt Pickup Truck Phase!");
+            return false;
+        }
+
+        /// <summary>
+        /// Kích hoạt Giai đoạn Xe Tải Hạng Nặng (Heavy Truck Phase).
+        /// </summary>
+        public bool ActivateHeavyTruckPhase(string sender = "Red Team")
+        {
+            ResolveReferences();
+            if (_obstacleSpawner != null)
+            {
+                _obstacleSpawner.ActivateHeavyTruckPhase();
+                _hudManager?.ShowAntiAction(sender, $"Heavy Truck Phase ({_vehiclePhaseDuration:F0}s)");
+                _hudManager?.ShowStatusPopup($"Heavy Truck Phase Started ({_vehiclePhaseDuration:F0}s)", false);
+                return true;
+            }
+            Debug.LogWarning("[GiftManager] Không tìm thấy SingleObstacleSpawner để kích hoạt Heavy Truck Phase!");
             return false;
         }
 
