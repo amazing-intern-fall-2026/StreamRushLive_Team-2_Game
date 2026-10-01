@@ -293,8 +293,8 @@ namespace SteamRush.Features.UI.Views
             iconRect.anchoredPosition = new Vector2(0f, 16f);
             iconRect.sizeDelta = new Vector2(80f, 22f);
             iconText = iconObj.GetComponent<TextMeshProUGUI>();
-            iconText.text = "TĂNG TỐC";
-            iconText.fontSize = 12;
+            iconText.text = "SPEED";
+            iconText.fontSize = 13;
             iconText.fontStyle = FontStyles.Bold;
             iconText.color = activeRingColor;
             iconText.alignment = TextAlignmentOptions.Center;

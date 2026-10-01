@@ -7181,7 +7181,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "T\u0102NG T\u1ED0C"
+  m_text: SPEED
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 30596ec5b5b2aef44a2f0b6bbac20068, type: 2}
   m_sharedMaterial: {fileID: 4762602659135997272, guid: 30596ec5b5b2aef44a2f0b6bbac20068, type: 2}
@@ -13295,7 +13295,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8d330105d04a89042a45fa64e02d3874, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Track.TrackProgressTracker
-  _relayDistanceMeters: 300
+  _relayDistanceMeters: 500
   _goalDistanceKm: 1000
   _progressChanged:
     m_PersistentCalls:
@@ -25104,6 +25104,7 @@ GameObject:
   - component: {fileID: 1608972806}
   - component: {fileID: 1608972809}
   - component: {fileID: 1608972808}
+  - component: {fileID: 1608972810}
   m_Layer: 0
   m_Name: Audio manager
   m_TagString: Untagged
@@ -25124,11 +25125,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AudioManager
   masterVolume: 1
-  bgmVolume: 0.55
-  sfxVolume: 0.85
+  bgmVolume: 0.15
+  sfxVolume: 0.55
   bgmSource: {fileID: 1608972809}
   loopSfxSource: {fileID: 0}
-  danceMusicSource: {fileID: 0}
+  danceMusicSource: {fileID: 1608972810}
   uiSource: {fileID: 0}
   sfxPoolSize: 10
   bgmPlaylist:
@@ -25223,6 +25224,7 @@ MonoBehaviour:
     clip: {fileID: 8300000, guid: 69d12f3d1a42fa745b7d4771fcec2480, type: 3}
     volumeMultiplier: 1
   preventDuplicateSFX: 1
+  minSFXRepeatInterval: 0.12
 --- !u!4 &1608972807
 Transform:
   m_ObjectHideFlags: 0
@@ -25351,6 +25353,103 @@ AudioSource:
   m_Volume: 1
   m_Pitch: 1
   Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+--- !u!82 &1608972810
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1608972805}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 0
+  m_Volume: 0.85
+  m_Pitch: 1
+  Loop: 1
   Mute: 0
   Spatialize: 0
   SpatializePostEffects: 0
@@ -35416,13 +35515,13 @@ MonoBehaviour:
     hitStopDuration: 0.25
     reverseWorldPeakSpeed: -196
     reverseWorldDuration: 3.2
-  _giftDanceDuration: 5
+  _giftDanceDuration: 30
   _runnerController: {fileID: 913794240}
   _runnerEffects: {fileID: 913794238}
   _factionManager: {fileID: 845593088}
   _obstacleSpawner: {fileID: 819347502}
   _giftDanceController: {fileID: 913794241}
-  _weatherManager: {fileID: 0}
+  _weatherManager: {fileID: 2056502641}
   _hudManager: {fileID: 845593090}
 --- !u!1 &2110782331
 GameObject:
@@ -36093,6 +36192,10 @@ PrefabInstance:
       propertyPath: m_Sprite
       value: 
       objectReference: {fileID: 715850384}
+    - target: {fileID: 5776667482344038490, guid: be1c5b6cf222d104da569e938250241a, type: 3}
+      propertyPath: m_text
+      value: STORM
+      objectReference: {fileID: 0}
     - target: {fileID: 5825989619721110916, guid: be1c5b6cf222d104da569e938250241a, type: 3}
       propertyPath: m_Sprite
       value: 
