@@ -4201,6 +4201,7 @@ MonoBehaviour:
   cardOutline: {fileID: 287165883}
   showDuration: 3.2
   animDuration: 0.3
+  hideIconIfNull: 0
 --- !u!225 &287165878
 CanvasGroup:
   m_ObjectHideFlags: 0
@@ -12399,7 +12400,6 @@ MonoBehaviour:
   _enableRoadsideHandover: 1
   _spawnAheadMeters: 30
   _roadsideProxyPrefab: {fileID: 100001, guid: 8192a0e9d6c547a192d6e4b85c123456, type: 3}
-  _arrivalThresholdX: 0.6
   _leftSidewalkZ: -5.8
   _rightSidewalkZ: 5.8
   _sidewalkY: 0.2
@@ -12489,6 +12489,8 @@ MonoBehaviour:
   statusPopupSpawner: {fileID: 1027503292}
   giftToastQueue: {fileID: 122752305}
   topBannerQueue: {fileID: 701557133}
+  fanFeedQueue: {fileID: 0}
+  antiFeedQueue: {fileID: 0}
   nextRunnerLabel: {fileID: 0}
   nextRunnerNormalColor: {r: 1, g: 1, b: 1, a: 1}
   nextRunnerVipColor: {r: 1, g: 0.85, b: 0.1, a: 1}
@@ -14011,6 +14013,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
       insertIndex: -1
       addedObject: {fileID: 913794241}
+    - targetCorrespondingSourceObject: {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 913794242}
   m_SourcePrefab: {fileID: 100100000, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
 --- !u!1 &913794227 stripped
 GameObject:
@@ -14145,8 +14150,6 @@ MonoBehaviour:
   hudManager: {fileID: 845593090}
   obstacleSpawner: {fileID: 819347502}
   shieldDuration: 20
-  shieldGiftIcon: {fileID: 21300000, guid: 001faf8fd3372574b88f41c7d2dd86aa, type: 3}
-  energyGiftIcon: {fileID: 21300000, guid: 428240ec2d8930c449439e44c078f9e0, type: 3}
   debugPanelContainer: {fileID: 0}
   toggleDebugButton: {fileID: 0}
   toggleButtonText: {fileID: 0}
@@ -14186,11 +14189,15 @@ MonoBehaviour:
   _maxCommandsPerBatch: 3
   _nonLaneCommandDelay: 0.1
   _fastTargetSpeed: 18
-  _fastEnergyDrainPerSecond: 25
   _factionManager: {fileID: 845593088}
+  _laneChangeEnergyCost: 10
+  _jumpEnergyCost: 20
+  _freeControlBuffDuration: 30
   _sprintBuffDuration: 30
   _knockbackDistance: 1.8
   _knockbackDuration: 0.45
+  _lockControlOnKnockback: 1
+  _extraControlLockDuration: 0.25
 --- !u!114 &913794241
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14208,6 +14215,23 @@ MonoBehaviour:
   _danceDuration: 60
   _blendTime: 0.25
   _victoryDanceStateName: VictoryDance
+--- !u!114 &913794242
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 913794227}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77f5803252605f54ea76400c3d6dc1c7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.ShieldVFXController
+  itemEffects: {fileID: 913794238}
+  shieldVFXPrefab: {fileID: 8587275412726315375, guid: 82b8be0e427fe464d92897a7acb51e14, type: 3}
+  localOffset: {x: 0, y: 0.9, z: 0}
+  scaleMultiplier: 2.3
+  animDuration: 0.35
 --- !u!1 &922362394
 GameObject:
   m_ObjectHideFlags: 0
@@ -15426,6 +15450,7 @@ MonoBehaviour:
   cardOutline: {fileID: 1008401542}
   showDuration: 3.5
   animDuration: 0.3
+  hideIconIfNull: 0
 --- !u!114 &1008401540
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20457,6 +20482,7 @@ MonoBehaviour:
   cardOutline: {fileID: 1446858622}
   showDuration: 3.5
   animDuration: 0.3
+  hideIconIfNull: 0
 --- !u!114 &1446858620
 MonoBehaviour:
   m_ObjectHideFlags: 0
