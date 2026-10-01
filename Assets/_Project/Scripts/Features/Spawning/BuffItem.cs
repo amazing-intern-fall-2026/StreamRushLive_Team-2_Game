@@ -50,6 +50,8 @@ namespace StreamRushLive.Features.Spawning
             {
                 hud.ShowStatusPopup($"+{energyRecoverAmount:F0}% Energy!", true);
             }
+
+            AudioManager.Instance?.PlaySFX(SFXType.CollectEnergy, 0.9f);
         }
     }
 }

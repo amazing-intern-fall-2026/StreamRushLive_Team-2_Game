@@ -321,6 +321,7 @@ namespace StreamRushLive.Features.Spawning
             _isUnlimitedModeActive = true;
             Debug.Log($"[SingleObstacleSpawner] Unlimited Mode kích hoạt trong {unlimitedModeDuration}s.");
             AntiUnlimitedTimerCircle.Instance?.ActivateTimer(unlimitedModeDuration);
+            AudioManager.Instance?.PlaySFX(SFXType.WarningSiren);
 
             yield return new WaitForSeconds(unlimitedModeDuration);
 
@@ -398,24 +399,6 @@ namespace StreamRushLive.Features.Spawning
                 _activeVehiclePhase = null;
                 _vehiclePhaseRemainingTime = 0f;
                 _vehiclePhaseCoroutine = null;
-
-                string phaseName;
-
-                if (phase == VehicleTier.PickupTruck)
-                {
-                    phaseName = "Giai đoạn Xe Bán Tải";
-                }
-                else
-                {
-                    phaseName = "Giai đoạn Xe Tải Hạng Nặng";
-                }
-
-                var hudManager =
-                    FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-
-                hudManager?.ShowStatusPopup(
-                    $"{phaseName} kết thúc - Xe Con trở lại.",
-                    false);
 
                 Debug.Log(
                     $"[SingleObstacleSpawner] Vehicle Phase {phase} kết thúc. " +

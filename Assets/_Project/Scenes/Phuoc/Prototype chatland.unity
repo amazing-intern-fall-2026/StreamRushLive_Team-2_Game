@@ -4725,8 +4725,8 @@ MonoBehaviour:
   itemNameText: {fileID: 2056681377}
   canvasGroup: {fileID: 287165878}
   cardOutline: {fileID: 287165883}
-  showDuration: 3.2
-  animDuration: 0.3
+  showDuration: 4.2
+  animDuration: 0.35
   hideIconIfNull: 0
 --- !u!225 &287165878
 CanvasGroup:
@@ -10618,7 +10618,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.UI.Views.GiftToastQueue
   toastTemplate: {fileID: 287165877}
-  _maxConcurrentToasts: 1
+  _maxConcurrentToasts: 3
 --- !u!224 &701557134
 RectTransform:
   m_ObjectHideFlags: 0
@@ -15019,7 +15019,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f77d07c219c4b4d5bb4080d34b66530d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.RunnerController
-  _jumpVelocity: 6.5
+  _jumpVelocity: 7.5
   _risingGravity: 9.6
   _fallingGravity: 18
   _duckHeightRatio: 0.5
@@ -25123,9 +25123,106 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bf36b73281923d948976425fb1988bd9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AudioManager
-  sfxSource: {fileID: 1608972808}
+  masterVolume: 1
+  bgmVolume: 0.55
+  sfxVolume: 0.85
   bgmSource: {fileID: 1608972809}
-  bgmClips: []
+  loopSfxSource: {fileID: 0}
+  danceMusicSource: {fileID: 0}
+  uiSource: {fileID: 0}
+  sfxPoolSize: 10
+  bgmPlaylist:
+  - {fileID: 8300000, guid: 5e9ed43bc579ed54fb59df944ce8d4c3, type: 3}
+  - {fileID: 8300000, guid: c27933ed33789c04db38e12f3b6fabeb, type: 3}
+  - {fileID: 8300000, guid: 4c46e0567bea42747acb59781a5f5da8, type: 3}
+  - {fileID: 8300000, guid: d6aed4dcaba2d89419e7d4ada2f07cd1, type: 3}
+  - {fileID: 8300000, guid: 8d8f97a95d89b2541bc7d56161e2ddd3, type: 3}
+  - {fileID: 8300000, guid: f274bf17613e1044cbd5e27eaaa665d6, type: 3}
+  - {fileID: 8300000, guid: 5c5f1a817b38eb24fb78bce76ae37bea, type: 3}
+  - {fileID: 8300000, guid: 900e83b5cbc50de4f945b465988446fe, type: 3}
+  sfxEntries:
+  - type: 0
+    clip: {fileID: 8300000, guid: cab1ddbd570bda74ab525895ee47072f, type: 3}
+    volumeMultiplier: 1
+  - type: 1
+    clip: {fileID: 8300000, guid: 57bfc0d713c468c43ba5f58004bf2e43, type: 3}
+    volumeMultiplier: 1
+  - type: 2
+    clip: {fileID: 8300000, guid: f46f6a12327c8964dbdaf53caccb5579, type: 3}
+    volumeMultiplier: 1
+  - type: 3
+    clip: {fileID: 8300000, guid: c31a3ece056ca1c49b01aacdd8927067, type: 3}
+    volumeMultiplier: 1
+  - type: 4
+    clip: {fileID: 8300000, guid: b1d50723afccd4547b1186672b561f4d, type: 3}
+    volumeMultiplier: 1
+  - type: 5
+    clip: {fileID: 8300000, guid: 71f9bd11ab63ee24e82abcb046cec856, type: 3}
+    volumeMultiplier: 1
+  - type: 6
+    clip: {fileID: 8300000, guid: d48d952844a7a9f43aa95f65fdea8ac2, type: 3}
+    volumeMultiplier: 1
+  - type: 7
+    clip: {fileID: 8300000, guid: da03a62473c257d4a814dec56aff3ca6, type: 3}
+    volumeMultiplier: 1
+  - type: 8
+    clip: {fileID: 8300000, guid: 4908479eb7c325149bb89112d4f9dd3b, type: 3}
+    volumeMultiplier: 1
+  - type: 9
+    clip: {fileID: 8300000, guid: 9c26c711a05c870478893b033201012b, type: 3}
+    volumeMultiplier: 1
+  - type: 10
+    clip: {fileID: 8300000, guid: 14fe4cc499196f74fa362bfd3e1f95cc, type: 3}
+    volumeMultiplier: 1
+  - type: 11
+    clip: {fileID: 8300000, guid: 55338014cebe6314abb14e5f25b037a0, type: 3}
+    volumeMultiplier: 1
+  - type: 12
+    clip: {fileID: 8300000, guid: 0e5d7a7509763d145a3119fbc6819835, type: 3}
+    volumeMultiplier: 1
+  - type: 13
+    clip: {fileID: 8300000, guid: 8360e318703e99a4995bf98783856da8, type: 3}
+    volumeMultiplier: 1
+  - type: 14
+    clip: {fileID: 8300000, guid: 93b52f13568fa824592f68d6f8237f84, type: 3}
+    volumeMultiplier: 1
+  - type: 15
+    clip: {fileID: 8300000, guid: a451783e1fa5b1c4ba8ee794d334facf, type: 3}
+    volumeMultiplier: 1
+  - type: 16
+    clip: {fileID: 8300000, guid: 6da016df0553721478a2885b2e2675d8, type: 3}
+    volumeMultiplier: 1
+  - type: 17
+    clip: {fileID: 8300000, guid: 7f1f77a5dd92d964b9c0108eead2ca85, type: 3}
+    volumeMultiplier: 1
+  - type: 18
+    clip: {fileID: 8300000, guid: ff49476f64f093c4eba972cbce17b0eb, type: 3}
+    volumeMultiplier: 1
+  - type: 19
+    clip: {fileID: 8300000, guid: 6a9d89d654d0a1b4fa3171052ed60d3a, type: 3}
+    volumeMultiplier: 1
+  - type: 20
+    clip: {fileID: 8300000, guid: 491be154901544e4283c0748dc11a717, type: 3}
+    volumeMultiplier: 1
+  - type: 21
+    clip: {fileID: 8300000, guid: a431c32985fdb034cac1c456a9cadc6f, type: 3}
+    volumeMultiplier: 1
+  - type: 22
+    clip: {fileID: 8300000, guid: 3ce970ff3560cbf4daac8299b9ee1f02, type: 3}
+    volumeMultiplier: 1
+  - type: 23
+    clip: {fileID: 8300000, guid: 4949447ffdc67cb46a0582471f6d4927, type: 3}
+    volumeMultiplier: 1
+  - type: 24
+    clip: {fileID: 8300000, guid: e3da2725c65bffd4782e0ea5a0dbd33c, type: 3}
+    volumeMultiplier: 1
+  - type: 25
+    clip: {fileID: 8300000, guid: db63eb6e24bfd9a4181c9b9748184075, type: 3}
+    volumeMultiplier: 1
+  - type: 26
+    clip: {fileID: 8300000, guid: 69d12f3d1a42fa745b7d4771fcec2480, type: 3}
+    volumeMultiplier: 1
+  preventDuplicateSFX: 1
 --- !u!4 &1608972807
 Transform:
   m_ObjectHideFlags: 0
@@ -26719,7 +26816,7 @@ RectTransform:
   m_GameObject: {fileID: 1716733052}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 1.2563, y: 1.2563, z: 1.2563}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 232502681}
@@ -26728,7 +26825,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 12, y: -48}
+  m_AnchoredPosition: {x: 3.2999878, y: -54.299988}
   m_SizeDelta: {x: 128, y: 34}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1716733054
@@ -30944,8 +31041,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 32.75
-  m_fontSizeBase: 32.75
+  m_fontSize: 42.2
+  m_fontSizeBase: 42.2
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -34274,9 +34371,9 @@ MonoBehaviour:
   m_fontSize: 30
   m_fontSizeBase: 30
   m_fontWeight: 400
-  m_enableAutoSizing: 0
-  m_fontSizeMin: 22
-  m_fontSizeMax: 34
+  m_enableAutoSizing: 1
+  m_fontSizeMin: 20
+  m_fontSizeMax: 28
   m_fontStyle: 0
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
@@ -35325,6 +35422,7 @@ MonoBehaviour:
   _factionManager: {fileID: 845593088}
   _obstacleSpawner: {fileID: 819347502}
   _giftDanceController: {fileID: 913794241}
+  _weatherManager: {fileID: 0}
   _hudManager: {fileID: 845593090}
 --- !u!1 &2110782331
 GameObject:

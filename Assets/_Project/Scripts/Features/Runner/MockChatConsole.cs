@@ -995,6 +995,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
                 hudManager?.ShowFanAction(sender, $"+{amount} Energy");
                 hudManager?.ShowStatusPopup($"+{amount} Blue Energy", true);
+                AudioManager.Instance?.PlaySFX(SFXType.CollectEnergy, 1.0f);
                 Debug.Log($"[MockChatConsole] {sender} tặng Bình Năng Lượng Blue Team +{amount}. (Total: {factionManager.FanLikes})");
             }
             else
@@ -1020,6 +1021,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
                 hudManager?.ShowAntiAction(sender, $"+{amount} Energy");
                 hudManager?.ShowStatusPopup($"+{amount} Red Energy", false);
+                AudioManager.Instance?.PlaySFX(SFXType.CollectEnergy, 1.0f);
                 Debug.Log($"[MockChatConsole] {sender} tặng Bình Năng Lượng Red Team +{amount}. (Total: {factionManager.AntiLikes})");
             }
             else
@@ -1037,6 +1039,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
             {
                 string newId = string.IsNullOrEmpty(customUserId) ? ("Follower_" + Random.Range(100, 999)) : customUserId;
                 queueManager.TryEnqueueFollower(newId);
+                AudioManager.Instance?.PlaySFX(SFXType.StreamNewFollower);
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
                 hudManager?.ShowFanAction(newId, "Followed & Queued");
                 Debug.Log($"[MockChatConsole] F5 -> Enqueued new follower: {newId}");

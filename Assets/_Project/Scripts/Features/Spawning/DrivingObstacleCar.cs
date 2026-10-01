@@ -186,6 +186,21 @@ namespace StreamRushLive.Features.Spawning
             {
                 _speedManager = WorldSpeedManager.Instance ?? FindFirstObjectByType<WorldSpeedManager>();
             }
+
+            // Phat coi xe canh bao tuong ung voi tung loai xe
+            switch (_vehicleTier)
+            {
+                case VehicleTier.HeavyTruck:
+                    AudioManager.Instance?.PlaySFX(SFXType.HeavyTruckHorn, 1.0f);
+                    break;
+                case VehicleTier.PickupTruck:
+                    AudioManager.Instance?.PlaySFX(SFXType.PickupHorn, 0.85f);
+                    break;
+                case VehicleTier.SedanCar:
+                default:
+                    AudioManager.Instance?.PlaySFX(SFXType.CarHorn, 0.8f);
+                    break;
+            }
         }
 
         private void Update()
@@ -267,6 +282,8 @@ namespace StreamRushLive.Features.Spawning
         public override void OnHitPlayer(GameObject player)
         {
             if (_isDeflectedByShield || IsShieldDeflected) return;
+
+            AudioManager.Instance?.PlaySFX(SFXType.HitCarCrash);
 
             Collider[] colliders = GetComponentsInChildren<Collider>();
             for (int i = 0; i < colliders.Length; i++)

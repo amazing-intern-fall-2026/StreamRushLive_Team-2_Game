@@ -13,8 +13,8 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private TMP_Text itemNameText;
         [SerializeField] private CanvasGroup canvasGroup;
         [SerializeField] private Outline cardOutline;
-        [SerializeField] private float showDuration = 3.5f;
-        [SerializeField] private float animDuration = 0.3f;
+        [SerializeField] private float showDuration = 4.2f;
+        [SerializeField] private float animDuration = 0.35f;
         [SerializeField] private bool hideIconIfNull = false;
 
         public void SetDuration(float showDur, float animDur = -1f)

@@ -99,6 +99,10 @@ namespace SteamRush.Features.Runner
             // Layer weight 0 vẫn chạy ngầm state machine, nên phải ép về đầu clip để dance
             // luôn bắt đầu từ frame đầu thay vì giữa chừng.
             _animator.Play(stateHash, _danceLayerIndex, 0f);
+
+            // Bật nhạc background riêng cho Gift Dance với Ducking BGM
+            AudioManager.Instance?.StartDanceMusic(_remainingTime);
+
             return true;
         }
 
@@ -106,6 +110,7 @@ namespace SteamRush.Features.Runner
         public void StopDance(bool immediate = false)
         {
             _remainingTime = 0f;
+            AudioManager.Instance?.StopDanceMusic();
             if (immediate)
             {
                 ForceReset();
@@ -119,6 +124,10 @@ namespace SteamRush.Features.Runner
             if (_remainingTime > 0f)
             {
                 _remainingTime -= Time.deltaTime;
+                if (_remainingTime <= 0f)
+                {
+                    AudioManager.Instance?.StopDanceMusic();
+                }
             }
 
             // Blend ra bắt đầu ở _blendTime giây cuối, để tổng thời gian đúng _danceDuration.
@@ -139,6 +148,7 @@ namespace SteamRush.Features.Runner
         {
             _remainingTime = 0f;
             _currentWeight = 0f;
+            AudioManager.Instance?.StopDanceMusic();
             if (_animator != null && _danceLayerIndex >= 0)
             {
                 _animator.SetLayerWeight(_danceLayerIndex, 0f);

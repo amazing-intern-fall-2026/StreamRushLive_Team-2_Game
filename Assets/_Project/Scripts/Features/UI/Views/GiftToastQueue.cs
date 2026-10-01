@@ -55,6 +55,7 @@ namespace SteamRush.Features.UI.Views
 
             GiftToastController instance = Instantiate(toastTemplate, toastTemplate.transform.parent);
             instance.gameObject.SetActive(true);
+            instance.transform.SetAsFirstSibling(); // Chen len dau de thong bao cu troi dan xuong duoi
             instance.Dismissed += OnToastDismissed;
             _active.Add(instance);
             instance.Play(viewerName, itemName, icon, iconColor, accentColor, showItemName);

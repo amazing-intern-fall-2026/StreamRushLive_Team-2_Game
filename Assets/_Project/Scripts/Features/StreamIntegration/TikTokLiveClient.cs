@@ -218,8 +218,9 @@ namespace SteamRush.Features.StreamIntegration
                 _queueManager.TryEnqueueFollower(displayName);
             }
 
-            ShowPopup($"[{displayName}] vừa Follow kênh và gia nhập hàng đợi chạy!", true);
+            ShowPopup($"[{displayName}] Joined Queue!", true);
             _followerJoined.Invoke(userId, displayName);
+            AudioManager.Instance?.PlaySFX(SFXType.StreamNewFollower);
         }
 
         /// <summary>
@@ -334,6 +335,8 @@ namespace SteamRush.Features.StreamIntegration
                 }
             }
 
+            AudioManager.Instance?.PlaySFX(SFXType.StreamLike, 0.5f);
+
             if (_logEvents)
             {
                 Debug.Log($"[TikTokLiveClient] LIKE: {displayName} ({userId}) like mốc {totalLike} (+{stepsGained} bước) -> +{energyAmount} năng lượng {faction}.");
@@ -352,6 +355,12 @@ namespace SteamRush.Features.StreamIntegration
             string userId = ReadString(json, _userIdPath);
             string giftName = ReadString(json, _giftNamePath);
             if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(giftName)) return;
+
+            string lowerName = giftName.ToLowerInvariant();
+            if (!lowerName.Contains("dance") && !lowerName.Contains("nhảy") && !lowerName.Contains("vũ"))
+            {
+                AudioManager.Instance?.PlaySFX(SFXType.StreamDonateGift, 0.65f);
+            }
 
             string displayName = GetDisplayName(json, userId);
 
@@ -375,7 +384,6 @@ namespace SteamRush.Features.StreamIntegration
 
             int totalValue = coins * repeatCount;
             FactionType faction = _factionManager != null ? _factionManager.GetFaction(userId) : FactionType.Fan;
-            string lowerName = giftName.ToLowerInvariant();
 
             if (_logEvents)
             {
@@ -395,13 +403,20 @@ namespace SteamRush.Features.StreamIntegration
             if (lowerName.Contains("vip") || lowerName.Contains("ticket") || lowerName.Contains("vé"))
             {
                 _queueManager?.TryEnqueuePriorityFollower(displayName);
-                ShowPopup($"[{displayName}] dùng Vé VIP! Sẽ chuyển gậy chạy tiếp theo ngay lập tức!", true);
+                ShowPopup($"VIP: [{displayName}]", true);
                 return;
             }
 
-            // 3. Quà Đặc Quyền Lớn (> 100 xu): Bão Xe Không Giới Hạn hoặc Bão Xe Tải Nặng
+            // 3. Quà Thời Tiết Mưa (Gift Environment Rain)
+            if (lowerName.Contains("mưa") || lowerName.Contains("rain") || lowerName.Contains("dù") || lowerName.Contains("umbrella"))
+            {
+                _giftManager?.ActivateRainHazard(displayName, 60f);
+                return;
+            }
+
+            // 4. Quà Đặc Quyền Lớn (> 100 xu): Bão Xe Không Giới Hạn hoặc Bão Xe Tải Nặng
             if (totalValue >= 100 || lowerName.Contains("lion") || lowerName.Contains("sư tử") || 
-                lowerName.Contains("tên lửa") || lowerName.Contains("rocket") || lowerName.Contains("storm"))
+                lowerName.Contains("tên lửa") || lowerName.Contains("rocket"))
             {
                 if (faction == FactionType.Anti)
                 {

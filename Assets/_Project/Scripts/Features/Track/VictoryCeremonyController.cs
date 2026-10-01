@@ -78,6 +78,9 @@ namespace SteamRush.Track
             stopwatch?.StopTimer();
             giftDanceController?.TriggerVictoryDance(9999f);
 
+            AudioManager.Instance?.PlaySFX(SFXType.RelayFinish100m);
+            AudioManager.Instance?.PlaySFX(SFXType.VictoryApplause);
+
             StartCoroutine(ConfettiRoutine());
             StartCoroutine(ShowPopupDelayed());
         }

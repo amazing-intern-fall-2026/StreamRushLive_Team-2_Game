@@ -154,17 +154,6 @@ namespace StreamRushLive.Features.Spawning
         public void AddLike(float energyBonus = 20f, string sender = null)
         {
             AddEnergy(energyBonus);
-
-            if (hudManager == null)
-            {
-                hudManager = FindFirstObjectByType<HUDManager>();
-            }
-
-            string message = string.IsNullOrEmpty(sender)
-                ? $"+{energyBonus:F0}% Energy (Likes)"
-                : $"{sender} Liked! +{energyBonus:F0}%";
-
-            hudManager?.ShowStatusPopup(message, true);
         }
 
         public float GetCurrentEnergy()

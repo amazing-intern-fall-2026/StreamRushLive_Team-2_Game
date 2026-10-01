@@ -102,6 +102,7 @@ namespace SteamRush.Features.Runner
             _knockbackTimer = 0f;
             _knockbackStartOffset = -dist;
             _knockbackOffsetX = _knockbackStartOffset;
+            AudioManager.Instance?.PlaySFX(SFXType.RunnerKnockback);
 
             if (_lockControlOnKnockback)
             {
@@ -436,9 +437,6 @@ namespace SteamRush.Features.Runner
             if (Time.time - _lastEnergyWarningTime >= 1.2f)
             {
                 _lastEnergyWarningTime = Time.time;
-                if (_hudManager == null) _hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-                _hudManager?.ShowStatusPopup("Out of Energy!", true);
-                _hudManager?.ShowFanAction("Blue Team", "Out of energy!");
             }
             Debug.LogWarning($"[ChatLaneRunner] Hết năng lượng Fan/Blue Team — khoá {actionName}.");
         }
@@ -461,6 +459,7 @@ namespace SteamRush.Features.Runner
             }
 
             _runnerController.PerformJump();
+            AudioManager.Instance?.PlaySFX(SFXType.RunnerJump);
             // Không tự SetTrigger("Jump") ở đây nữa — RunnerController.PerformJump() đã tự bắn
             // Trigger "Jump" cho Animator, gọi lại ở đây sẽ set trigger 2 lần thừa mỗi lần nhảy.
             return true;
@@ -484,6 +483,7 @@ namespace SteamRush.Features.Runner
             }
 
             _currentLaneIndex = clampedIndex;
+            AudioManager.Instance?.PlaySFX(SFXType.RunnerLaneSwitch);
         }
 
         private void ChangeLane(int direction)
@@ -503,6 +503,7 @@ namespace SteamRush.Features.Runner
             }
 
             _currentLaneIndex = newIndex;
+            AudioManager.Instance?.PlaySFX(SFXType.RunnerLaneSwitch);
         }
 
         private void TriggerFast()
@@ -521,6 +522,7 @@ namespace SteamRush.Features.Runner
             _fastTimer = 0f;
 
             _speedManager?.TriggerCommandSpeed(_fastTargetSpeed, 9999f);
+            AudioManager.Instance?.PlaySFX(SFXType.RunnerSpeedBoost, 0.75f);
         }
 
         // Da go bo phan tru nang luong Fan theo thoi gian (GDD v1.4.1: fast mien phi). Ham nay chi
@@ -590,6 +592,7 @@ namespace SteamRush.Features.Runner
             }
             float dur = duration > 0f ? duration : SprintBuffDuration;
             _sprintBuffCoroutine = StartCoroutine(SprintBuffRoutine(dur));
+            AudioManager.Instance?.PlaySFX(SFXType.RunnerSpeedBoost);
         }
 
         private System.Collections.IEnumerator SprintBuffRoutine(float duration)

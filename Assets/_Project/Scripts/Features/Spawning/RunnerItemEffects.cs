@@ -47,6 +47,7 @@ namespace StreamRushLive.Features.Spawning
 
             shieldCoroutine = StartCoroutine(ShieldTimer(duration));
             SteamRush.Features.UI.Views.ShieldTimerCircle.Instance?.ActivateTimer(duration);
+            AudioManager.Instance?.PlaySFX(SFXType.ShieldActive);
         }
 
         /// <summary>
@@ -69,6 +70,7 @@ namespace StreamRushLive.Features.Spawning
             }
 
             SteamRush.Features.UI.Views.ShieldTimerCircle.Instance?.DeactivateTimer();
+            AudioManager.Instance?.PlaySFX(SFXType.ShieldBreak);
             Debug.Log("[RunnerItemEffects] Shield đã chặn 1 lần va chạm.");
 
             return true;
@@ -85,6 +87,7 @@ namespace StreamRushLive.Features.Spawning
             shieldActive = false;
             shieldCoroutine = null;
             SteamRush.Features.UI.Views.ShieldTimerCircle.Instance?.DeactivateTimer();
+            AudioManager.Instance?.PlaySFX(SFXType.ShieldBreak);
 
             Debug.Log("[RunnerItemEffects] Shield đã hết thời gian.");
         }
