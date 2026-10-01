@@ -1,92 +1,91 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Newtonsoft.Json.Linq;
 using SocketIOClient;
 using SocketIOClient.Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Events;
+using StreamRushLive.Features.Gifts;
+using StreamRushLive.Features.Spawning;
+using SteamRush.Features.Runner;
+using SteamRush.Features.UI;
 
 namespace SteamRush.Features.StreamIntegration
 {
-    // Ket noi Unity voi backend TikTok Live (Nhom 5) qua socket.io. Giai doan thu nghiem: xu ly
-    // "follow", "chat", "like" va "gift" (chi Gift Hoa Hong). Chua xu ly cac loai gift khac.
-    //
-    // Luong backend (theo code Nhom 5, backend/src/sockets/index.ts):
-    //   1. Client ket noi socket.io toi backend (mac dinh port 9090).
-    //   2. Client emit "setUniqueID" kem username TikTok dang Live -> backend moi noi vao TikTok.
-    //   3. Backend emit "chat"   : data.user.{userId, uniqueId, nickname}, comment (NGOAI data).
-    //      Backend emit "follow" : data.user.{userId, uniqueId, nickname}.
-    //      Backend emit "like"   : data.user.{...}, totalLike (TONG DON tu dau phien, khong phai +1 moi lan).
-    //      Backend emit "gift"   : data.user.{...}, giftName, giftId, coinCount (backend dang go la "cointCount"), repeatCount...
-    //
-    // Follow -> TikTokFollowerRegistry (luu RAM, khoa = userId) -> FollowerGate cho phep vao phe.
-    // Chat "red"/"blue" -> FactionTugOfWarManager.OnChatCommand (da qua FollowerGate).
-    // Like: cu 20 like (tinh theo hieu so totalLike, khong phai 1 event = 1 like) -> +1% (10 diem)
-    //   nang luong cho DUNG phe hien tai cua nguoi do (Fan hoac Anti), y het phim F6/F11 debug.
-    // Gift Hoa Hong: CHI xac dinh phe hien tai (GetFaction, KHONG gan/doi phe, KHONG cong nang luong)
-    //   va hien thong bao debug - dung theo dung mo ta task, KHAC voi tien le MockFanEnergyBottle/
-    //   MockAntiEnergyBottle trong MockChatConsole.cs (nhung ham do co gan phe + cong nang luong).
-    // Tat _connectOnStart hoac disable component nay de quay lai test bang MockChatConsole.
+    /// <summary>
+    /// Kết nối trực tiếp Unity với Backend TikTok Live qua Socket.IO.
+    /// Tích hợp đầy đủ 4 luồng sự kiện tương tác cốt lõi vào Gameplay:
+    /// 1. Follow: Ghi danh người theo dõi vào Hàng đợi Tiếp sức Runner (Relay Queue).
+    /// 2. Chat / Comment: Chọn phe (Blue/Red), điều khiển Runner (Đổi làn 1/2/3, Nhảy, Fast) hoặc thả xe cản đường phe Anti.
+    /// 3. Like: Tích lũy tim nạp năng lượng tương ứng cho phe Fan hoặc Anti (đầy 1000 tim tự động thả xe).
+    /// 4. Gift: Tự động kích hoạt các hiệu ứng đặc quyền (Khiên bảo vệ, Bình năng lượng, Tăng tốc Turbo, Thả xe cản đường, Bão xe, Nhảy meme, Vé VIP).
+    /// </summary>
     public class TikTokLiveClient : MonoBehaviour
     {
-        [Header("Ket noi backend")]
-        [Tooltip("Dia chi backend Nhom 5 (chay local). Mac dinh PORT=9090 trong backend/.env.")]
-        [SerializeField] private string _serverUrl = "http://localhost:9090"; 
-        [Tooltip("Username TikTok cua kenh DANG LIVE (khong can dau @).")]
+        [Header("Kết Nối Backend")]
+        [Tooltip("Địa chỉ backend TikTok Live. Mặc định cổng 9090 chạy local.")]
+        [SerializeField] private string _serverUrl = "http://localhost:9090";
+
+        [Tooltip("Username TikTok của kênh ĐANG LIVE (không cần dấu @).")]
         [SerializeField] private string _tiktokUniqueId = "";
-        [Tooltip("Tu ket noi khi component duoc bat. Tat de test offline bang MockChatConsole.")]
+
+        [Tooltip("Tự động kết nối khi vào màn chơi.")]
         [SerializeField] private bool _connectOnStart = true;
-        [Tooltip("Chi dung WebSocket (khuyen nghi). Bo chon neu server khong nhan WebSocket.")]
+
+        [Tooltip("Chỉ sử dụng giao thức WebSocket.")]
         [SerializeField] private bool _webSocketOnly = true;
 
-        [Header("Ten event (khop backend Nhom 5)")]
+        [Header("Tên Sự Kiện Socket (Khớp Backend)")]
         [SerializeField] private string _setUniqueIdEvent = "setUniqueID";
         [SerializeField] private string _chatEvent = "chat";
         [SerializeField] private string _followEvent = "follow";
         [SerializeField] private string _likeEvent = "like";
         [SerializeField] private string _giftEvent = "gift";
 
-        [Header("Duong dan JSON (khop backend Nhom 5)")]
+        [Header("Đường Dẫn Thuộc Tính JSON")]
         [SerializeField] private string _userIdPath = "data.user.userId";
         [SerializeField] private string _nicknamePath = "data.user.nickname";
         [SerializeField] private string _uniqueIdPath = "data.user.uniqueId";
         [SerializeField] private string _commentPath = "comment";
-        [Tooltip("Tong so like DON tu dau phien (khong phai +1 moi event) - dung tinh hieu so.")]
         [SerializeField] private string _totalLikePath = "totalLike";
         [SerializeField] private string _giftNamePath = "giftName";
+        [SerializeField] private string _diamondCountPath = "diamondCount";
+        [SerializeField] private string _coinCountPath = "coinCount";
+        [SerializeField] private string _repeatCountPath = "repeatCount";
 
-        [Header("Cau hinh Like -> Nang luong")]
-        [Tooltip("Cu du bao nhieu like (tinh theo hieu so totalLike) thi cong nang luong 1 lan.")]
+        [Header("Quy Đổi Like -> Năng Lượng")]
+        [Tooltip("Số lượt like đạt mốc để cộng 1 lần năng lượng (mặc định: 20 like = +10 năng lượng ~ 1%).")]
         [SerializeField] private int _likesPerEnergyStep = 20;
-        [Tooltip("So diem nang luong cong moi lan du nguong (10 = 1% neu Max = 1000, dung y het phim F6/F11).")]
         [SerializeField] private int _energyPerStep = 10;
 
-        [Header("Cau hinh Gift Hoa Hong (giai doan thu nghiem: CHI nhan dien, khong doi phe)")]
-        [Tooltip("Cac ten gift duoc tinh la Hoa Hong (khong phan biet hoa/thuong). TikTok co the tra ten tieng Anh (Rose) tuy ngon ngu tai khoan - can test that de xac nhan roi chinh lai danh sach nay.")]
-        [SerializeField] private string[] _roseGiftNames = new string[] { "Rose", "rose", "Hoa hồng", "hoa hồng" };
-
-        [Header("Tham chieu (de trong = tu tim trong scene)")]
+        [Header("Tham Chiếu Gameplay Subsystems")]
         [SerializeField] private FactionTugOfWarManager _factionManager;
-        [SerializeField] private SteamRush.Features.UI.HUDManager _hudManager;
+        [SerializeField] private HUDManager _hudManager;
+        [SerializeField] private ChatLaneRunnerController _runnerController;
+        [SerializeField] private ChatRunnerQueueManager _queueManager;
+        [SerializeField] private GiftManager _giftManager;
 
-        [Header("Hien thi / Debug")]
+        [Header("Hiển Thị & Log")]
         [SerializeField] private bool _showPopups = true;
         [SerializeField] private bool _logEvents = true;
 
         [Serializable] public class FollowerJoinedEvent : UnityEvent<string, string> { }
-        [Tooltip("Ban khi co follower MOI (userId, ten hien thi). Dung de noi them hanh dong neu can.")]
         [SerializeField] private FollowerJoinedEvent _followerJoined = new FollowerJoinedEvent();
         public FollowerJoinedEvent FollowerJoined => _followerJoined;
 
         private readonly TikTokFollowerRegistry _followers = new TikTokFollowerRegistry();
-        // Khoa = userId, gia tri = so "buoc 20 like" DA xu ly (totalLike / _likesPerEnergyStep).
-        // Dung de tinh hieu so, vi totalLike la TONG DON, khong phai +1 moi event.
         private readonly Dictionary<string, int> _processedLikeStepsByUser = new Dictionary<string, int>();
         private SocketIOUnity _socket;
 
         public TikTokFollowerRegistry Followers => _followers;
         public bool IsConnected => _socket != null && _socket.Connected;
+        public string ServerUrl => _serverUrl;
+        public string TikTokUniqueId => _tiktokUniqueId;
+
+        private void Awake()
+        {
+            EnsureReferences();
+        }
 
         private void OnEnable()
         {
@@ -101,22 +100,27 @@ namespace SteamRush.Features.StreamIntegration
             Disconnect();
         }
 
+        public void EnsureReferences()
+        {
+            if (_factionManager == null) _factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
+            if (_hudManager == null) _hudManager = FindFirstObjectByType<HUDManager>();
+            if (_runnerController == null) _runnerController = FindFirstObjectByType<ChatLaneRunnerController>();
+            if (_queueManager == null) _queueManager = FindFirstObjectByType<ChatRunnerQueueManager>();
+            if (_giftManager == null) _giftManager = GiftManager.Instance ?? FindFirstObjectByType<GiftManager>();
+        }
+
         [ContextMenu("Connect")]
         public void Connect()
         {
-            if (_socket != null)
-            {
-                return;
-            }
+            if (_socket != null) return;
 
             string uniqueId = NormalizeUniqueId(_tiktokUniqueId);
             if (string.IsNullOrEmpty(uniqueId))
             {
-                Debug.LogWarning("[TikTokLiveClient] Chưa nhập Tiktok Unique Id (username kênh đang Live) - không kết nối.");
+                Debug.LogWarning("[TikTokLiveClient] Chưa nhập TikTok Unique ID (username kênh đang Live) - bỏ qua kết nối tự động.");
                 return;
             }
 
-            // Phien live moi: bat dau danh sach follower tu dau, roi dang ky lam nguon follower chung.
             _followers.Clear();
             _followers.Register();
             _processedLikeStepsByUser.Clear();
@@ -132,29 +136,30 @@ namespace SteamRush.Features.StreamIntegration
                 _socket = new SocketIOUnity(new Uri(_serverUrl), options);
                 _socket.JsonSerializer = new NewtonsoftJsonSerializer();
 
-                // Cac callback nay chay o thread nen: chi log/emit, KHONG dung API Unity khac o day.
                 _socket.OnConnected += (sender, e) =>
                 {
-                    Debug.Log($"[TikTokLiveClient] Đã kết nối backend {_serverUrl}. Gửi {_setUniqueIdEvent} = {uniqueId}");
+                    Debug.Log($"[TikTokLiveClient] Đã kết nối Socket tới {_serverUrl}. Gửi {_setUniqueIdEvent} = '{uniqueId}'");
                     _socket.Emit(_setUniqueIdEvent, uniqueId);
                 };
+
                 _socket.OnDisconnected += (sender, reason) =>
                 {
                     Debug.Log($"[TikTokLiveClient] Mất kết nối backend: {reason}");
                 };
+
                 _socket.OnError += (sender, error) =>
                 {
                     Debug.LogWarning($"[TikTokLiveClient] Lỗi socket: {error}");
                 };
 
-                // OnUnityThread: handler chay o main thread (Update) nen goi duoc API Unity/UI.
+                // Lắng nghe các event trên Unity Main Thread để gọi an toàn API gameplay & UI
                 _socket.OnUnityThread(_chatEvent, HandleChat);
                 _socket.OnUnityThread(_followEvent, HandleFollow);
                 _socket.OnUnityThread(_likeEvent, HandleLike);
                 _socket.OnUnityThread(_giftEvent, HandleGift);
 
                 _socket.Connect();
-                Debug.Log($"[TikTokLiveClient] Đang kết nối tới {_serverUrl} ...");
+                Debug.Log($"[TikTokLiveClient] Đang kết nối tới {_serverUrl}...");
             }
             catch (Exception ex)
             {
@@ -177,292 +182,344 @@ namespace SteamRush.Features.StreamIntegration
                 {
                     Debug.LogWarning($"[TikTokLiveClient] Lỗi khi ngắt kết nối: {ex.Message}");
                 }
-
                 _socket = null;
             }
 
-            // Go dang ky de FollowerGate quay ve che do mock (cho qua) khi khong con ket noi that.
             _followers.Unregister();
         }
 
+        #region Event Handlers
+
+        /// <summary>
+        /// Xử lý sự kiện Follower mới -> Thêm vào hàng đợi tiếp sức Runner.
+        /// </summary>
         private void HandleFollow(SocketIOResponse response)
         {
+            EnsureReferences();
             JObject json = ParseResponse(response);
-            if (json == null)
-            {
-                return;
-            }
+            if (json == null) return;
 
             string userId = ReadString(json, _userIdPath);
-            if (string.IsNullOrEmpty(userId))
-            {
-                Debug.LogWarning($"[TikTokLiveClient] Event follow thiếu userId (path '{_userIdPath}'). Raw: {json}");
-                return;
-            }
+            if (string.IsNullOrEmpty(userId)) return;
 
             string displayName = GetDisplayName(json, userId);
-
-            // Phai them vao registry TRUOC khi lam bat ky viec gi khac can quyen Follow.
             bool isNew = _followers.AddFollower(userId);
 
             if (_logEvents)
             {
-                Debug.Log($"[TikTokLiveClient] FOLLOW: {displayName} ({userId}) - {(isNew ? "mới" : "đã có")}");
+                Debug.Log($"[TikTokLiveClient] FOLLOW: {displayName} ({userId}) - {(isNew ? "Mới" : "Đã có")}");
             }
 
-            if (!isNew)
+            if (!isNew) return;
+
+            // Đưa người theo dõi mới vào hàng đợi chạy Runner tiếp sức
+            if (_queueManager != null)
             {
-                return;
+                _queueManager.TryEnqueueFollower(displayName);
             }
 
-            ShowPopup($"[{displayName}] vừa Follow kênh! Gõ red hoặc blue để chọn phe.", true);
+            ShowPopup($"[{displayName}] vừa Follow kênh và gia nhập hàng đợi chạy!", true);
             _followerJoined.Invoke(userId, displayName);
         }
 
+        /// <summary>
+        /// Xử lý sự kiện Chat/Comment:
+        /// - Chọn phe: "blue", "red"
+        /// - Điều khiển Runner (phe Blue): "1", "2", "3", "jump", "fast"
+        /// - Thả xe cản đường (phe Red): "1", "2", "3", "#xecon", "#xebantai", "#xetai"
+        /// </summary>
         private void HandleChat(SocketIOResponse response)
         {
+            EnsureReferences();
             JObject json = ParseResponse(response);
-            if (json == null)
-            {
-                return;
-            }
+            if (json == null) return;
 
             string comment = ReadString(json, _commentPath);
             string userId = ReadString(json, _userIdPath);
-            if (string.IsNullOrEmpty(comment) || string.IsNullOrEmpty(userId))
-            {
-                return;
-            }
-
-            if (_factionManager == null)
-            {
-                _factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
-            }
-
-            if (_factionManager == null)
-            {
-                Debug.LogWarning("[TikTokLiveClient] Không tìm thấy FactionTugOfWarManager trong scene.");
-                return;
-            }
+            if (string.IsNullOrEmpty(comment) || string.IsNullOrEmpty(userId)) return;
 
             string displayName = GetDisplayName(json, userId);
+            string trimmedCmd = comment.Trim().ToLowerInvariant();
 
-            // OnChatCommand tu kiem tra Follow (FollowerGate) va tra true CHI KHI thanh vien thay doi.
-            bool changed = _factionManager.OnChatCommand(userId, comment);
-
-            if (_logEvents)
+            // 1. Kiểm tra Lệnh Chọn Phe (Join Team)
+            if (trimmedCmd == "blue" || trimmedCmd == "#blue" || trimmedCmd == "fan" || trimmedCmd == "#fan" ||
+                trimmedCmd == "red" || trimmedCmd == "#red" || trimmedCmd == "anti" || trimmedCmd == "#anti")
             {
-                Debug.Log($"[TikTokLiveClient] CHAT: {displayName} ({userId}): \"{comment}\" -> {(changed ? "đổi/vào phe" : "bỏ qua")}");
-            }
-
-            if (!changed)
-            {
+                if (_factionManager != null)
+                {
+                    bool changed = _factionManager.OnChatCommand(userId, trimmedCmd);
+                    if (changed)
+                    {
+                        bool isFan = _factionManager.GetFaction(userId) == FactionType.Fan;
+                        string teamName = isFan ? "Blue Team (Ủng hộ Runner)" : "Red Team (Cản đường Runner)";
+                        ShowPopup($"[{displayName}] đã gia nhập {teamName}!", isFan);
+                    }
+                }
                 return;
             }
 
-            if (_factionManager.GetFaction(userId) == FactionType.Fan)
+            // 2. Kiểm tra Phe Hiện Tại của Người Xem để điều hướng hành động tương ứng
+            FactionType faction = _factionManager != null ? _factionManager.GetFaction(userId) : FactionType.Fan;
+
+            if (faction == FactionType.Fan)
             {
-                ShowPopup($"[{displayName}] đã gia nhập Blue Team! (Ủng hộ Runner)", true);
+                // ===== PHE BLUE (FAN): ĐIỀU KHIỂN RUNNER =====
+                if (trimmedCmd == "1" || trimmedCmd == "2" || trimmedCmd == "3" || 
+                    trimmedCmd == "left" || trimmedCmd == "right")
+                {
+                    _runnerController?.ExecuteSingleCommand(trimmedCmd);
+                    _hudManager?.ShowFanAction(displayName, $"Lane {trimmedCmd}");
+                }
+                else if (trimmedCmd == "jump" || trimmedCmd == "j")
+                {
+                    _runnerController?.ExecuteSingleCommand("jump");
+                    _hudManager?.ShowFanAction(displayName, "Jump!");
+                }
+                else if (trimmedCmd == "fast" || trimmedCmd == "speed")
+                {
+                    _runnerController?.ExecuteSingleCommand("fast");
+                    _hudManager?.ShowFanAction(displayName, "Turbo Boost!");
+                }
             }
             else
             {
-                ShowPopup($"[{displayName}] đã gia nhập Red Team! (Cản đường Runner)", false);
+                // ===== PHE RED (ANTI): THẢ XE CẢN ĐƯỜNG =====
+                if (trimmedCmd == "1" || trimmedCmd == "2" || trimmedCmd == "3")
+                {
+                    if (int.TryParse(trimmedCmd, out int laneIndex))
+                    {
+                        bool spawned = _factionManager != null && _factionManager.TrySpawnAntiObstacleCar(userId, laneIndex);
+                        if (spawned)
+                        {
+                            _hudManager?.ShowAntiAction(displayName, $"Car on Lane {laneIndex}!");
+                        }
+                    }
+                }
+                else if (trimmedCmd == "#xecon" || trimmedCmd == "#sedan")
+                {
+                    _giftManager?.SpawnAntiCar(VehicleTier.SedanCar, displayName);
+                }
+                else if (trimmedCmd == "#xebantai" || trimmedCmd == "#pickup")
+                {
+                    _giftManager?.SpawnAntiCar(VehicleTier.PickupTruck, displayName);
+                }
+                else if (trimmedCmd == "#xetai" || trimmedCmd == "#heavy")
+                {
+                    _giftManager?.SpawnAntiCar(VehicleTier.HeavyTruck, displayName);
+                }
             }
         }
 
+        /// <summary>
+        /// Xử lý sự kiện Like -> Tích lũy tim và nạp năng lượng tương ứng cho phe của người like.
+        /// </summary>
         private void HandleLike(SocketIOResponse response)
         {
+            EnsureReferences();
             JObject json = ParseResponse(response);
-            if (json == null)
-            {
-                return;
-            }
+            if (json == null) return;
 
             string userId = ReadString(json, _userIdPath);
             string totalLikeRaw = ReadString(json, _totalLikePath);
-            if (string.IsNullOrEmpty(userId) || !int.TryParse(totalLikeRaw, out int totalLike))
-            {
-                Debug.LogWarning($"[TikTokLiveClient] Event like thiếu userId hoặc totalLike không hợp lệ (path '{_totalLikePath}'). Raw: {json}");
-                return;
-            }
+            if (string.IsNullOrEmpty(userId) || !int.TryParse(totalLikeRaw, out int totalLike)) return;
 
             int newSteps = _likesPerEnergyStep > 0 ? totalLike / _likesPerEnergyStep : 0;
             _processedLikeStepsByUser.TryGetValue(userId, out int oldSteps);
 
-            if (newSteps <= oldSteps)
-            {
-                // Chua du them 1 nguong 20 like moi (hoac totalLike giam bat thuong) - khong lam gi.
-                if (newSteps < oldSteps)
-                {
-                    Debug.LogWarning($"[TikTokLiveClient] LIKE: totalLike của {userId} giảm bất thường ({totalLike}, bước cũ {oldSteps} -> mới {newSteps}). Bỏ qua, không trừ ngược năng lượng.");
-                }
-                return;
-            }
+            if (newSteps <= oldSteps) return;
 
             _processedLikeStepsByUser[userId] = newSteps;
-
-            if (_factionManager == null)
-            {
-                _factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
-            }
-
-            if (_factionManager == null)
-            {
-                Debug.LogWarning("[TikTokLiveClient] Không tìm thấy FactionTugOfWarManager trong scene (like).");
-                return;
-            }
-
             int stepsGained = newSteps - oldSteps;
             int energyAmount = stepsGained * _energyPerStep;
-            FactionType faction = _factionManager.GetFaction(userId);
+
+            FactionType faction = _factionManager != null ? _factionManager.GetFaction(userId) : FactionType.Fan;
             string displayName = GetDisplayName(json, userId);
 
-            if (faction == FactionType.Fan)
+            if (_factionManager != null)
             {
-                _factionManager.DebugAdjustFanEnergy(energyAmount);
-            }
-            else
-            {
-                _factionManager.DebugAdjustAntiEnergy(energyAmount);
+                if (faction == FactionType.Fan)
+                {
+                    _factionManager.AddLikes(FactionType.Fan, energyAmount);
+                }
+                else
+                {
+                    _factionManager.AddLikes(FactionType.Anti, energyAmount);
+                }
             }
 
             if (_logEvents)
             {
-                Debug.Log($"[TikTokLiveClient] LIKE: {displayName} ({userId}) đạt {totalLike} like (+{stepsGained} bước x{_likesPerEnergyStep}) -> +{energyAmount} điểm phe {faction}.");
+                Debug.Log($"[TikTokLiveClient] LIKE: {displayName} ({userId}) like mốc {totalLike} (+{stepsGained} bước) -> +{energyAmount} năng lượng {faction}.");
             }
-
-            string factionLabel = faction == FactionType.Fan ? "FAN" : "ANTI";
-            ShowPopup($"[{displayName}] Like đủ mốc -> +{energyAmount} năng lượng phe {factionLabel}!", faction == FactionType.Fan);
         }
 
+        /// <summary>
+        /// Xử lý sự kiện Gift -> Ánh xạ quà tặng vào các cơ chế gameplay thực tế.
+        /// </summary>
         private void HandleGift(SocketIOResponse response)
         {
+            EnsureReferences();
             JObject json = ParseResponse(response);
-            if (json == null)
-            {
-                return;
-            }
+            if (json == null) return;
 
             string userId = ReadString(json, _userIdPath);
             string giftName = ReadString(json, _giftNamePath);
-            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(giftName))
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(giftName)) return;
+
+            string displayName = GetDisplayName(json, userId);
+
+            // Đọc giá trị xu hoặc số kim cương của quà
+            int coins = 1;
+            string coinStr = ReadString(json, _diamondCountPath);
+            if (string.IsNullOrEmpty(coinStr)) coinStr = ReadString(json, _coinCountPath);
+            if (string.IsNullOrEmpty(coinStr)) coinStr = ReadString(json, "cointCount"); // fallback typo backend
+            if (!string.IsNullOrEmpty(coinStr) && int.TryParse(coinStr, out int parsedCoins))
             {
-                Debug.LogWarning($"[TikTokLiveClient] Event gift thiếu userId hoặc giftName. Raw: {json}");
+                coins = parsedCoins;
+            }
+
+            // Đọc số lượng quà dồn (repeatCount)
+            int repeatCount = 1;
+            string repeatStr = ReadString(json, _repeatCountPath);
+            if (!string.IsNullOrEmpty(repeatStr) && int.TryParse(repeatStr, out int parsedRepeat))
+            {
+                repeatCount = Mathf.Max(1, parsedRepeat);
+            }
+
+            int totalValue = coins * repeatCount;
+            FactionType faction = _factionManager != null ? _factionManager.GetFaction(userId) : FactionType.Fan;
+            string lowerName = giftName.ToLowerInvariant();
+
+            if (_logEvents)
+            {
+                Debug.Log($"[TikTokLiveClient] GIFT: {displayName} tặng {giftName} x{repeatCount} ({totalValue} xu) - Phe {faction}.");
+            }
+
+            // ===== PHÂN LOẠI & KÍCH HOẠT CƠ CHẾ GAME THEO LOẠI QUÀ =====
+
+            // 1. Quà Nhảy Meme Ăn Mừng (Gift Dance)
+            if (lowerName.Contains("dance") || lowerName.Contains("nhảy") || lowerName.Contains("vũ"))
+            {
+                _giftManager?.TriggerGiftDance(displayName);
                 return;
             }
 
-            bool isRose = _roseGiftNames != null && _roseGiftNames.Any(
-                name => !string.IsNullOrEmpty(name) && string.Equals(name.Trim(), giftName.Trim(), StringComparison.OrdinalIgnoreCase));
-
-            if (!isRose)
+            // 2. Quà Vé VIP Chuyển Gậy Hàng Đợi (VIP Queue Ticket)
+            if (lowerName.Contains("vip") || lowerName.Contains("ticket") || lowerName.Contains("vé"))
             {
-                // Giai doan thu nghiem: CHI xu ly Gift Hoa Hong, cac gift khac bo qua co chu dich.
-                if (_logEvents)
+                _queueManager?.TryEnqueuePriorityFollower(displayName);
+                ShowPopup($"[{displayName}] dùng Vé VIP! Sẽ chuyển gậy chạy tiếp theo ngay lập tức!", true);
+                return;
+            }
+
+            // 3. Quà Đặc Quyền Lớn (> 100 xu): Bão Xe Không Giới Hạn hoặc Bão Xe Tải Nặng
+            if (totalValue >= 100 || lowerName.Contains("lion") || lowerName.Contains("sư tử") || 
+                lowerName.Contains("tên lửa") || lowerName.Contains("rocket") || lowerName.Contains("storm"))
+            {
+                if (faction == FactionType.Anti)
                 {
-                    Debug.Log($"[TikTokLiveClient] GIFT: nhận '{giftName}' - không phải Hoa Hồng, bỏ qua (giai đoạn thử nghiệm).");
+                    _giftManager?.ActivateUnlimitedCars(displayName, 60f);
+                }
+                else
+                {
+                    _giftManager?.ActivateHeavyTruckPhase(displayName);
                 }
                 return;
             }
 
-            if (_factionManager == null)
+            // 4. Quà Tăng Tốc / Khiên / Năng Lượng / Xe Phân Cấp theo phe
+            if (faction == FactionType.Fan)
             {
-                _factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
+                // --- PHE FAN / BLUE TEAM ---
+                if (lowerName.Contains("shield") || lowerName.Contains("khiên") || lowerName.Contains("donut") || totalValue >= 30)
+                {
+                    _giftManager?.ActivateShield(displayName, 15f);
+                }
+                else if (lowerName.Contains("sprint") || lowerName.Contains("speed") || lowerName.Contains("cap") || lowerName.Contains("mũ"))
+                {
+                    _giftManager?.ActivateSprintBuff(displayName, 30f);
+                }
+                else
+                {
+                    // Quà tặng thông thường (Hoa Hồng, Quả tạ, Cà phê...) -> Bình Năng Lượng Xanh (+300)
+                    _giftManager?.AddBlueEnergy(displayName, 300);
+                }
             }
-
-            if (_factionManager == null)
+            else
             {
-                Debug.LogWarning("[TikTokLiveClient] Không tìm thấy FactionTugOfWarManager trong scene (gift).");
-                return;
+                // --- PHE ANTI / RED TEAM ---
+                if (lowerName.Contains("heavy") || lowerName.Contains("tải") || totalValue >= 50)
+                {
+                    _giftManager?.SpawnAntiCar(VehicleTier.HeavyTruck, displayName);
+                }
+                else if (lowerName.Contains("pickup") || lowerName.Contains("bán tải") || totalValue >= 20)
+                {
+                    _giftManager?.SpawnAntiCar(VehicleTier.PickupTruck, displayName);
+                }
+                else if (lowerName.Contains("car") || lowerName.Contains("sedan") || lowerName.Contains("xe") || totalValue >= 10)
+                {
+                    _giftManager?.SpawnAntiCar(VehicleTier.SedanCar, displayName);
+                }
+                else
+                {
+                    // Quà hỗ trợ nạp Năng Lượng Đỏ (+500)
+                    _giftManager?.AddRedEnergy(displayName, 500);
+                }
             }
-
-            string displayName = GetDisplayName(json, userId);
-
-            // CHI doc phe hien tai (khong gan/doi phe, khong cong nang luong) - dung theo mo ta task.
-            FactionType faction = _factionManager.GetFaction(userId);
-            string factionLabel = faction == FactionType.Fan ? "FAN" : "ANTI";
-
-            if (_logEvents)
-            {
-                Debug.Log($"[TikTokLiveClient] GIFT: {displayName} ({userId}) tặng {giftName} - thuộc phe {factionLabel}.");
-            }
-
-            ShowPopup($"[DEBUG] [{displayName}] (Phe {factionLabel}) vừa tặng Hoa Hồng!", faction == FactionType.Fan);
         }
+
+        #endregion
+
+        #region Helpers
 
         private void ShowPopup(string message, bool isFan)
         {
-            if (!_showPopups)
-            {
-                return;
-            }
-
-            if (_hudManager == null)
-            {
-                _hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-            }
-
+            if (!_showPopups) return;
+            EnsureReferences();
             _hudManager?.ShowStatusPopup(message, isFan);
         }
 
         private string GetDisplayName(JObject json, string fallbackUserId)
         {
             string nickname = ReadString(json, _nicknamePath);
-            if (!string.IsNullOrEmpty(nickname))
-            {
-                return nickname;
-            }
+            if (!string.IsNullOrEmpty(nickname)) return nickname;
 
             string uniqueId = ReadString(json, _uniqueIdPath);
             return string.IsNullOrEmpty(uniqueId) ? fallbackUserId : uniqueId;
         }
 
-        // Backend emit 1 object; thu doc truc tiep, that bai thi doc qua chuoi JSON dang mang [ {...} ].
         private static JObject ParseResponse(SocketIOResponse response)
         {
             try
             {
                 return response.GetValue<JObject>();
             }
-            catch (Exception)
+            catch
             {
                 try
                 {
                     JArray array = JArray.Parse(response.ToString());
                     return array.Count > 0 ? array[0] as JObject : null;
                 }
-                catch (Exception ex)
+                catch
                 {
-                    Debug.LogWarning($"[TikTokLiveClient] Không đọc được JSON từ backend: {ex.Message}");
                     return null;
                 }
             }
         }
 
-        // userId co the la so hoac chuoi (backend lay user.id || user.idStr) -> luon doc thanh chuoi.
         private static string ReadString(JObject json, string path)
         {
-            if (string.IsNullOrEmpty(path))
-            {
-                return string.Empty;
-            }
-
+            if (string.IsNullOrEmpty(path)) return string.Empty;
             JToken token = json.SelectToken(path);
-            if (token == null || token.Type == JTokenType.Null)
-            {
-                return string.Empty;
-            }
-
-            return token.ToString();
+            return token == null || token.Type == JTokenType.Null ? string.Empty : token.ToString();
         }
 
         private static string NormalizeUniqueId(string raw)
         {
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                return string.Empty;
-            }
-
-            return raw.Trim().TrimStart('@');
+            return string.IsNullOrWhiteSpace(raw) ? string.Empty : raw.Trim().TrimStart('@');
         }
+
+        #endregion
     }
 }

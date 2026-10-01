@@ -13125,6 +13125,7 @@ GameObject:
   - component: {fileID: 845593091}
   - component: {fileID: 845593092}
   - component: {fileID: 845593093}
+  - component: {fileID: 845593094}
   m_Layer: 0
   m_Name: ChatRunnerManagers
   m_TagString: Untagged
@@ -13351,6 +13352,48 @@ MonoBehaviour:
   confettiLifetime: 4
   victoryDecelDuration: 1.5
   popupDelay: 1.5
+--- !u!114 &845593094
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 845593083}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e352aa37985029a4da82b118b0342afe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.StreamIntegration.TikTokLiveClient
+  _serverUrl: http://localhost:9090
+  _tiktokUniqueId: 
+  _connectOnStart: 1
+  _webSocketOnly: 1
+  _setUniqueIdEvent: setUniqueID
+  _chatEvent: chat
+  _followEvent: follow
+  _likeEvent: like
+  _giftEvent: gift
+  _userIdPath: data.user.userId
+  _nicknamePath: data.user.nickname
+  _uniqueIdPath: data.user.uniqueId
+  _commentPath: comment
+  _totalLikePath: totalLike
+  _giftNamePath: giftName
+  _diamondCountPath: diamondCount
+  _coinCountPath: coinCount
+  _repeatCountPath: repeatCount
+  _likesPerEnergyStep: 20
+  _energyPerStep: 10
+  _factionManager: {fileID: 845593088}
+  _hudManager: {fileID: 845593090}
+  _runnerController: {fileID: 913794240}
+  _queueManager: {fileID: 845593087}
+  _giftManager: {fileID: 2099900003}
+  _showPopups: 1
+  _logEvents: 1
+  _followerJoined:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &852139744
 GameObject:
   m_ObjectHideFlags: 0
