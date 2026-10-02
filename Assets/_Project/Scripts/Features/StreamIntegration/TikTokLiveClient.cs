@@ -52,7 +52,10 @@ namespace SteamRush.Features.StreamIntegration
         Special_VIPRelayTicket,
 
         [InspectorName("Dynamic: By Faction")]
-        Dynamic_ByFaction
+        Dynamic_ByFaction,
+
+        [InspectorName("Like: +Energy")]
+        Like_Energy
     }
 
     [System.Serializable]
@@ -67,8 +70,9 @@ namespace SteamRush.Features.StreamIntegration
         [Tooltip("Sprite icon for this gift (leaves empty to auto-resolve official TikTok icon).")]
         public Sprite giftIcon;
 
-        [Tooltip("Short description displayed on the in-game gift card.")]
-        public string englishDescription = "+300 Blue Energy";
+        [Tooltip("Description displayed directly on the in-game gift card UI.")]
+        [UnityEngine.Serialization.FormerlySerializedAs("englishDescription")]
+        public string description = "+300 Blue Energy";
 
         [Tooltip("Gameplay action triggered when viewers send this gift.")]
         public GiftActionType action = GiftActionType.Blue_EnergyBottle;
@@ -142,16 +146,16 @@ namespace SteamRush.Features.StreamIntegration
         [Tooltip("List of TikTok gift mappings (linked by Gift ID or Name) to in-game actions.")]
         [SerializeField] private List<TikTokGiftMapping> _giftMappings = new List<TikTokGiftMapping>
         {
-            new TikTokGiftMapping { giftId = 5655, giftName = "Rose", action = GiftActionType.Blue_EnergyBottle, customValue = 300, englishDescription = "+300 Blue Energy" },
-            new TikTokGiftMapping { giftId = 5269, giftName = "TikTok", action = GiftActionType.Blue_SpeedBoost, customValue = 20, englishDescription = "Turbo Speed +50% (20s)" },
-            new TikTokGiftMapping { giftId = 5487, giftName = "Finger Heart", action = GiftActionType.Blue_Shield, customValue = 15, englishDescription = "Invincible Shield (15s)" },
-            new TikTokGiftMapping { giftId = 5585, giftName = "Dumbbell", action = GiftActionType.Red_SpawnPickup, customValue = 0, englishDescription = "Pickup Truck Hazard" },
-            new TikTokGiftMapping { giftId = 5879, giftName = "Cap", action = GiftActionType.Blue_SpeedBoost, customValue = 30, englishDescription = "Sprint Speed Boost (30s)" },
-            new TikTokGiftMapping { giftId = 5338, giftName = "Donut", action = GiftActionType.Blue_Shield, customValue = 20, englishDescription = "Protective Shield (20s)" },
-            new TikTokGiftMapping { giftId = 6001, giftName = "Lion", action = GiftActionType.Red_UnlimitedCars, customValue = 60, englishDescription = "Unlimited Cars Rush (60s)" },
-            new TikTokGiftMapping { giftId = 0, giftName = "Dance", action = GiftActionType.Special_GiftDance, customValue = 5, englishDescription = "Meme Victory Dance (5s)" },
-            new TikTokGiftMapping { giftId = 0, giftName = "Rain", action = GiftActionType.Special_RainHazard, customValue = 60, englishDescription = "Slippery Rainy Track (60s)" },
-            new TikTokGiftMapping { giftId = 0, giftName = "VIP", action = GiftActionType.Special_VIPRelayTicket, customValue = 0, englishDescription = "Priority Relay Runner" }
+            new TikTokGiftMapping { giftId = 5655, giftName = "Rose", action = GiftActionType.Blue_EnergyBottle, customValue = 300, description = "+300 Blue Energy" },
+            new TikTokGiftMapping { giftId = 5269, giftName = "TikTok", action = GiftActionType.Blue_SpeedBoost, customValue = 20, description = "Turbo Speed +50% (20s)" },
+            new TikTokGiftMapping { giftId = 5487, giftName = "Finger Heart", action = GiftActionType.Blue_Shield, customValue = 15, description = "Invincible Shield (15s)" },
+            new TikTokGiftMapping { giftId = 5585, giftName = "Dumbbell", action = GiftActionType.Red_SpawnPickup, customValue = 0, description = "Pickup Truck Hazard" },
+            new TikTokGiftMapping { giftId = 5879, giftName = "Cap", action = GiftActionType.Blue_SpeedBoost, customValue = 30, description = "Sprint Speed Boost (30s)" },
+            new TikTokGiftMapping { giftId = 5338, giftName = "Donut", action = GiftActionType.Blue_Shield, customValue = 20, description = "Protective Shield (20s)" },
+            new TikTokGiftMapping { giftId = 6001, giftName = "Lion", action = GiftActionType.Red_UnlimitedCars, customValue = 60, description = "Unlimited Cars Rush (60s)" },
+            new TikTokGiftMapping { giftId = 0, giftName = "Dance", action = GiftActionType.Special_GiftDance, customValue = 5, description = "Meme Victory Dance (5s)" },
+            new TikTokGiftMapping { giftId = 0, giftName = "Rain", action = GiftActionType.Special_RainHazard, customValue = 60, description = "Slippery Rainy Track (60s)" },
+            new TikTokGiftMapping { giftId = 0, giftName = "VIP", action = GiftActionType.Special_VIPRelayTicket, customValue = 0, description = "Priority Relay Runner" }
         };
 
         public List<TikTokGiftMapping> GiftMappings => _giftMappings;
@@ -785,6 +789,13 @@ namespace SteamRush.Features.StreamIntegration
                 case GiftActionType.Special_VIPRelayTicket:
                     _queueManager?.TryEnqueuePriorityFollower(displayName);
                     ShowPopup($"VIP: [{displayName}]", true);
+                    break;
+                case GiftActionType.Like_Energy:
+                    int energy = val > 0 ? Mathf.RoundToInt(val) : 10;
+                    if (faction == FactionType.Fan)
+                        _factionManager?.AddLikes(FactionType.Fan, energy);
+                    else
+                        _factionManager?.AddLikes(FactionType.Anti, energy);
                     break;
                 case GiftActionType.Dynamic_ByFaction:
                     return false; // Để fallback xử lý theo phe

@@ -284,6 +284,7 @@ namespace SteamRush.Features.UI.Views
                 GiftActionType.Special_GiftDance => specialBase + 1,
                 GiftActionType.Special_RainHazard => specialBase + 2,
                 GiftActionType.Special_VIPRelayTicket => specialBase + 3,
+                GiftActionType.Like_Energy => specialBase + 4,
 
                 _ => 99
             };
@@ -568,6 +569,9 @@ namespace SteamRush.Features.UI.Views
                 case GiftActionType.Red_EnergyBottle:
                     return _redTeamColor;
 
+                case GiftActionType.Like_Energy:
+                    return Color.white;
+
                 default:
                     return _specialColor;
             }
@@ -575,20 +579,12 @@ namespace SteamRush.Features.UI.Views
 
         public string GetConciseDesc(TikTokGiftMapping mapping)
         {
-            string raw = (mapping.englishDescription ?? "").ToLowerInvariant();
+            if (mapping == null) return string.Empty;
 
-            if (raw.Contains("energy")) return "+300 Energy";
-            if (raw.Contains("turbo")) return "Turbo Speed";
-            if (raw.Contains("invincible shield") || raw.Contains("shield (15s)") || raw.Contains("shield 15s")) return "Shield 15s";
-            if (raw.Contains("protective shield") || raw.Contains("shield (20s)") || raw.Contains("shield 20s")) return "Shield 20s";
-            if (raw.Contains("sprint") || raw.Contains("speed boost")) return "Speed Boost";
-            if (raw.Contains("sedan")) return "Spawn Car";
-            if (raw.Contains("pickup")) return "Pickup Truck";
-            if (raw.Contains("heavy")) return "Heavy Truck";
-            if (raw.Contains("unlimited") || raw.Contains("rush cars")) return "Unlimited Cars";
-            if (raw.Contains("dance")) return "Meme Dance";
-            if (raw.Contains("rain")) return "Rain Hazard";
-            if (raw.Contains("vip") || raw.Contains("relay")) return "VIP Runner";
+            if (!string.IsNullOrWhiteSpace(mapping.description))
+            {
+                return mapping.description.Trim();
+            }
 
             return mapping.action switch
             {
@@ -603,6 +599,7 @@ namespace SteamRush.Features.UI.Views
                 GiftActionType.Special_GiftDance => "Meme Dance",
                 GiftActionType.Special_RainHazard => "Rain Hazard",
                 GiftActionType.Special_VIPRelayTicket => "VIP Runner",
+                GiftActionType.Like_Energy => "Like: +Energy",
                 _ => "Support"
             };
         }
@@ -620,6 +617,7 @@ namespace SteamRush.Features.UI.Views
             }
 
             string lower = (giftName ?? "").ToLowerInvariant();
+            if (lower.Contains("like") || lower.Contains("tap") || lower.Contains("heart") || lower.Contains("tim")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/heart.png");
             if (lower.Contains("rose") || lower.Contains("hoa")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/rose.png");
             if (lower.Contains("tiktok")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/tiktok.png");
             if (lower.Contains("heart") || lower.Contains("tim")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/heart.png");
