@@ -72,13 +72,10 @@ MonoBehaviour:
   _worldSpeedManager: {fileID: 0}
   _legDistanceMeters: 100
   _initialRunnerId: Streamer_Alex
-  _initialFollowers:
-  - Viewer_Bao
-  - Viewer_Chi
-  - Top1_Dung
-  - Mod_Giang
-  - Gamer_Huy
-  _autoReplenishMockQueue: 1
+  _enableMockFollowers: 0
+  _initialFollowers: []
+  _autoReplenishMockQueue: 0
+  _pauseWhenQueueEmpty: 0
   _hudManager: {fileID: 0}
   _runnerTransform: {fileID: 0}
   _defaultAvatar: {fileID: 0}

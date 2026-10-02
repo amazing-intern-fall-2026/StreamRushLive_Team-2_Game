@@ -18,6 +18,12 @@ namespace SteamRush.Features.Runner
         [SerializeField] private bool autoStart = true;
         [SerializeField] private bool isRunning = false;
 
+        [Header("Follower & Handover Simulation")]
+        [Tooltip("Bật/tắt giả lập follower mới chuyền gậy trong phiên Live Demo")]
+        [SerializeField] private bool enableMockFollowers = false;
+        [Tooltip("Đồng bộ tắt danh sách follower giả lập ban đầu và tự động bù trên ChatRunnerQueueManager")]
+        [SerializeField] private bool syncQueueManagerMock = true;
+
         [Header("Interaction Pace (Seconds)")]
         [SerializeField] private float chatIntervalMin = 0.8f;
         [SerializeField] private float chatIntervalMax = 2.0f;
@@ -83,6 +89,23 @@ namespace SteamRush.Features.Runner
 
         public float CurrentAverageDelay => enableStreamDelay ? (streamDelayMin + streamDelayMax) * 0.5f : 0f;
 
+        public bool EnableMockFollowers
+        {
+            get => enableMockFollowers;
+            set
+            {
+                if (enableMockFollowers == value) return;
+                enableMockFollowers = value;
+                ApplyMockFollowerState();
+            }
+        }
+
+        public bool SyncQueueManagerMock
+        {
+            get => syncQueueManagerMock;
+            set => syncQueueManagerMock = value;
+        }
+
         private static readonly string[] BaseFanNames = new string[]
         {
             "LinhDan_99", "MinhVu_Pro", "HoangLong_Gamer", "ThuTrang_Cute", "BaoNam_Fan",
@@ -124,6 +147,15 @@ namespace SteamRush.Features.Runner
 
         private void Start()
         {
+            if (syncQueueManagerMock && !enableMockFollowers)
+            {
+                var queueMgr = ChatRunnerQueueManager.Instance ?? FindFirstObjectByType<ChatRunnerQueueManager>();
+                if (queueMgr != null)
+                {
+                    queueMgr.SetMockFollowersEnabled(false, true);
+                }
+            }
+
             if (autoStart)
             {
                 StartLiveDemo();
@@ -144,6 +176,11 @@ namespace SteamRush.Features.Runner
                 enableStreamDelay = !enableStreamDelay;
                 Debug.Log($"[LiveSessionDemoRunner] Livestream Broadcast Delay: {(enableStreamDelay ? $"BẬT ({streamDelayMin:F1}s - {streamDelayMax:F1}s)" : "TẮT (0s)")}");
             }
+
+            if (Keyboard.current.oKey.wasPressedThisFrame)
+            {
+                ToggleMockFollowers();
+            }
         }
 
         public void ToggleLiveDemo()
@@ -158,6 +195,37 @@ namespace SteamRush.Features.Runner
             }
         }
 
+        public void ToggleMockFollowers()
+        {
+            EnableMockFollowers = !enableMockFollowers;
+            Debug.Log($"[LiveSessionDemoRunner] Giả lập Follower Chuyền Gậy: {(enableMockFollowers ? "<color=#00FF88>BẬT</color>" : "<color=#FF4444>TẮT</color>")}");
+        }
+
+        private void ApplyMockFollowerState()
+        {
+            if (syncQueueManagerMock)
+            {
+                var queueMgr = ChatRunnerQueueManager.Instance ?? FindFirstObjectByType<ChatRunnerQueueManager>();
+                if (queueMgr != null)
+                {
+                    queueMgr.SetMockFollowersEnabled(enableMockFollowers, !enableMockFollowers);
+                }
+            }
+
+            if (isRunning)
+            {
+                if (enableMockFollowers && _queueRoutine == null)
+                {
+                    _queueRoutine = StartCoroutine(SimulateQueueLoop());
+                }
+                else if (!enableMockFollowers && _queueRoutine != null)
+                {
+                    StopCoroutine(_queueRoutine);
+                    _queueRoutine = null;
+                }
+            }
+        }
+
         public void StartLiveDemo()
         {
             if (isRunning) return;
@@ -169,7 +237,10 @@ namespace SteamRush.Features.Runner
 
             _chatRoutine = StartCoroutine(SimulateChatLoop());
             _giftRoutine = StartCoroutine(SimulateGiftLoop());
-            _queueRoutine = StartCoroutine(SimulateQueueLoop());
+            if (enableMockFollowers)
+            {
+                _queueRoutine = StartCoroutine(SimulateQueueLoop());
+            }
             _joinRoutine = StartCoroutine(SimulateAudienceJoinLoop());
             _switchRoutine = StartCoroutine(SimulateFactionSwitchLoop());
             _likeRoutine = StartCoroutine(SimulateLikeLoop());
@@ -531,7 +602,7 @@ namespace SteamRush.Features.Runner
             };
             boxStyle.normal.textColor = Color.white;
 
-            int boxWidth = 460;
+            int boxWidth = 590;
             GUI.color = new Color(0.1f, 0.1f, 0.15f, 0.88f);
             GUI.Box(new Rect(Screen.width - boxWidth - 10, 10, boxWidth, 28), "", boxStyle);
             GUI.color = Color.white;
@@ -555,8 +626,9 @@ namespace SteamRush.Features.Runner
 
             string likesText = totalRoomLikes >= 1000 ? $"{(totalRoomLikes / 1000f):F1}k" : totalRoomLikes.ToString();
             string viewersText = SteamRush.Features.UI.FactionTugOfWarUI.FormatNumberShorthand(totalRoomViewers);
+            string followerInfo = enableMockFollowers ? " | <color=#00FF88>🏃 Follower: ON (O)</color>" : " | <color=#888888>🏃 Follower: OFF (O)</color>";
             string delayInfo = enableStreamDelay ? $" | <color=#FFD700>📶 {((streamDelayMin + streamDelayMax) * 0.5f):F1}s (K)</color>" : " | <color=#888888>📶 0s (K)</color>";
-            string info = $"{viewersText} Viewers | <color=#FF4D88>❤️ {likesText}</color> | <color=#38B6FF>Blue Team: {SteamRush.Features.UI.FactionTugOfWarUI.FormatNumberShorthand(fanCount)}</color> vs <color=#FF4D4D>Red Team: {SteamRush.Features.UI.FactionTugOfWarUI.FormatNumberShorthand(antiCount)}</color>{delayInfo}";
+            string info = $"{viewersText} Viewers | <color=#FF4D88>❤️ {likesText}</color> | <color=#38B6FF>Blue: {SteamRush.Features.UI.FactionTugOfWarUI.FormatNumberShorthand(fanCount)}</color> vs <color=#FF4D4D>Red: {SteamRush.Features.UI.FactionTugOfWarUI.FormatNumberShorthand(antiCount)}</color>{followerInfo}{delayInfo}";
             GUI.Label(new Rect(Screen.width - boxWidth + 55, 12, boxWidth - 60, 24), info, textStyle);
         }
     }

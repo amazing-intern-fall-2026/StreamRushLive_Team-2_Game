@@ -38,6 +38,17 @@ namespace SteamRush.Features.UI.Views
         [Tooltip("Rotation offset added when faceCamera is true.")]
         [SerializeField] private Vector3 rotationOffset = Vector3.zero;
 
+        [Header("Size & Scaling Settings")]
+        [Tooltip("Overall scale multiplier for the runner nameplate. Default: 1.6x.")]
+        [Range(0.5f, 3.5f)]
+        [SerializeField] private float scaleMultiplier = 1.6f;
+
+        [Tooltip("Diameter size of the avatar in pixels.")]
+        [SerializeField] private float avatarSize = 90f;
+
+        [Tooltip("Font size of the runner name text.")]
+        [SerializeField] private float nameFontSize = 42f;
+
         [Tooltip("Target runner transform to follow.")]
         [SerializeField] private Transform target;
         private Transform nameplateAnchor;
@@ -79,6 +90,36 @@ namespace SteamRush.Features.UI.Views
             set => rotationOffset = value;
         }
 
+        public float ScaleMultiplier
+        {
+            get => scaleMultiplier;
+            set
+            {
+                scaleMultiplier = Mathf.Clamp(value, 0.5f, 3.5f);
+                ApplyVisualSizing();
+            }
+        }
+
+        public float AvatarSizeSetting
+        {
+            get => avatarSize;
+            set
+            {
+                avatarSize = Mathf.Max(20f, value);
+                ApplyVisualSizing();
+            }
+        }
+
+        public float NameFontSizeSetting
+        {
+            get => nameFontSize;
+            set
+            {
+                nameFontSize = Mathf.Max(12f, value);
+                ApplyVisualSizing();
+            }
+        }
+
         private void Awake()
         {
             cachedCamera = Camera.main;
@@ -92,6 +133,44 @@ namespace SteamRush.Features.UI.Views
             if (fixedRotation == Vector3.zero && transform.rotation != Quaternion.identity)
             {
                 fixedRotation = transform.eulerAngles;
+            }
+
+            ApplyVisualSizing();
+        }
+
+
+
+        public void ApplyVisualSizing()
+        {
+            transform.localScale = Vector3.one * (0.005f * scaleMultiplier);
+
+            if (avatar != null)
+            {
+                RectTransform avatarRect = avatar.GetComponent<RectTransform>();
+                if (avatarRect != null)
+                {
+                    avatarRect.sizeDelta = new Vector2(avatarSize, avatarSize);
+                }
+
+                Transform glow = transform.Find("Glow");
+                if (glow != null)
+                {
+                    RectTransform glowRect = glow.GetComponent<RectTransform>();
+                    if (glowRect != null)
+                    {
+                        glowRect.sizeDelta = new Vector2(avatarSize * 1.45f, avatarSize * 1.45f);
+                    }
+                }
+            }
+
+            if (runnerName != null)
+            {
+                runnerName.fontSize = nameFontSize;
+                RectTransform nameRect = runnerName.GetComponent<RectTransform>();
+                if (nameRect != null)
+                {
+                    nameRect.sizeDelta = new Vector2(Mathf.Max(240f, nameFontSize * 6.5f), nameFontSize * 1.4f);
+                }
             }
         }
 

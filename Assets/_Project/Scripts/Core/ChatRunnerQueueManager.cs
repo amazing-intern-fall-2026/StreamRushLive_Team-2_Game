@@ -17,16 +17,24 @@ namespace SteamRush.Features.Runner
         [SerializeField] private WorldSpeedManager _worldSpeedManager;
         [SerializeField] private float _legDistanceMeters = 100f;
 
+        public static ChatRunnerQueueManager Instance { get; private set; }
+
         [Header("Initial Queue Mock")]
         [SerializeField] private string _initialRunnerId = "Streamer_Alex";
+        [Tooltip("Bật/tắt nạp danh sách follower giả lập mẫu vào hàng đợi ban đầu.")]
+        [SerializeField] private bool _enableMockFollowers = false;
         [SerializeField] private List<string> _initialFollowers = new List<string> { "Viewer_Bao", "Viewer_Chi", "Top1_Dung", "Mod_Giang", "Gamer_Huy" };
         [Tooltip("Tu dong sinh them Follower khi hang doi het de test lien tuc ma khong bi dung.")]
-        [SerializeField] private bool _autoReplenishMockQueue = true;
+        [SerializeField] private bool _autoReplenishMockQueue = false;
+        [Tooltip("Nếu true: Dừng Runner chờ follower khi hết hàng đợi. Nếu false: Runner hiện tại tiếp tục chạy chặng tiếp theo.")]
+        [SerializeField] private bool _pauseWhenQueueEmpty = false;
 
         [Header("HUD Reference")]
         [SerializeField] private HUDManager _hudManager;
         [SerializeField] private Transform _runnerTransform;
         [SerializeField] private Sprite _defaultAvatar;
+        private Sprite _currentRunnerAvatar;
+        public Sprite CurrentRunnerAvatar => _currentRunnerAvatar != null ? _currentRunnerAvatar : _defaultAvatar;
 
         [Header("Roadside Character Handover")]
         [Tooltip("Bật cơ chế nhân vật tiếp theo đứng chờ sẵn bên lề đường để chuyển gậy.")]
@@ -102,10 +110,104 @@ namespace SteamRush.Features.Runner
             return null;
         }
 
+        public bool EnableMockFollowers
+        {
+            get => _enableMockFollowers;
+            set
+            {
+                _enableMockFollowers = value;
+                SetMockFollowersEnabled(value, !value);
+            }
+        }
+
+        public bool AutoReplenishMockQueue
+        {
+            get => _autoReplenishMockQueue;
+            set => _autoReplenishMockQueue = value;
+        }
+
+        public bool PauseWhenQueueEmpty
+        {
+            get => _pauseWhenQueueEmpty;
+            set => _pauseWhenQueueEmpty = value;
+        }
+
+        public bool EnableRoadsideHandover
+        {
+            get => _enableRoadsideHandover;
+            set => _enableRoadsideHandover = value;
+        }
+
+        /// <summary>
+        /// Xóa hàng đợi follower / VIP và hủy nhân vật proxy đứng chờ bên lề đường (nếu có).
+        /// </summary>
+        public void ClearQueue(bool clearActiveRoadsideProxy = true)
+        {
+            _followerQueue.Clear();
+            _vipQueue.Clear();
+            if (clearActiveRoadsideProxy && _activeProxy != null)
+            {
+                Destroy(_activeProxy);
+                _activeProxy = null;
+                _proxySpawnedForCurrentLeg = false;
+            }
+            UpdateNextRunnerHud();
+            OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
+        }
+
+        /// <summary>
+        /// Bật hoặc tắt tính năng giả lập follower tự động.
+        /// </summary>
+        public void SetMockFollowersEnabled(bool enabled, bool clearExistingQueue = true)
+        {
+            _autoReplenishMockQueue = enabled;
+            if (!enabled && clearExistingQueue)
+            {
+                ClearQueue(true);
+            }
+        }
+
+        /// <summary>
+        /// Cập nhật thông tin Runner đang chạy hiện tại (Tên hiển thị + Avatar Sprite).
+        /// Thường được gọi bởi TikTokLiveClient khi đồng bộ thông tin chủ kênh Live.
+        /// </summary>
+        public void SetCurrentRunner(string runnerId, Sprite avatarSprite = null, bool isVip = false)
+        {
+            if (!string.IsNullOrEmpty(runnerId))
+            {
+                CurrentRunnerId = runnerId;
+            }
+            if (avatarSprite != null)
+            {
+                _currentRunnerAvatar = avatarSprite;
+            }
+            CurrentRunnerIsVip = isVip;
+            UpdateRunnerHud();
+            OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+        }
+
         public event Action<string, int> OnRunnerChanged;
 
         private void Awake()
         {
+            if (Instance == null)
+            {
+                Instance = this;
+            }
+            else if (Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
             if (_worldSpeedManager == null)
             {
                 _worldSpeedManager = FindFirstObjectByType<WorldSpeedManager>();
@@ -126,17 +228,43 @@ namespace SteamRush.Features.Runner
 
         private void Start()
         {
-            if (string.IsNullOrEmpty(CurrentRunnerId))
+            var tikTokClient = FindFirstObjectByType<TikTokLiveClient>();
+            if (tikTokClient != null && !string.IsNullOrWhiteSpace(tikTokClient.TikTokUniqueId))
+            {
+                string hostName = tikTokClient.TikTokUniqueId.Trim().TrimStart('@');
+                CurrentRunnerId = !string.IsNullOrEmpty(tikTokClient.HostDisplayName) ? tikTokClient.HostDisplayName : hostName;
+                if (tikTokClient.HostAvatarSprite != null)
+                {
+                    _currentRunnerAvatar = tikTokClient.HostAvatarSprite;
+                }
+            }
+            else if (string.IsNullOrEmpty(CurrentRunnerId))
             {
                 CurrentRunnerId = _initialRunnerId;
             }
 
-            if (_initialFollowers != null)
+            var liveDemo = LiveSessionDemoRunner.Instance ?? FindFirstObjectByType<LiveSessionDemoRunner>();
+            bool allowMock = _enableMockFollowers;
+            if (liveDemo != null)
+            {
+                allowMock = liveDemo.EnableMockFollowers;
+                if (!allowMock && liveDemo.SyncQueueManagerMock)
+                {
+                    _autoReplenishMockQueue = false;
+                }
+            }
+
+            if (allowMock && _initialFollowers != null && _initialFollowers.Count > 0)
             {
                 foreach (var f in _initialFollowers)
                 {
                     _followerQueue.Enqueue((f, false));
                 }
+            }
+            else
+            {
+                _followerQueue.Clear();
+                _vipQueue.Clear();
             }
 
             // An bang cho khi khoi dong
@@ -270,8 +398,15 @@ namespace SteamRush.Features.Runner
             }
             else if (_activeProxy == null && _distanceSinceLastLeg >= _legDistanceMeters && _vipQueue.Count == 0)
             {
-                _distanceSinceLastLeg -= _legDistanceMeters;
-                AdvanceToNextRunner();
+                if (_followerQueue.Count == 0 && !_autoReplenishMockQueue && !_pauseWhenQueueEmpty)
+                {
+                    _distanceSinceLastLeg = 0f;
+                }
+                else
+                {
+                    _distanceSinceLastLeg -= _legDistanceMeters;
+                    AdvanceToNextRunner();
+                }
             }
         }
 
@@ -566,9 +701,15 @@ namespace SteamRush.Features.Runner
                     string autoFollower = "Follower_" + UnityEngine.Random.Range(100, 999);
                     _followerQueue.Enqueue((autoFollower, false));
                 }
-                else
+                else if (_pauseWhenQueueEmpty)
                 {
                     EnterWaitingState();
+                    return;
+                }
+                else
+                {
+                    _distanceSinceLastLeg = 0f;
+                    UpdateRunnerHud();
                     return;
                 }
             }
@@ -586,7 +727,7 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            _hudManager.UpdateRunnerInfo(CurrentRunnerId, _defaultAvatar, CurrentRunnerIsVip);
+            _hudManager.UpdateRunnerInfo(CurrentRunnerId, CurrentRunnerAvatar, CurrentRunnerIsVip);
             _hudManager.UpdateRunnerTarget(_runnerTransform);
             UpdateNextRunnerHud();
         }

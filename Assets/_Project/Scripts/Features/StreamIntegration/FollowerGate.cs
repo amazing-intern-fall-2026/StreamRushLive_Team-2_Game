@@ -19,6 +19,12 @@ namespace SteamRush.Features.StreamIntegration
         // duoc follower that ma khong phai sua tung noi.
         private static IFollowerStatusProvider _sharedProvider;
 
+        /// <summary>
+        /// When false (default): Anyone can play without follow restriction.
+        /// When true: Only viewers who follow during the live stream can control or join the queue.
+        /// </summary>
+        public static bool StrictFollowerOnly = false;
+
         private readonly IFollowerStatusProvider _followerStatusProvider;
 
         public FollowerGate(IFollowerStatusProvider followerStatusProvider = null)
@@ -63,6 +69,11 @@ namespace SteamRush.Features.StreamIntegration
 
         private bool IsFollower(string userId)
         {
+            if (!StrictFollowerOnly)
+            {
+                return true;
+            }
+
             IFollowerStatusProvider provider = _followerStatusProvider ?? _sharedProvider;
 
             if (provider == null)

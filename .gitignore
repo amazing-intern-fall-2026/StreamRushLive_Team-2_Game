@@ -134,3 +134,8 @@ StreamRushLive_Team-2_Game.slnx
 /docx/
 *.doc
 *.docx
+
+# Node.js dependencies
+node_modules/
+**/node_modules/
+

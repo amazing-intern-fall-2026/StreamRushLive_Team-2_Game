@@ -1,0 +1,13 @@
+{
+  "name": "streamrush-tiktok-bridge",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "bun run server.js",
+    "start:node": "node server.js"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.4",
+    "tiktok-live-connector": "^2.5.0"
+  }
+}

@@ -47,6 +47,26 @@ namespace SteamRush.EditorTools
                 Debug.LogWarning("[LiveDemoEditorTools] Không tìm thấy LiveSessionDemoRunner trong scene!");
             }
         }
+
+        [MenuItem("Tools/StreamRush/Live Demo/Toggle Mock Followers (Follower Chuyền Gậy)")]
+        public static void ToggleFollowers()
+        {
+            if (!Application.isPlaying)
+            {
+                Debug.LogWarning("[LiveDemoEditorTools] Chức năng Toggle Mock Followers chỉ hoạt động trong Play Mode!");
+                return;
+            }
+
+            var runner = LiveSessionDemoRunner.Instance ?? Object.FindFirstObjectByType<LiveSessionDemoRunner>();
+            if (runner != null)
+            {
+                runner.ToggleMockFollowers();
+            }
+            else
+            {
+                Debug.LogWarning("[LiveDemoEditorTools] Không tìm thấy LiveSessionDemoRunner trong scene!");
+            }
+        }
     }
 }
 #endif
