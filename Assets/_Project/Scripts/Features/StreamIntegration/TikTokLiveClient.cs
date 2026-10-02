@@ -378,6 +378,9 @@ namespace SteamRush.Features.StreamIntegration
                 _socket.OnUnityThread(_followEvent, HandleFollow);
                 _socket.OnUnityThread(_likeEvent, HandleLike);
                 _socket.OnUnityThread(_giftEvent, HandleGift);
+                _socket.OnUnityThread("share", HandleShare);
+                _socket.OnUnityThread("tiktokConnected", HandleTikTokConnected);
+                _socket.OnUnityThread("tiktokDisconnected", HandleTikTokDisconnected);
                 _socket.OnUnityThread("roomInfo", HandleRoomInfo);
                 _socket.OnUnityThread("connected", HandleRoomInfo);
                 _socket.OnUnityThread("streamerInfo", HandleRoomInfo);
@@ -603,9 +606,7 @@ namespace SteamRush.Features.StreamIntegration
 
             // Đọc giá trị xu hoặc số kim cương của quà
             int coins = 1;
-            string coinStr = ReadString(json, _diamondCountPath);
-            if (string.IsNullOrEmpty(coinStr)) coinStr = ReadString(json, _coinCountPath);
-            if (string.IsNullOrEmpty(coinStr)) coinStr = ReadString(json, "cointCount"); // fallback typo backend
+            string coinStr = ReadStringWithFallback(json, _diamondCountPath, _coinCountPath, "cointCount", "totalCoins");
             if (!string.IsNullOrEmpty(coinStr) && int.TryParse(coinStr, out int parsedCoins))
             {
                 coins = parsedCoins;
@@ -613,13 +614,18 @@ namespace SteamRush.Features.StreamIntegration
 
             // Đọc số lượng quà dồn (repeatCount)
             int repeatCount = 1;
-            string repeatStr = ReadString(json, _repeatCountPath);
+            string repeatStr = ReadStringWithFallback(json, _repeatCountPath, "repeatCount");
             if (!string.IsNullOrEmpty(repeatStr) && int.TryParse(repeatStr, out int parsedRepeat))
             {
                 repeatCount = Mathf.Max(1, parsedRepeat);
             }
 
             int totalValue = coins * repeatCount;
+            string totalCoinsStr = ReadString(json, "totalCoins");
+            if (!string.IsNullOrEmpty(totalCoinsStr) && int.TryParse(totalCoinsStr, out int parsedTotal) && parsedTotal > 0)
+            {
+                totalValue = parsedTotal;
+            }
             FactionType faction = _factionManager != null ? _factionManager.GetFaction(userId) : FactionType.Fan;
 
             // Đọc Gift ID từ JSON
@@ -1007,18 +1013,52 @@ namespace SteamRush.Features.StreamIntegration
             }
         }
 
+        private void HandleTikTokConnected(SocketIOResponse response)
+        {
+            Debug.Log($"<color=#00FF88><b>[TikTokLiveClient] ✅ ĐÃ KẾT NỐI TIKTOK LIVE THÀNH CÔNG (Backend Nhóm 5)! Kênh: @{NormalizeUniqueId(_tiktokUniqueId)}</b></color>");
+            ShowPopup($"TikTok Live: Kết nối @{NormalizeUniqueId(_tiktokUniqueId)} thành công!", true);
+            HandleRoomInfo(response);
+        }
+
+        private void HandleTikTokDisconnected(SocketIOResponse response)
+        {
+            string reason = response != null ? response.ToString() : "Mất kết nối";
+            Debug.LogWarning($"<color=#FF5555>[TikTokLiveClient] ⚠️ TikTok Live bị ngắt kết nối: {reason}</color>");
+            ShowPopup("Mất kết nối TikTok Live!", false);
+        }
+
+        private void HandleShare(SocketIOResponse response)
+        {
+            JObject json = ParseResponse(response);
+            if (json == null) return;
+            string userId = ReadStringWithFallback(json, _userIdPath, "userId", "uniqueId", "data.user.uniqueId");
+            string displayName = GetDisplayName(json, userId);
+            ShowPopup($"[{displayName}] vừa chia sẻ Livestream!", true);
+            if (_logEvents)
+            {
+                Debug.Log($"[TikTokLiveClient] SHARE: {displayName} ({userId}) vừa chia sẻ livestream.");
+            }
+        }
+
         private void HandleRoomInfo(SocketIOResponse response)
         {
             JObject json = ParseResponse(response);
             if (json == null) return;
 
-            string nick = ReadString(json, "owner.nickname");
-            if (string.IsNullOrEmpty(nick)) nick = ReadString(json, "data.owner.nickname");
-            if (string.IsNullOrEmpty(nick)) nick = ReadString(json, "nickname");
+            string nick = ReadStringWithFallback(json, 
+                "roomInfo.owner.nickname", 
+                "owner.nickname", 
+                "data.owner.nickname", 
+                "nickname", 
+                "data.user.nickname");
 
-            string avt = ReadString(json, "owner.avatar_thumb.url_list[0]");
-            if (string.IsNullOrEmpty(avt)) avt = ReadString(json, "data.owner.avatar_thumb.url_list[0]");
-            if (string.IsNullOrEmpty(avt)) avt = ReadString(json, "avatarUrl");
+            string avt = ReadStringWithFallback(json, 
+                "roomInfo.owner.avatar_thumb.url_list[0]", 
+                "roomInfo.owner.avatarThumb.urlList[0]", 
+                "owner.avatar_thumb.url_list[0]", 
+                "data.owner.avatar_thumb.url_list[0]", 
+                "data.user.profilePictureUrl",
+                "avatarUrl");
 
             if (!string.IsNullOrEmpty(nick))
             {
