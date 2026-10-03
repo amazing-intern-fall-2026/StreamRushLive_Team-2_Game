@@ -5,8 +5,8 @@ using StreamRushLive.Features.Spawning;
 namespace SteamRush.Features.StreamIntegration
 {
     /// <summary>
-    /// Adapter nối sự kiện RequestCarSpawnEvent từ FactionTugOfWarManager
-    /// sang SingleObstacleSpawner để sinh xe cản đường khi phe Anti tích đủ 500 tim.
+    /// Connects RequestCarSpawnEvent from FactionTugOfWarManager
+    /// to SingleObstacleSpawner to spawn obstacle vehicles when Anti faction deploys cars.
     /// </summary>
     public class ChatRunnerCarSpawnAdapter : MonoBehaviour
     {
@@ -50,7 +50,7 @@ namespace SteamRush.Features.StreamIntegration
             }
             else
             {
-                Debug.LogWarning("[ChatRunnerCarSpawnAdapter] Không tìm thấy SingleObstacleSpawner trong scene!");
+                Debug.LogWarning("[ChatRunnerCarSpawnAdapter] SingleObstacleSpawner not found in scene!");
             }
         }
     }

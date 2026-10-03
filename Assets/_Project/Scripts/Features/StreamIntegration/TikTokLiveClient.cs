@@ -245,7 +245,7 @@ namespace SteamRush.Features.StreamIntegration
             _giftPanelController.BuildGiftDisplay();
         }
 
-        [ContextMenu("Sắp Xếp Quà Theo Phe (Blue -> Red -> Special)")]
+        [ContextMenu("Sort Gift Mappings By Team")]
         public void SortGiftMappingsByTeam()
         {
             if (_giftPanelController == null)
@@ -261,7 +261,7 @@ namespace SteamRush.Features.StreamIntegration
 #endif
 
         /// <summary>
-        /// Thêm 1 món quà mới vào cấu hình và tự động cập nhật sắp xếp trên UI.
+        /// Adds a new gift mapping and updates the gift UI layout.
         /// </summary>
         public void AddGiftMapping(TikTokGiftMapping mapping)
         {
@@ -274,7 +274,7 @@ namespace SteamRush.Features.StreamIntegration
         }
 
         /// <summary>
-        /// Xóa 1 món quà khỏi cấu hình và tự động cập nhật sắp xếp trên UI.
+        /// Removes a gift mapping by ID or gift name and updates the gift UI.
         /// </summary>
         public bool RemoveGiftMapping(int giftId, string giftName = null)
         {
@@ -338,7 +338,7 @@ namespace SteamRush.Features.StreamIntegration
             string uniqueId = NormalizeUniqueId(_tiktokUniqueId);
             if (string.IsNullOrEmpty(uniqueId))
             {
-                Debug.LogWarning("[TikTokLiveClient] Chưa nhập TikTok Unique ID (username kênh đang Live) - bỏ qua kết nối tự động.");
+                Debug.LogWarning("[TikTokLiveClient] TikTok Unique ID is empty - skipping auto connect.");
                 return;
             }
 
@@ -359,21 +359,21 @@ namespace SteamRush.Features.StreamIntegration
 
                 _socket.OnConnected += (sender, e) =>
                 {
-                    Debug.Log($"[TikTokLiveClient] Đã kết nối Socket tới {_serverUrl}. Gửi {_setUniqueIdEvent} = '{uniqueId}'");
+                    Debug.Log($"[TikTokLiveClient] Connected socket to {_serverUrl}. Sent {_setUniqueIdEvent} = '{uniqueId}'");
                     _socket.Emit(_setUniqueIdEvent, uniqueId);
                 };
 
                 _socket.OnDisconnected += (sender, reason) =>
                 {
-                    Debug.Log($"[TikTokLiveClient] Mất kết nối backend: {reason}");
+                    Debug.Log($"[TikTokLiveClient] Lost backend connection: {reason}");
                 };
 
                 _socket.OnError += (sender, error) =>
                 {
-                    Debug.LogWarning($"[TikTokLiveClient] Lỗi socket: {error}");
+                    Debug.LogWarning($"[TikTokLiveClient] Socket error: {error}");
                 };
 
-                // Lắng nghe các event trên Unity Main Thread để gọi an toàn API gameplay & UI
+                // Listen to socket events on the Unity main thread for thread-safe gameplay and UI updates
                 _socket.OnUnityThread(_chatEvent, HandleChat);
                 _socket.OnUnityThread(_followEvent, HandleFollow);
                 _socket.OnUnityThread(_likeEvent, HandleLike);
@@ -388,12 +388,12 @@ namespace SteamRush.Features.StreamIntegration
                 _socket.Connect();
                 if (_logEvents)
                 {
-                    Debug.Log($"[TikTokLiveClient] Đang kết nối tới {_serverUrl}...");
+                    Debug.Log($"[TikTokLiveClient] Connecting to {_serverUrl}...");
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[TikTokLiveClient] Không thể kết nối: {ex.Message}");
+                Debug.LogError($"[TikTokLiveClient] Failed to connect: {ex.Message}");
                 Disconnect();
             }
         }
@@ -410,7 +410,7 @@ namespace SteamRush.Features.StreamIntegration
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogWarning($"[TikTokLiveClient] Lỗi khi ngắt kết nối: {ex.Message}");
+                    Debug.LogWarning($"[TikTokLiveClient] Error while disconnecting: {ex.Message}");
                 }
                 _socket = null;
             }
@@ -421,7 +421,7 @@ namespace SteamRush.Features.StreamIntegration
         #region Event Handlers
 
         /// <summary>
-        /// Xử lý sự kiện Follower mới -> Thêm vào hàng đợi tiếp sức Runner.
+        /// Handles new follower events and adds them to the Runner relay queue.
         /// </summary>
         private void HandleFollow(SocketIOResponse response)
         {
@@ -437,12 +437,11 @@ namespace SteamRush.Features.StreamIntegration
 
             if (_logEvents)
             {
-                Debug.Log($"[TikTokLiveClient] FOLLOW: {displayName} ({userId}) - {(isNew ? "Mới" : "Đã có")}");
+                Debug.Log($"[TikTokLiveClient] FOLLOW: {displayName} ({userId}) - {(isNew ? "New" : "Existing")}");
             }
 
             if (!isNew) return;
 
-            // Đưa người theo dõi mới vào hàng đợi chạy Runner tiếp sức
             if (_queueManager != null)
             {
                 _queueManager.TryEnqueueFollower(displayName);
@@ -454,10 +453,10 @@ namespace SteamRush.Features.StreamIntegration
         }
 
         /// <summary>
-        /// Xử lý sự kiện Chat/Comment:
-        /// - Chọn phe: "blue", "red"
-        /// - Điều khiển Runner (phe Blue): "1", "2", "3", "jump", "fast"
-        /// - Thả xe cản đường (phe Red): "1", "2", "3"
+        /// Handles live chat commands:
+        /// - Faction select: "blue", "red"
+        /// - Runner controls (Blue team): "1", "2", "3", "jump", "fast"
+        /// - Obstacle deployment (Red team): "1", "2", "3"
         /// </summary>
         private void HandleChat(SocketIOResponse response)
         {
@@ -480,18 +479,17 @@ namespace SteamRush.Features.StreamIntegration
             {
                 if (_logEvents)
                 {
-                    Debug.Log($"[TikTokLiveClient] {displayName} ({userId}) chưa Follow kênh - Bỏ qua lệnh chat: '{comment}'. Bật Follow để chơi!");
+                    Debug.Log($"[TikTokLiveClient] {displayName} ({userId}) is not following - ignored chat command: '{comment}'.");
                 }
-                _hudManager?.ShowStatusPopup($"[{displayName}] Follow để chơi!", false);
+                _hudManager?.ShowStatusPopup($"[{displayName}] Follow to play!", false);
                 return;
             }
 
             if (_logEvents)
             {
-                Debug.Log($"[TikTokLiveClient] Nhận Chat: [{displayName}] '{comment}'");
+                Debug.Log($"[TikTokLiveClient] Chat: [{displayName}] '{comment}'");
             }
 
-            // 1. Kiểm tra Lệnh Chọn Phe: chỉ chấp nhận "blue" hoặc "red"
             if (trimmedCmd == "blue" || trimmedCmd == "red")
             {
                 if (_factionManager != null)
@@ -500,19 +498,18 @@ namespace SteamRush.Features.StreamIntegration
                     if (changed)
                     {
                         bool isFan = _factionManager.GetFaction(userId) == FactionType.Fan;
-                        string teamName = isFan ? "Blue Team (Ủng hộ Runner)" : "Red Team (Cản đường Runner)";
-                        ShowPopup($"[{displayName}] đã gia nhập {teamName}!", isFan);
+                        string teamName = isFan ? "Blue Team (Runner Support)" : "Red Team (Obstacle Hazard)";
+                        ShowPopup($"[{displayName}] joined {teamName}!", isFan);
                     }
                 }
                 return;
             }
 
-            // 2. Kiểm tra Phe Hiện Tại của Người Xem để điều hướng hành động tương ứng
             FactionType faction = _factionManager != null ? _factionManager.GetFaction(userId) : FactionType.Fan;
 
             if (faction == FactionType.Fan)
             {
-                // ===== PHE BLUE (FAN): ĐIỀU KHIỂN RUNNER =====
+                // Blue team (Fan): Runner controls
                 if (trimmedCmd == "1" || trimmedCmd == "2" || trimmedCmd == "3" || 
                     trimmedCmd == "left" || trimmedCmd == "right")
                 {
@@ -532,7 +529,7 @@ namespace SteamRush.Features.StreamIntegration
             }
             else
             {
-                // ===== PHE RED (ANTI): THẢ XE CẢN ĐƯỜNG TRÊN LÀN (1, 2, 3) =====
+                // Red team (Anti): Spawn obstacles on lane 1, 2, or 3
                 if (trimmedCmd == "1" || trimmedCmd == "2" || trimmedCmd == "3")
                 {
                     if (int.TryParse(trimmedCmd, out int laneIndex))
@@ -548,7 +545,7 @@ namespace SteamRush.Features.StreamIntegration
         }
 
         /// <summary>
-        /// Xử lý sự kiện Like -> Tích lũy tim và nạp năng lượng tương ứng cho phe của người like.
+        /// Handles like events and awards energy to the sender's faction.
         /// </summary>
         private void HandleLike(SocketIOResponse response)
         {
@@ -588,12 +585,12 @@ namespace SteamRush.Features.StreamIntegration
 
             if (_logEvents)
             {
-                Debug.Log($"[TikTokLiveClient] LIKE: {displayName} ({userId}) like mốc {totalLike} (+{stepsGained} bước) -> +{energyAmount} năng lượng {faction}.");
+                Debug.Log($"[TikTokLiveClient] LIKE: {displayName} ({userId}) reached {totalLike} likes (+{stepsGained} steps) -> +{energyAmount} energy for {faction}.");
             }
         }
 
         /// <summary>
-        /// Xử lý sự kiện Gift -> Ánh xạ quà tặng vào các cơ chế gameplay thực tế.
+        /// Handles gift events and triggers corresponding in-game gameplay actions.
         /// </summary>
         private void HandleGift(SocketIOResponse response)
         {
@@ -613,7 +610,6 @@ namespace SteamRush.Features.StreamIntegration
 
             string displayName = GetDisplayName(json, userId);
 
-            // Đọc giá trị xu hoặc số kim cương của quà
             int coins = 1;
             string coinStr = ReadStringWithFallback(json, _diamondCountPath, _coinCountPath, "cointCount", "totalCoins");
             if (!string.IsNullOrEmpty(coinStr) && int.TryParse(coinStr, out int parsedCoins))
@@ -621,7 +617,6 @@ namespace SteamRush.Features.StreamIntegration
                 coins = parsedCoins;
             }
 
-            // Đọc số lượng quà dồn (repeatCount)
             int repeatCount = 1;
             string repeatStr = ReadStringWithFallback(json, _repeatCountPath, "repeatCount");
             if (!string.IsNullOrEmpty(repeatStr) && int.TryParse(repeatStr, out int parsedRepeat))
@@ -637,7 +632,6 @@ namespace SteamRush.Features.StreamIntegration
             }
             FactionType faction = _factionManager != null ? _factionManager.GetFaction(userId) : FactionType.Fan;
 
-            // Đọc Gift ID từ JSON
             int giftId = 0;
             string giftIdStr = ReadStringWithFallback(json, _giftIdPath, "giftId", "gift.id", "data.giftId", "gift_id");
             if (!string.IsNullOrEmpty(giftIdStr) && int.TryParse(giftIdStr, out int parsedGiftId))
@@ -645,38 +639,32 @@ namespace SteamRush.Features.StreamIntegration
                 giftId = parsedGiftId;
             }
 
-            // Log thông tin món quà nhận được từ Live
             if (_logEvents)
             {
-                Debug.Log($"[TikTokLiveClient] QUÀ TẶNG: [{displayName}] tặng [{giftName}] (Gift ID: {giftId}) x{repeatCount} ({totalValue} xu) - Phe {faction}");
+                Debug.Log($"[TikTokLiveClient] GIFT: [{displayName}] sent [{giftName}] (Gift ID: {giftId}) x{repeatCount} ({totalValue} coins) - Faction: {faction}");
             }
 
-            // Đọc Icon URL của quà trực tiếp từ TikTok (nếu backend có gửi) và tự động cập nhật ảnh theo ID
             string giftIconUrl = ReadStringWithFallback(json, "giftIconUrl", "data.giftIconUrl", "giftPictureUrl", "gift.icon.url_list[0]");
             if (!string.IsNullOrEmpty(giftIconUrl) && giftId > 0)
             {
                 _giftPanelController?.UpdateGiftIconFromLive(giftId, giftName, giftIconUrl);
             }
 
-            // Kích hoạt hiệu ứng phát sáng / nảy thẻ quà trên UI GiftInfoPanel
             _giftPanelController?.HighlightGift(giftId, giftName);
 
-            // 1. ƯU TIÊN SỐ 1: Kiểm tra Bảng Gift Mappings theo ID hoặc Tên quà
+            // Priority 1: Match configured gift mappings
             if (TryExecuteGiftMapping(giftId, giftName, displayName, repeatCount, totalValue, faction))
             {
                 return;
             }
 
-            // ===== PHÂN LOẠI DỰ PHÒNG (FALLBACK) NẾU CHƯA CÓ TRONG BẢNG MAPPINGS =====
-
-            // 1. Quà Nhảy Meme Ăn Mừng (Gift Dance)
+            // Fallback gift routing if not configured in mappings
             if (lowerName.Contains("dance") || lowerName.Contains("nhảy") || lowerName.Contains("vũ"))
             {
                 _giftManager?.TriggerGiftDance(displayName);
                 return;
             }
 
-            // 2. Quà Vé VIP Chuyển Gậy Hàng Đợi (VIP Queue Ticket)
             if (lowerName.Contains("vip") || lowerName.Contains("ticket") || lowerName.Contains("vé"))
             {
                 _queueManager?.TryEnqueuePriorityFollower(displayName);
@@ -684,14 +672,12 @@ namespace SteamRush.Features.StreamIntegration
                 return;
             }
 
-            // 3. Quà Thời Tiết Mưa (Gift Environment Rain)
             if (lowerName.Contains("mưa") || lowerName.Contains("rain") || lowerName.Contains("dù") || lowerName.Contains("umbrella"))
             {
                 _giftManager?.ActivateRainHazard(displayName, 60f);
                 return;
             }
 
-            // 4. Quà Đặc Quyền Lớn (> 100 xu): Bão Xe Không Giới Hạn hoặc Bão Xe Tải Nặng
             if (totalValue >= 100 || lowerName.Contains("lion") || lowerName.Contains("sư tử") || 
                 lowerName.Contains("tên lửa") || lowerName.Contains("rocket"))
             {
@@ -706,10 +692,9 @@ namespace SteamRush.Features.StreamIntegration
                 return;
             }
 
-            // 4. Quà Tăng Tốc / Khiên / Năng Lượng / Xe Phân Cấp theo phe
             if (faction == FactionType.Fan)
             {
-                // --- PHE FAN / BLUE TEAM ---
+                // Blue team (Fan) fallback actions
                 if (lowerName.Contains("shield") || lowerName.Contains("khiên") || lowerName.Contains("donut") || totalValue >= 30)
                 {
                     _giftManager?.ActivateShield(displayName, 15f);
@@ -720,13 +705,12 @@ namespace SteamRush.Features.StreamIntegration
                 }
                 else
                 {
-                    // Quà tặng thông thường (Hoa Hồng, Quả tạ, Cà phê...) -> Bình Năng Lượng Xanh (+300)
                     _giftManager?.AddBlueEnergy(displayName, 300);
                 }
             }
             else
             {
-                // --- PHE ANTI / RED TEAM ---
+                // Red team (Anti) fallback actions
                 if (lowerName.Contains("heavy") || lowerName.Contains("tải") || totalValue >= 50)
                 {
                     _giftManager?.SpawnAntiCar(VehicleTier.HeavyTruck, displayName);
@@ -741,14 +725,13 @@ namespace SteamRush.Features.StreamIntegration
                 }
                 else
                 {
-                    // Quà hỗ trợ nạp Năng Lượng Đỏ (+500)
                     _giftManager?.AddRedEnergy(displayName, 500);
                 }
             }
         }
 
         /// <summary>
-        /// Tìm kiếm và thực thi hành động từ bảng Gift Mappings theo Gift ID hoặc Tên quà.
+        /// Executes mapped gift action matching gift ID or gift name.
         /// </summary>
         private bool TryExecuteGiftMapping(int giftId, string giftName, string displayName, int repeatCount, int totalCoins, FactionType faction)
         {
@@ -756,13 +739,11 @@ namespace SteamRush.Features.StreamIntegration
 
             TikTokGiftMapping matched = null;
 
-            // 1. Ưu tiên so khớp chính xác theo Gift ID (nếu giftId > 0)
             if (giftId > 0)
             {
                 matched = _giftMappings.Find(m => m.giftId == giftId);
             }
 
-            // 2. Nếu không có theo ID, so khớp theo Tên quà (không phân biệt hoa thường)
             if (matched == null && !string.IsNullOrEmpty(giftName))
             {
                 string lower = giftName.ToLowerInvariant();
@@ -816,12 +797,12 @@ namespace SteamRush.Features.StreamIntegration
                         _factionManager?.AddLikes(FactionType.Anti, energy);
                     break;
                 case GiftActionType.Dynamic_ByFaction:
-                    return false; // Để fallback xử lý theo phe
+                    return false; // Fallback to faction handling
             }
 
             if (_logEvents)
             {
-                Debug.Log($"[TikTokLiveClient] Đã kích hoạt [{matched.action}] cho quà [{giftName}] (ID: {giftId}) từ {displayName}!");
+                Debug.Log($"[TikTokLiveClient] Activated [{matched.action}] for gift [{giftName}] (ID: {giftId}) from {displayName}!");
             }
             return true;
         }
@@ -905,7 +886,6 @@ namespace SteamRush.Features.StreamIntegration
 
             EnsureReferences();
 
-            // 1. Áp dụng ngay Unique ID làm tên runner khởi đầu trước
             string initialName = !string.IsNullOrEmpty(_hostDisplayName) ? _hostDisplayName : uniqueId;
             if (_queueManager != null)
             {
@@ -916,7 +896,6 @@ namespace SteamRush.Features.StreamIntegration
                 _hudManager.UpdateRunnerInfo(initialName, _hostAvatarSprite, false);
             }
 
-            // 2. Chạy coroutine tải thông tin chi tiết (Nickname hiển thị thật + Avatar HD) từ TikTok
             StartCoroutine(FetchTikTokHostProfileRoutine(uniqueId));
         }
 
@@ -976,7 +955,7 @@ namespace SteamRush.Features.StreamIntegration
                 {
                     if (_logEvents)
                     {
-                        Debug.LogWarning($"[TikTokLiveClient] Không thể tải web profile TikTok @{uniqueId}: {webReq.error}. Dùng Unique ID làm tên Runner.");
+                        Debug.LogWarning($"[TikTokLiveClient] Failed to load TikTok web profile @{uniqueId}: {webReq.error}. Using unique ID as runner name.");
                     }
                     _hostDisplayName = uniqueId;
                     ApplyHostProfileToRunner();
@@ -1002,7 +981,7 @@ namespace SteamRush.Features.StreamIntegration
                 }
                 else if (_logEvents)
                 {
-                    Debug.LogWarning($"[TikTokLiveClient] Tải avatar từ CDN thất bại: {imgReq.error}");
+                    Debug.LogWarning($"[TikTokLiveClient] Failed to download avatar from CDN: {imgReq.error}");
                 }
             }
         }
@@ -1024,22 +1003,22 @@ namespace SteamRush.Features.StreamIntegration
 
             if (_logEvents)
             {
-                Debug.Log($"[TikTokLiveClient] Đã đồng bộ Runner từ kênh Live: {finalName} (@{NormalizeUniqueId(_tiktokUniqueId)})");
+                Debug.Log($"[TikTokLiveClient] Synced Runner from live channel: {finalName} (@{NormalizeUniqueId(_tiktokUniqueId)})");
             }
         }
 
         private void HandleTikTokConnected(SocketIOResponse response)
         {
-            Debug.Log($"[TikTokLiveClient] Đã kết nối TikTok Live thành công (Backend Nhóm 5)! Kênh: @{NormalizeUniqueId(_tiktokUniqueId)}");
-            ShowPopup($"TikTok Live: Kết nối @{NormalizeUniqueId(_tiktokUniqueId)} thành công!", true);
+            Debug.Log($"[TikTokLiveClient] Connected to TikTok Live successfully (Team 5 Backend)! Channel: @{NormalizeUniqueId(_tiktokUniqueId)}");
+            ShowPopup($"TikTok Live: @{NormalizeUniqueId(_tiktokUniqueId)} connected!", true);
             HandleRoomInfo(response);
         }
 
         private void HandleTikTokDisconnected(SocketIOResponse response)
         {
-            string reason = response != null ? response.ToString() : "Mất kết nối";
-            Debug.LogWarning($"[TikTokLiveClient] TikTok Live bị ngắt kết nối: {reason}");
-            ShowPopup("Mất kết nối TikTok Live!", false);
+            string reason = response != null ? response.ToString() : "Disconnected";
+            Debug.LogWarning($"[TikTokLiveClient] TikTok Live disconnected: {reason}");
+            ShowPopup("TikTok Live disconnected!", false);
         }
 
         private void HandleShare(SocketIOResponse response)
@@ -1048,10 +1027,10 @@ namespace SteamRush.Features.StreamIntegration
             if (json == null) return;
             string userId = ReadStringWithFallback(json, _userIdPath, "userId", "uniqueId", "data.user.uniqueId");
             string displayName = GetDisplayName(json, userId);
-            ShowPopup($"[{displayName}] vừa chia sẻ Livestream!", true);
+            ShowPopup($"[{displayName}] shared the livestream!", true);
             if (_logEvents)
             {
-                Debug.Log($"[TikTokLiveClient] SHARE: {displayName} ({userId}) vừa chia sẻ livestream.");
+                Debug.Log($"[TikTokLiveClient] SHARE: {displayName} ({userId}) shared the livestream.");
             }
         }
 
