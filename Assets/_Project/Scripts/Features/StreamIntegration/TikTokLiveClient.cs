@@ -386,7 +386,10 @@ namespace SteamRush.Features.StreamIntegration
                 _socket.OnUnityThread("streamerInfo", HandleRoomInfo);
 
                 _socket.Connect();
-                Debug.Log($"[TikTokLiveClient] Đang kết nối tới {_serverUrl}...");
+                if (_logEvents)
+                {
+                    Debug.Log($"[TikTokLiveClient] Đang kết nối tới {_serverUrl}...");
+                }
             }
             catch (Exception ex)
             {
@@ -475,12 +478,18 @@ namespace SteamRush.Features.StreamIntegration
             }
             else if (!_followers.IsFollower(userId))
             {
-                Debug.Log($"<color=#FFAA00>[TikTokLiveClient] {displayName} ({userId}) chưa Follow kênh -> Bỏ qua lệnh chat: '{comment}'. Bật Follow để chơi!</color>");
+                if (_logEvents)
+                {
+                    Debug.Log($"[TikTokLiveClient] {displayName} ({userId}) chưa Follow kênh - Bỏ qua lệnh chat: '{comment}'. Bật Follow để chơi!");
+                }
                 _hudManager?.ShowStatusPopup($"[{displayName}] Follow để chơi!", false);
                 return;
             }
 
-            Debug.Log($"[TikTokLiveClient] Nhận Chat: [{displayName}] '{comment}'");
+            if (_logEvents)
+            {
+                Debug.Log($"[TikTokLiveClient] Nhận Chat: [{displayName}] '{comment}'");
+            }
 
             // 1. Kiểm tra Lệnh Chọn Phe: chỉ chấp nhận "blue" hoặc "red"
             if (trimmedCmd == "blue" || trimmedCmd == "red")
@@ -636,8 +645,11 @@ namespace SteamRush.Features.StreamIntegration
                 giftId = parsedGiftId;
             }
 
-            // In log VÀNG CỰC KỲ NỔI BẬT để bạn thấy ngay Gift ID của món quà trên Console Unity:
-            Debug.Log($"<color=#FFD700><b>[TikTokLiveClient] 🎁 QUÀ TẶNG:</b> [{displayName}] tặng <b>[{giftName}]</b> (Gift ID: <b>{giftId}</b>) x{repeatCount} ({totalValue} xu) - Phe {faction}</color>");
+            // Log thông tin món quà nhận được từ Live
+            if (_logEvents)
+            {
+                Debug.Log($"[TikTokLiveClient] QUÀ TẶNG: [{displayName}] tặng [{giftName}] (Gift ID: {giftId}) x{repeatCount} ({totalValue} xu) - Phe {faction}");
+            }
 
             // Đọc Icon URL của quà trực tiếp từ TikTok (nếu backend có gửi) và tự động cập nhật ảnh theo ID
             string giftIconUrl = ReadStringWithFallback(json, "giftIconUrl", "data.giftIconUrl", "giftPictureUrl", "gift.icon.url_list[0]");
@@ -807,7 +819,10 @@ namespace SteamRush.Features.StreamIntegration
                     return false; // Để fallback xử lý theo phe
             }
 
-            Debug.Log($"<color=#00FFCC>[TikTokLiveClient] Đã kích hoạt [{matched.action}] cho quà [{giftName}] (ID: {giftId}) từ {displayName}!</color>");
+            if (_logEvents)
+            {
+                Debug.Log($"[TikTokLiveClient] Đã kích hoạt [{matched.action}] cho quà [{giftName}] (ID: {giftId}) từ {displayName}!");
+            }
             return true;
         }
 
@@ -1009,13 +1024,13 @@ namespace SteamRush.Features.StreamIntegration
 
             if (_logEvents)
             {
-                Debug.Log($"<color=#00FF88>[TikTokLiveClient] >>> ĐÃ ĐỒNG BỘ RUNNER TỪ KÊNH LIVE: <b>{finalName}</b> (@{NormalizeUniqueId(_tiktokUniqueId)}) <<<</color>");
+                Debug.Log($"[TikTokLiveClient] Đã đồng bộ Runner từ kênh Live: {finalName} (@{NormalizeUniqueId(_tiktokUniqueId)})");
             }
         }
 
         private void HandleTikTokConnected(SocketIOResponse response)
         {
-            Debug.Log($"<color=#00FF88><b>[TikTokLiveClient] ✅ ĐÃ KẾT NỐI TIKTOK LIVE THÀNH CÔNG (Backend Nhóm 5)! Kênh: @{NormalizeUniqueId(_tiktokUniqueId)}</b></color>");
+            Debug.Log($"[TikTokLiveClient] Đã kết nối TikTok Live thành công (Backend Nhóm 5)! Kênh: @{NormalizeUniqueId(_tiktokUniqueId)}");
             ShowPopup($"TikTok Live: Kết nối @{NormalizeUniqueId(_tiktokUniqueId)} thành công!", true);
             HandleRoomInfo(response);
         }
@@ -1023,7 +1038,7 @@ namespace SteamRush.Features.StreamIntegration
         private void HandleTikTokDisconnected(SocketIOResponse response)
         {
             string reason = response != null ? response.ToString() : "Mất kết nối";
-            Debug.LogWarning($"<color=#FF5555>[TikTokLiveClient] ⚠️ TikTok Live bị ngắt kết nối: {reason}</color>");
+            Debug.LogWarning($"[TikTokLiveClient] TikTok Live bị ngắt kết nối: {reason}");
             ShowPopup("Mất kết nối TikTok Live!", false);
         }
 
