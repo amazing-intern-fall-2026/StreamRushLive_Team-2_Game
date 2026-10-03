@@ -18,7 +18,7 @@ namespace SteamRush.Features.StreamIntegration
     public class TikTokLiveClient : MonoBehaviour
     {
         [Header("Backend Connection")]
-        [Tooltip("TikTok Live backend server URL (default: http://localhost:9090).")]
+        [Tooltip("TikTok Live backend server URL (default port: 9090).")]
         [SerializeField] private string _serverUrl = "http://localhost:9090";
 
         [Tooltip("TikTok username of the active live stream (without @).")]
@@ -163,9 +163,9 @@ namespace SteamRush.Features.StreamIntegration
             {
                 _profileSync = gameObject.AddComponent<TikTokProfileSync>();
             }
-            if (_profileSync != null && !string.IsNullOrEmpty(_tiktokUniqueId))
+            if (_profileSync != null)
             {
-                _profileSync.TikTokUniqueId = _tiktokUniqueId;
+                _profileSync.EnsureReferences();
             }
         }
 

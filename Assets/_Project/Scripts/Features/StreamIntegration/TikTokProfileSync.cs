@@ -18,8 +18,7 @@ namespace SteamRush.Features.StreamIntegration
     public class TikTokProfileSync : MonoBehaviour
     {
         [Header("Host Profile")]
-        [Tooltip("TikTok username of the host stream (without @).")]
-        [SerializeField] private string _tiktokUniqueId = "";
+        [SerializeField] private TikTokLiveClient _client;
 
         [Tooltip("Auto-sync host username and avatar as the initial Runner.")]
         [SerializeField] private bool _syncHostAsInitialRunner = true;
@@ -37,11 +36,7 @@ namespace SteamRush.Features.StreamIntegration
         [Header("Diagnostics")]
         [SerializeField] private bool _logEvents = true;
 
-        public string TikTokUniqueId
-        {
-            get => _tiktokUniqueId;
-            set => _tiktokUniqueId = value;
-        }
+        public string TikTokUniqueId => _client != null ? _client.TikTokUniqueId : string.Empty;
 
         public string HostDisplayName => _hostDisplayName;
         public Sprite HostAvatarSprite => _hostAvatarSprite;
@@ -60,9 +55,10 @@ namespace SteamRush.Features.StreamIntegration
         private void Start()
         {
             EnsureReferences();
-            if (_syncHostAsInitialRunner && !string.IsNullOrEmpty(_tiktokUniqueId))
+            string uniqueId = TikTokUniqueId;
+            if (_syncHostAsInitialRunner && !string.IsNullOrEmpty(uniqueId))
             {
-                SyncHostProfileToRunner(_tiktokUniqueId);
+                SyncHostProfileToRunner(uniqueId);
             }
         }
 
@@ -79,6 +75,7 @@ namespace SteamRush.Features.StreamIntegration
 
         public void EnsureReferences()
         {
+            if (_client == null) _client = GetComponent<TikTokLiveClient>() ?? FindFirstObjectByType<TikTokLiveClient>();
             if (_queueManager == null) _queueManager = FindFirstObjectByType<ChatRunnerQueueManager>();
             if (_hudManager == null) _hudManager = FindFirstObjectByType<HUDManager>();
         }
@@ -87,25 +84,22 @@ namespace SteamRush.Features.StreamIntegration
         {
             EnsureReferences();
 
-            if (!string.IsNullOrEmpty(evt.UniqueId))
-            {
-                _tiktokUniqueId = evt.UniqueId;
-            }
+            string uniqueId = !string.IsNullOrEmpty(evt.UniqueId) ? evt.UniqueId : TikTokUniqueId;
 
             if (evt.RawState != null)
             {
                 ParseRoomInfoState(evt.RawState);
             }
-            else if (!string.IsNullOrEmpty(_tiktokUniqueId))
+            else if (!string.IsNullOrEmpty(uniqueId))
             {
-                SyncHostProfileToRunner(_tiktokUniqueId);
+                SyncHostProfileToRunner(uniqueId);
             }
         }
 
         [ContextMenu("Sync Host Profile Now")]
         public void SyncHostProfileToRunner()
         {
-            SyncHostProfileToRunner(_tiktokUniqueId);
+            SyncHostProfileToRunner(TikTokUniqueId);
         }
 
         public void SyncHostProfileToRunner(string uniqueId)
@@ -114,7 +108,6 @@ namespace SteamRush.Features.StreamIntegration
             if (string.IsNullOrEmpty(cleanId)) return;
 
             EnsureReferences();
-            _tiktokUniqueId = cleanId;
 
             string initialName = !string.IsNullOrEmpty(_hostDisplayName) ? _hostDisplayName : cleanId;
             if (_queueManager != null)
@@ -257,7 +250,8 @@ namespace SteamRush.Features.StreamIntegration
 
         private void ApplyHostProfileToRunner()
         {
-            string finalName = !string.IsNullOrEmpty(_hostDisplayName) ? _hostDisplayName : NormalizeUniqueId(_tiktokUniqueId);
+            string uniqueId = TikTokUniqueId;
+            string finalName = !string.IsNullOrEmpty(_hostDisplayName) ? _hostDisplayName : NormalizeUniqueId(uniqueId);
             if (string.IsNullOrEmpty(finalName)) return;
 
             EnsureReferences();
@@ -272,7 +266,7 @@ namespace SteamRush.Features.StreamIntegration
 
             if (_logEvents)
             {
-                Debug.Log($"[TikTokProfileSync] Synced Runner from live channel: {finalName} (@{NormalizeUniqueId(_tiktokUniqueId)})");
+                Debug.Log($"[TikTokProfileSync] Synced Runner from live channel: {finalName} (@{NormalizeUniqueId(uniqueId)})");
             }
         }
 
