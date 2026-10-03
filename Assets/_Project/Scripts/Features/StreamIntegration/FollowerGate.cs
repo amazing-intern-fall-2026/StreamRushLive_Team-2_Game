@@ -3,20 +3,16 @@ using SteamRush.Core;
 
 namespace SteamRush.Features.StreamIntegration
 {
-    // StreamIntegration se cung cap trang thai Follow that qua interface nay.
+    // Provides live stream follower status through this interface.
     public interface IFollowerStatusProvider
     {
         bool IsFollower(string userId);
     }
 
-    // Chan quyen vao hang doi / gui lenh chat - chi Follower moi duoc phep (GDD v1.3 muc 3).
-    // Thu tu chon nguon follower: provider truyen qua constructor -> provider dung chung
-    // (SetSharedProvider) -> neu ca hai deu chua co thi cho qua (mock) de test scene ca nhan.
+    // Controls follower gating for queue entry and chat commands.
     public class FollowerGate
     {
-        // [TikTok] Provider dung chung: TikTokFollowerRegistry tu dang ky khi ket noi, nen cac
-        // class dang "new FollowerGate()" (FactionTugOfWarManager, ChatRunnerQueueManager) tu dung
-        // duoc follower that ma khong phai sua tung noi.
+        // Shared provider registered automatically by TikTokFollowerRegistry upon connection.
         private static IFollowerStatusProvider _sharedProvider;
 
         /// <summary>
@@ -37,7 +33,6 @@ namespace SteamRush.Features.StreamIntegration
             _sharedProvider = provider;
         }
 
-        // Chi go neu provider dang gan chinh la provider nay (tranh go nham cua nguoi khac).
         public static void ClearSharedProvider(IFollowerStatusProvider provider)
         {
             if (_sharedProvider == provider)
@@ -51,16 +46,13 @@ namespace SteamRush.Features.StreamIntegration
             return IsFollower(userId);
         }
 
-        // GDD v1.3 muc 3.2: nguoi chua Follow co gui lenh (left/right/fast/slow) -> tu dong bo qua,
-        // kem "thong bao bot nhac nho" - publish qua EventBus de module chat that (chua ton tai)
-        // tra loi comment nhac Follow.
         public bool CanSendCommand(string userId)
         {
             bool isFollower = IsFollower(userId);
 
             if (!isFollower)
             {
-                Debug.Log($"[FollowerGate] {userId} chưa Follow - bỏ qua lệnh (bot nhắc nhở Follow để điều khiển).");
+                Debug.Log($"[FollowerGate] {userId} is not following - ignored command.");
                 EventBus.Publish(new NonFollowerCommandRejectedEvent(userId));
             }
 
