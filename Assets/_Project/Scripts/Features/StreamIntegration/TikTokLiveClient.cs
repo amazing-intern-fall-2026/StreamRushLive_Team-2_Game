@@ -5,83 +5,14 @@ using SocketIOClient;
 using SocketIOClient.Newtonsoft.Json;
 using UnityEngine;
 using SteamRush.Core;
-using StreamRushLive.Features.Gifts;
-using StreamRushLive.Features.Spawning;
-using SteamRush.Features.Runner;
-using SteamRush.Features.UI;
-using SteamRush.Features.UI.Views;
 
 namespace SteamRush.Features.StreamIntegration
 {
-    public enum GiftActionType
-    {
-        [InspectorName("Blue: Shield")]
-        Blue_Shield,
-
-        [InspectorName("Blue: Speed Boost")]
-        Blue_SpeedBoost,
-
-        [InspectorName("Blue: Free Control")]
-        Blue_FreeControl,
-
-        [InspectorName("Blue: +Energy")]
-        Blue_EnergyBottle,
-
-        [InspectorName("Red: Pickup Truck")]
-        Red_SpawnPickup,
-
-        [InspectorName("Red: Heavy Truck")]
-        Red_SpawnHeavyTruck,
-
-        [InspectorName("Red: Unlimited Cars")]
-        Red_UnlimitedCars,
-
-        [InspectorName("Red: +Energy")]
-        Red_EnergyBottle,
-
-        [InspectorName("Special: Meme Dance")]
-        Special_GiftDance,
-
-        [InspectorName("Special: Rain Hazard")]
-        Special_RainHazard,
-
-        [InspectorName("Special: VIP Ticket")]
-        Special_VIPRelayTicket,
-
-        [InspectorName("Dynamic: By Faction")]
-        Dynamic_ByFaction,
-
-        [InspectorName("Like: +Energy")]
-        Like_Energy
-    }
-
-    [System.Serializable]
-    public class TikTokGiftMapping
-    {
-        [Tooltip("TikTok Gift ID (e.g. 5655 for Rose, 5269 for TikTok). Match the exact ID to link effects.")]
-        public int giftId = 0;
-
-        [Tooltip("Gift name for identification in Inspector (e.g. Rose, Donut, Lion, Cap).")]
-        public string giftName = "Rose";
-
-        [Tooltip("Sprite icon for this gift (leaves empty to auto-resolve official TikTok icon).")]
-        public Sprite giftIcon;
-
-        [Tooltip("Description displayed directly on the in-game gift card UI.")]
-        [UnityEngine.Serialization.FormerlySerializedAs("englishDescription")]
-        public string description = "+300 Blue Energy";
-
-        [Tooltip("Gameplay action triggered when viewers send this gift.")]
-        public GiftActionType action = GiftActionType.Blue_EnergyBottle;
-
-        [Tooltip("Custom value: Duration (seconds) or Energy amount. Set 0 for default.")]
-        public float customValue = 0f;
-    }
-
     /// <summary>
     /// Network connection hub for TikTok Live over Socket.IO.
-    /// Manages socket lifecycle, parses raw incoming events, and broadcasts strongly-typed events via EventBus.
-    /// Automatically connects modular adapters (Chat, Like, Follow, Gift, Profile) for gameplay routing.
+    /// Dedicated solely to managing backend connection lifecycle, raw packet parsing,
+    /// and dispatching strongly-typed events via EventBus.
+    /// Specific gameplay logic is handled by modular adapters (Chat, Like, Follow, Gift, Profile).
     /// </summary>
     [DisallowMultipleComponent]
     public class TikTokLiveClient : MonoBehaviour
@@ -98,15 +29,6 @@ namespace SteamRush.Features.StreamIntegration
 
         [Tooltip("Enforce WebSocket transport only.")]
         [SerializeField] private bool _webSocketOnly = true;
-
-        [Header("Host Profile")]
-        [SerializeField] private bool _syncHostAsInitialRunner = true;
-        [SerializeField] private string _hostDisplayName = "";
-        [SerializeField] private Sprite _hostAvatarSprite;
-
-        [Header("Follower Requirement")]
-        [Tooltip("If TRUE: Viewers must follow on TikTok Live to play and send chat commands. If FALSE (default): Anyone in the live stream can play immediately.")]
-        [SerializeField] private bool _requireFollowToPlay = false;
 
         [Header("Socket Event Names")]
         [SerializeField] private string _setUniqueIdEvent = "setUniqueID";
@@ -127,26 +49,10 @@ namespace SteamRush.Features.StreamIntegration
         [SerializeField] private string _coinCountPath = "coinCount";
         [SerializeField] private string _repeatCountPath = "repeatCount";
 
-        [Header("TikTok Gift Mappings (Migrated to TikTokGiftRouter)")]
-        [SerializeField] private List<TikTokGiftMapping> _giftMappings = new List<TikTokGiftMapping>();
-
-        [Header("Likes to Energy Settings")]
-        [SerializeField] private int _likesPerEnergyStep = 20;
-        [SerializeField] private int _energyPerStep = 5;
-
-        [Header("Subsystem References")]
-        [SerializeField] private FactionTugOfWarManager _factionManager;
-        [SerializeField] private HUDManager _hudManager;
-        [SerializeField] private ChatLaneRunnerController _runnerController;
-        [SerializeField] private ChatRunnerQueueManager _queueManager;
-        [SerializeField] private GiftManager _giftManager;
-        [SerializeField] private GiftInfoPanelController _giftPanelController;
-
-        [Header("Display & Logs")]
-        [SerializeField] private bool _showPopups = true;
+        [Header("Diagnostics")]
         [SerializeField] private bool _logEvents = true;
 
-        [Header("Modular Adapters")]
+        [Header("Modular Adapters (Auto-Resolved)")]
         [SerializeField] private TikTokChatAdapter _chatAdapter;
         [SerializeField] private TikTokLikeAdapter _likeAdapter;
         [SerializeField] private TikTokFollowAdapter _followAdapter;
@@ -154,41 +60,45 @@ namespace SteamRush.Features.StreamIntegration
         [SerializeField] private TikTokProfileSync _profileSync;
 
         private SocketIOUnity _socket;
-        private readonly TikTokFollowerRegistry _fallbackFollowers = new TikTokFollowerRegistry();
 
-        #region Public Properties
+        #region Public Properties & Backward Compatibility
 
         public bool IsConnected => _socket != null && _socket.Connected;
         public string ServerUrl => _serverUrl;
         public string TikTokUniqueId => _tiktokUniqueId;
-        public string HostDisplayName => _profileSync != null ? _profileSync.HostDisplayName : _hostDisplayName;
-        public Sprite HostAvatarSprite => _profileSync != null ? _profileSync.HostAvatarSprite : _hostAvatarSprite;
-        public TikTokFollowerRegistry Followers => _followAdapter != null ? _followAdapter.Followers : _fallbackFollowers;
+
+        public string HostDisplayName => _profileSync != null ? _profileSync.HostDisplayName : string.Empty;
+        public Sprite HostAvatarSprite => _profileSync != null ? _profileSync.HostAvatarSprite : null;
+        public List<TikTokGiftMapping> GiftMappings => _giftRouter != null ? _giftRouter.GiftMappings : null;
+        public TikTokFollowerRegistry Followers => _followAdapter != null ? _followAdapter.Followers : null;
 
         public bool RequireFollowToPlay
         {
-            get => _requireFollowToPlay;
+            get => _chatAdapter != null ? _chatAdapter.RequireFollowToPlay : FollowerGate.StrictFollowerOnly;
             set
             {
-                _requireFollowToPlay = value;
-                FollowerGate.StrictFollowerOnly = value;
                 if (_chatAdapter != null) _chatAdapter.RequireFollowToPlay = value;
+                FollowerGate.StrictFollowerOnly = value;
             }
         }
 
         public bool SyncHostAsInitialRunner
         {
-            get => _syncHostAsInitialRunner;
+            get => _profileSync != null && _profileSync.SyncHostAsInitialRunner;
             set
             {
-                _syncHostAsInitialRunner = value;
                 if (_profileSync != null) _profileSync.SyncHostAsInitialRunner = value;
             }
         }
 
-        public List<TikTokGiftMapping> GiftMappings
+        public void AddGiftMapping(TikTokGiftMapping mapping)
         {
-            get => _giftRouter != null ? _giftRouter.GiftMappings : _giftMappings;
+            _giftRouter?.AddGiftMapping(mapping);
+        }
+
+        public bool RemoveGiftMapping(int giftId, string giftName = null)
+        {
+            return _giftRouter != null && _giftRouter.RemoveGiftMapping(giftId, giftName);
         }
 
         #endregion
@@ -198,18 +108,16 @@ namespace SteamRush.Features.StreamIntegration
         private void Awake()
         {
             EnsureAdapters();
-            FollowerGate.StrictFollowerOnly = _requireFollowToPlay;
         }
 
         private void Start()
         {
             EnsureAdapters();
-            FollowerGate.StrictFollowerOnly = _requireFollowToPlay;
         }
 
         private void OnEnable()
         {
-            FollowerGate.StrictFollowerOnly = _requireFollowToPlay;
+            EnsureAdapters();
             if (_connectOnStart)
             {
                 Connect();
@@ -223,10 +131,10 @@ namespace SteamRush.Features.StreamIntegration
 
         #endregion
 
-        #region Adapter Setup & Compatibility
+        #region Adapter Setup
 
         /// <summary>
-        /// Ensures all 5 modular adapters are attached to this GameObject and initialized with inspector settings.
+        /// Ensures all 5 modular adapters are linked to this client.
         /// </summary>
         [ContextMenu("Setup Modular Adapters")]
         public void EnsureAdapters()
@@ -235,79 +143,30 @@ namespace SteamRush.Features.StreamIntegration
             {
                 _chatAdapter = gameObject.AddComponent<TikTokChatAdapter>();
             }
-            if (_chatAdapter != null)
-            {
-                _chatAdapter.RequireFollowToPlay = _requireFollowToPlay;
-                _chatAdapter.EnsureReferences();
-            }
 
             if (_likeAdapter == null && !TryGetComponent(out _likeAdapter))
             {
                 _likeAdapter = gameObject.AddComponent<TikTokLikeAdapter>();
-            }
-            if (_likeAdapter != null)
-            {
-                _likeAdapter.LikesPerEnergyStep = _likesPerEnergyStep;
-                _likeAdapter.EnergyPerStep = _energyPerStep;
-                _likeAdapter.EnsureReferences();
             }
 
             if (_followAdapter == null && !TryGetComponent(out _followAdapter))
             {
                 _followAdapter = gameObject.AddComponent<TikTokFollowAdapter>();
             }
-            if (_followAdapter != null)
-            {
-                _followAdapter.EnsureReferences();
-            }
 
             if (_giftRouter == null && !TryGetComponent(out _giftRouter))
             {
                 _giftRouter = gameObject.AddComponent<TikTokGiftRouter>();
-            }
-            if (_giftRouter != null)
-            {
-                if ((_giftRouter.GiftMappings == null || _giftRouter.GiftMappings.Count == 0) && _giftMappings != null && _giftMappings.Count > 0)
-                {
-                    _giftRouter.SetGiftMappings(_giftMappings);
-                }
-                _giftRouter.EnsureReferences();
             }
 
             if (_profileSync == null && !TryGetComponent(out _profileSync))
             {
                 _profileSync = gameObject.AddComponent<TikTokProfileSync>();
             }
-            if (_profileSync != null)
+            if (_profileSync != null && !string.IsNullOrEmpty(_tiktokUniqueId))
             {
                 _profileSync.TikTokUniqueId = _tiktokUniqueId;
-                _profileSync.SyncHostAsInitialRunner = _syncHostAsInitialRunner;
-                _profileSync.EnsureReferences();
             }
-        }
-
-        public void AddGiftMapping(TikTokGiftMapping mapping)
-        {
-            if (_giftRouter != null)
-            {
-                _giftRouter.AddGiftMapping(mapping);
-            }
-            else if (mapping != null)
-            {
-                _giftMappings.Add(mapping);
-            }
-        }
-
-        public bool RemoveGiftMapping(int giftId, string giftName = null)
-        {
-            if (_giftRouter != null)
-            {
-                return _giftRouter.RemoveGiftMapping(giftId, giftName);
-            }
-
-            return _giftMappings.RemoveAll(m =>
-                (giftId > 0 && m.giftId == giftId) ||
-                (!string.IsNullOrEmpty(giftName) && string.Equals(m.giftName, giftName, StringComparison.OrdinalIgnoreCase))) > 0;
         }
 
         #endregion
@@ -503,20 +362,12 @@ namespace SteamRush.Features.StreamIntegration
             string displayName = GetDisplayName(json, userId);
 
             EventBus.Publish(new TikTokShareEvent(userId, displayName));
-            if (_showPopups && _hudManager != null)
-            {
-                _hudManager.ShowStatusPopup($"[{displayName}] shared the livestream!", true);
-            }
         }
 
         private void OnRawTikTokConnected(SocketIOResponse response)
         {
             string channel = NormalizeUniqueId(_tiktokUniqueId);
             Debug.Log($"[TikTokLiveClient] Connected to TikTok Live successfully! Channel: @{channel}");
-            if (_showPopups && _hudManager != null)
-            {
-                _hudManager.ShowStatusPopup($"TikTok Live: @{channel} connected!", true);
-            }
 
             JObject json = ParseResponse(response);
             string roomId = ReadStringWithFallback(json, "roomId", "room_id", "data.roomId");
@@ -527,10 +378,6 @@ namespace SteamRush.Features.StreamIntegration
         {
             string reason = response != null ? response.ToString() : "Disconnected";
             Debug.LogWarning($"[TikTokLiveClient] TikTok Live disconnected: {reason}");
-            if (_showPopups && _hudManager != null)
-            {
-                _hudManager.ShowStatusPopup("TikTok Live disconnected!", false);
-            }
             EventBus.Publish(new TikTokDisconnectedEvent(reason));
         }
 
@@ -604,73 +451,6 @@ namespace SteamRush.Features.StreamIntegration
         {
             return string.IsNullOrWhiteSpace(raw) ? string.Empty : raw.Trim().TrimStart('@');
         }
-
-        #endregion
-
-        #region Editor Support
-
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-            if (_giftMappings != null && _giftMappings.Count > 0)
-            {
-                bool changed = false;
-                string dir = "Assets/_Project/Textures/TikTokGifts";
-
-                foreach (var item in _giftMappings)
-                {
-                    if (item.giftId > 0)
-                    {
-                        string idPath = $"{dir}/{item.giftId}.png";
-                        Sprite idSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(idPath);
-                        if (idSprite != null && item.giftIcon != idSprite)
-                        {
-                            item.giftIcon = idSprite;
-                            changed = true;
-                        }
-                    }
-                }
-
-                if (changed)
-                {
-                    UnityEditor.EditorUtility.SetDirty(this);
-                }
-            }
-
-            if (_giftPanelController == null)
-            {
-                _giftPanelController = FindFirstObjectByType<GiftInfoPanelController>();
-            }
-
-            FollowerGate.StrictFollowerOnly = _requireFollowToPlay;
-
-            if (_giftPanelController != null && !Application.isPlaying)
-            {
-                UnityEditor.EditorApplication.delayCall -= RefreshGiftPanelInEditor;
-                UnityEditor.EditorApplication.delayCall += RefreshGiftPanelInEditor;
-            }
-        }
-
-        private void RefreshGiftPanelInEditor()
-        {
-            if (this == null || _giftPanelController == null) return;
-            _giftPanelController.BuildGiftDisplay();
-        }
-
-        [ContextMenu("Sort Gift Mappings By Team")]
-        public void SortGiftMappingsByTeam()
-        {
-            if (_giftPanelController == null)
-            {
-                _giftPanelController = FindFirstObjectByType<GiftInfoPanelController>();
-            }
-
-            if (_giftPanelController != null)
-            {
-                _giftPanelController.SyncSortedOrderToClient();
-            }
-        }
-#endif
 
         #endregion
     }

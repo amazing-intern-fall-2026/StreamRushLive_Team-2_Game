@@ -10,6 +10,71 @@ using SteamRush.Features.UI.Views;
 
 namespace SteamRush.Features.StreamIntegration
 {
+    public enum GiftActionType
+    {
+        [InspectorName("Blue: Shield")]
+        Blue_Shield,
+
+        [InspectorName("Blue: Speed Boost")]
+        Blue_SpeedBoost,
+
+        [InspectorName("Blue: Free Control")]
+        Blue_FreeControl,
+
+        [InspectorName("Blue: +Energy")]
+        Blue_EnergyBottle,
+
+        [InspectorName("Red: Pickup Truck")]
+        Red_SpawnPickup,
+
+        [InspectorName("Red: Heavy Truck")]
+        Red_SpawnHeavyTruck,
+
+        [InspectorName("Red: Unlimited Cars")]
+        Red_UnlimitedCars,
+
+        [InspectorName("Red: +Energy")]
+        Red_EnergyBottle,
+
+        [InspectorName("Special: Meme Dance")]
+        Special_GiftDance,
+
+        [InspectorName("Special: Rain Hazard")]
+        Special_RainHazard,
+
+        [InspectorName("Special: VIP Ticket")]
+        Special_VIPRelayTicket,
+
+        [InspectorName("Dynamic: By Faction")]
+        Dynamic_ByFaction,
+
+        [InspectorName("Like: +Energy")]
+        Like_Energy
+    }
+
+    [System.Serializable]
+    public class TikTokGiftMapping
+    {
+        [Tooltip("TikTok Gift ID (e.g. 5655 for Rose, 5269 for TikTok). Match the exact ID to link effects.")]
+        public int giftId = 0;
+
+        [Tooltip("Gift name for identification in Inspector (e.g. Rose, Donut, Lion, Cap).")]
+        public string giftName = "Rose";
+
+        [Tooltip("Sprite icon for this gift (leaves empty to auto-resolve official TikTok icon).")]
+        public Sprite giftIcon;
+
+        [Tooltip("Description displayed directly on the in-game gift card UI.")]
+        [UnityEngine.Serialization.FormerlySerializedAs("englishDescription")]
+        public string description = "+300 Blue Energy";
+
+        [Tooltip("Gameplay action triggered when viewers send this gift.")]
+        public GiftActionType action = GiftActionType.Blue_EnergyBottle;
+
+        [Tooltip("Custom value: Duration (seconds) or Energy amount. Set 0 for default.")]
+        public float customValue = 0f;
+    }
+
     /// <summary>
     /// Routes incoming TikTok gift events via EventBus to specific in-game gameplay actions.
     /// Supports custom gift ID/name mappings, fallback behavior, and UI card highlight effects.
@@ -285,5 +350,66 @@ namespace SteamRush.Features.StreamIntegration
             EnsureReferences();
             _hudManager?.ShowStatusPopup(message, isFan);
         }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (_giftMappings != null && _giftMappings.Count > 0)
+            {
+                bool changed = false;
+                string dir = "Assets/_Project/Textures/TikTokGifts";
+
+                foreach (var item in _giftMappings)
+                {
+                    if (item.giftId > 0)
+                    {
+                        string idPath = $"{dir}/{item.giftId}.png";
+                        Sprite idSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(idPath);
+                        if (idSprite != null && item.giftIcon != idSprite)
+                        {
+                            item.giftIcon = idSprite;
+                            changed = true;
+                        }
+                    }
+                }
+
+                if (changed)
+                {
+                    UnityEditor.EditorUtility.SetDirty(this);
+                }
+            }
+
+            if (_giftPanelController == null)
+            {
+                _giftPanelController = FindFirstObjectByType<GiftInfoPanelController>();
+            }
+
+            if (_giftPanelController != null && !Application.isPlaying)
+            {
+                UnityEditor.EditorApplication.delayCall -= RefreshGiftPanelInEditor;
+                UnityEditor.EditorApplication.delayCall += RefreshGiftPanelInEditor;
+            }
+        }
+
+        private void RefreshGiftPanelInEditor()
+        {
+            if (this == null || _giftPanelController == null) return;
+            _giftPanelController.BuildGiftDisplay();
+        }
+
+        [ContextMenu("Sort Gift Mappings By Team")]
+        public void SortGiftMappingsByTeam()
+        {
+            if (_giftPanelController == null)
+            {
+                _giftPanelController = FindFirstObjectByType<GiftInfoPanelController>();
+            }
+
+            if (_giftPanelController != null)
+            {
+                _giftPanelController.SyncSortedOrderToClient();
+            }
+        }
+#endif
     }
 }
