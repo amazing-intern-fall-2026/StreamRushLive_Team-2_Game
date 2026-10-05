@@ -95,7 +95,7 @@ namespace SteamRush.Features.Runner
             }
             else
             {
-                Debug.LogWarning("[MockChatConsole] Chưa gán Chat Input Field!");
+                Debug.LogWarning("[MockChatConsole] Chat Input Field not assigned!");
             }
 
             SetupVerticalDebugUI();
@@ -346,7 +346,7 @@ namespace SteamRush.Features.Runner
                 MockTriggerFinishLineApproach(50f);
             }
 
-            // F1: Spawn Khiên Bảo Vệ. Shift+F1: Bình Thao Tác Tự Do (Free-Control Buff 30s, GDD v1.4.1 mục 3).
+            // F1: Shield buff. Shift+F1: Free-Control Buff (30s).
             if (Keyboard.current.f1Key.wasPressedThisFrame)
             {
                 if (isShift) MockActivateFreeControl();
@@ -662,14 +662,14 @@ namespace SteamRush.Features.Runner
                 }
                 else
                 {
-                    Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatLaneRunnerController để thực thi lệnh!");
+                    Debug.LogWarning("[MockChatConsole] ChatLaneRunnerController not found to execute command!");
                 }
             }
 
             ClearInputField();
         }
 
-        public void MockDonateShield(string sender = "Khán Giả")
+        public void MockDonateShield(string sender = "Viewer")
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
             {
@@ -702,15 +702,15 @@ namespace SteamRush.Features.Runner
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
                 hudManager?.ShowFanAction(sender, $"Shield ({duration:F0}s)");
                 hudManager?.ShowStatusPopup($"Shield Activated ({duration:F0}s)!", true);
-                Debug.Log($"[MockChatConsole] F1 -> {sender} tặng Khiên: Kích hoạt trực tiếp Khiên bảo vệ {duration:F0}s cho Runner.");
+                Debug.Log($"[MockChatConsole] F1 -> {sender} gifted Shield ({duration:F0}s).");
             }
             else
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy RunnerItemEffects để kích hoạt Khiên!");
+                Debug.LogWarning("[MockChatConsole] RunnerItemEffects not found to activate Shield!");
             }
         }
 
-        // Quà Bình Tăng Tốc (Sprint Buff - Blue Team, F2): Chạy nhanh 30s không tốn năng lượng
+        // Sprint Buff (Blue Team, F2): 30s sprint without energy drain
         public void MockActivateFanSprintBuff(string sender = "Blue Team")
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
@@ -726,7 +726,7 @@ namespace SteamRush.Features.Runner
 
             if (chatLaneRunner == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatLaneRunnerController.");
+                Debug.LogWarning("[MockChatConsole] ChatLaneRunnerController not found.");
                 return;
             }
 
@@ -738,8 +738,8 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        // Quà Bình Thao Tác Tự Do (Free-Control Buff - Blue Team, Shift+F1, GDD v1.4.1 mục 3):
-        // Đổi Làn và Nhảy tiêu tốn 0% năng lượng trong 30s, kể cả khi Blue Team đang ở mức 0%.
+        // Free-Control Buff (Blue Team, Shift+F1, GDD v1.4.1 Section 3):
+        // Lane switches and jumps cost 0% energy for 30s even if Blue Team energy is 0%.
         public void MockActivateFreeControl(string sender = "Blue Team")
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
@@ -755,7 +755,7 @@ namespace SteamRush.Features.Runner
 
             if (chatLaneRunner == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatLaneRunnerController.");
+                Debug.LogWarning("[MockChatConsole] ChatLaneRunnerController not found.");
                 return;
             }
 
@@ -763,10 +763,10 @@ namespace SteamRush.Features.Runner
             if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
             hudManager?.ShowFanAction(sender, "Free Control (30s)");
             hudManager?.ShowStatusPopup("Free Control Active (30s)!", true);
-            Debug.Log($"[MockChatConsole] {sender} kích hoạt Bình Thao Tác Tự Do (Free-Control Buff) 30s.");
+            Debug.Log($"[MockChatConsole] {sender} activated Free-Control Buff (30s).");
         }
 
-        // Phím 9 hoặc Shift+F2: Toggle Sprint Buff tự do để QA test
+        // Key 9 or Shift+F2: Toggle sprint buff for testing
         private void MockToggleSprintBuffDebug()
         {
             if (chatLaneRunner == null)
@@ -776,7 +776,7 @@ namespace SteamRush.Features.Runner
 
             if (chatLaneRunner == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatLaneRunnerController.");
+                Debug.LogWarning("[MockChatConsole] ChatLaneRunnerController not found.");
                 return;
             }
 
@@ -822,7 +822,7 @@ namespace SteamRush.Features.Runner
                 }
                 else if (!isUnlimited && factionManager != null)
                 {
-                    // Hoàn lại năng lượng nếu không spawn được (kẹt làn hoặc max 2 xe)
+                    // Refund energy if spawn failed (lane blocked or max cars)
                     factionManager.AddAntiEnergy(cost);
                 }
             }
@@ -883,7 +883,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             if (obstacleSpawner == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy SingleObstacleSpawner.");
+                Debug.LogWarning("[MockChatConsole] SingleObstacleSpawner not found.");
                 return;
             }
 
@@ -958,7 +958,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             if (obstacleSpawner == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy SingleObstacleSpawner.");
+                Debug.LogWarning("[MockChatConsole] SingleObstacleSpawner not found.");
                 return;
             }
 
@@ -996,11 +996,11 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
                 hudManager?.ShowFanAction(sender, $"+{amount} Energy");
                 hudManager?.ShowStatusPopup($"+{amount} Blue Energy", true);
                 AudioManager.Instance?.PlaySFX(SFXType.CollectEnergy, 1.0f);
-                Debug.Log($"[MockChatConsole] {sender} tặng Bình Năng Lượng Blue Team +{amount}. (Total: {factionManager.FanLikes})");
+                Debug.Log($"[MockChatConsole] {sender} gifted Blue Energy Bottle +{amount}. (Total: {factionManager.FanLikes})");
             }
             else
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy FactionTugOfWarManager.");
+                Debug.LogWarning("[MockChatConsole] FactionTugOfWarManager not found.");
             }
         }
 
@@ -1022,11 +1022,11 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
                 hudManager?.ShowAntiAction(sender, $"+{amount} Energy");
                 hudManager?.ShowStatusPopup($"+{amount} Red Energy", false);
                 AudioManager.Instance?.PlaySFX(SFXType.CollectEnergy, 1.0f);
-                Debug.Log($"[MockChatConsole] {sender} tặng Bình Năng Lượng Red Team +{amount}. (Total: {factionManager.AntiLikes})");
+                Debug.Log($"[MockChatConsole] {sender} gifted Red Energy Bottle +{amount}. (Total: {factionManager.AntiLikes})");
             }
             else
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy FactionTugOfWarManager.");
+                Debug.LogWarning("[MockChatConsole] FactionTugOfWarManager not found.");
             }
         }
 
@@ -1046,7 +1046,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
             }
             else
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatRunnerQueueManager.");
+                Debug.LogWarning("[MockChatConsole] ChatRunnerQueueManager not found.");
             }
         }
 
@@ -1065,7 +1065,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             if (obstacleSpawner == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy SingleObstacleSpawner.");
+                Debug.LogWarning("[MockChatConsole] SingleObstacleSpawner not found.");
                 return;
             }
 
@@ -1082,7 +1082,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
             }
         }
 
-        public void MockGiftDance(string sender = "Khán Giả")
+        public void MockGiftDance(string sender = "Viewer")
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
             {
@@ -1099,7 +1099,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             if (giftDance == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy GiftDanceController.");
+                Debug.LogWarning("[MockChatConsole] GiftDanceController not found.");
                 return;
             }
 
@@ -1136,7 +1136,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             if (queueManager == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatRunnerQueueManager.");
+                Debug.LogWarning("[MockChatConsole] ChatRunnerQueueManager not found.");
                 return;
             }
 
@@ -1156,7 +1156,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             if (obstacleSpawner == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy SingleObstacleSpawner.");
+                Debug.LogWarning("[MockChatConsole] SingleObstacleSpawner not found.");
                 return;
             }
 

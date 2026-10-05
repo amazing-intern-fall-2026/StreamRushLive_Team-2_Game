@@ -19,9 +19,9 @@ namespace SteamRush.Features.Runner
         [SerializeField] private bool isRunning = false;
 
         [Header("Follower & Handover Simulation")]
-        [Tooltip("Bật/tắt giả lập follower mới chuyền gậy trong phiên Live Demo")]
+        [Tooltip("Enable/disable mock follower baton handover during Live Demo")]
         [SerializeField] private bool enableMockFollowers = false;
-        [Tooltip("Đồng bộ tắt danh sách follower giả lập ban đầu và tự động bù trên ChatRunnerQueueManager")]
+        [Tooltip("Sync initial mock follower settings with ChatRunnerQueueManager")]
         [SerializeField] private bool syncQueueManagerMock = true;
 
         [Header("Interaction Pace (Seconds)")]
@@ -62,11 +62,11 @@ namespace SteamRush.Features.Runner
         public int TotalRoomLikes => totalRoomLikes;
 
         [Header("Livestream Delay Simulation")]
-        [Tooltip("Bật/tắt giả lập độ trễ truyền phát livestream (Broadcast & Network Latency)")]
+        [Tooltip("Enable/disable livestream broadcast & network latency simulation")]
         [SerializeField] private bool enableStreamDelay = true;
-        [Tooltip("Độ trễ tối thiểu (giây) của khán giả phòng live (VD: 1.5s)")]
+        [Tooltip("Minimum live broadcast latency in seconds (e.g. 1.5s)")]
         [SerializeField] private float streamDelayMin = 1.5f;
-        [Tooltip("Độ trễ tối đa (giây) của khán giả phòng live (VD: 3.0s)")]
+        [Tooltip("Maximum live broadcast latency in seconds (e.g. 3.0s)")]
         [SerializeField] private float streamDelayMax = 3.0f;
 
         public bool EnableStreamDelay
@@ -174,7 +174,7 @@ namespace SteamRush.Features.Runner
             if (Keyboard.current.kKey.wasPressedThisFrame)
             {
                 enableStreamDelay = !enableStreamDelay;
-                Debug.Log($"[LiveSessionDemoRunner] Livestream Broadcast Delay: {(enableStreamDelay ? $"BẬT ({streamDelayMin:F1}s - {streamDelayMax:F1}s)" : "TẮT (0s)")}");
+                Debug.Log($"[LiveSessionDemoRunner] Livestream Broadcast Delay: {(enableStreamDelay ? $"ON ({streamDelayMin:F1}s - {streamDelayMax:F1}s)" : "OFF (0s)")}");
             }
 
             if (Keyboard.current.oKey.wasPressedThisFrame)
@@ -198,7 +198,7 @@ namespace SteamRush.Features.Runner
         public void ToggleMockFollowers()
         {
             EnableMockFollowers = !enableMockFollowers;
-            Debug.Log($"[LiveSessionDemoRunner] Giả lập Follower Chuyền Gậy: {(enableMockFollowers ? "<color=#00FF88>BẬT</color>" : "<color=#FF4444>TẮT</color>")}");
+            Debug.Log($"[LiveSessionDemoRunner] Mock Follower Baton Relay: {(enableMockFollowers ? "<color=#00FF88>ON</color>" : "<color=#FF4444>OFF</color>")}");
         }
 
         private void ApplyMockFollowerState()
@@ -231,7 +231,7 @@ namespace SteamRush.Features.Runner
             if (isRunning) return;
             isRunning = true;
 
-            Debug.Log("<color=#00FF88><b>[LiveSessionDemoRunner] >>> BẮT ĐẦU PHIÊN LIVE DEMO THẬT! (Bấm phím L hoặc P để Dừng) <<<</b></color>");
+            Debug.Log("<color=#00FF88><b>[LiveSessionDemoRunner] >>> LIVE DEMO SESSION STARTED! (Press L or P to Pause) <<<</b></color>");
 
             InitInitialFactionMembers();
 
@@ -260,7 +260,7 @@ namespace SteamRush.Features.Runner
             _switchRoutine = null;
             _likeRoutine = null;
 
-            Debug.Log("<color=#FF8800><b>[LiveSessionDemoRunner] --- ĐÃ TẠM DỪNG PHIÊN LIVE DEMO (Bấm phím L hoặc P để Tiếp Tục) ---</b></color>");
+            Debug.Log("<color=#FF8800><b>[LiveSessionDemoRunner] --- LIVE DEMO SESSION PAUSED (Press L or P to Resume) ---</b></color>");
         }
 
         private void OnDestroy()
@@ -269,8 +269,8 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Điều phối thực thi hành động của khán giả qua cơ chế giả lập độ trễ livestream (Broadcast Latency).
-        /// Nếu bật enableStreamDelay, hành động sẽ được thực thi sau một khoảng thời gian trễ ngẫu nhiên [streamDelayMin, streamDelayMax].
+        /// Coordinates viewer action execution with simulated broadcast latency.
+        /// If enableStreamDelay is active, actions are dispatched after a randomized delay.
         /// </summary>
         public void DispatchViewerAction(System.Action action)
         {
@@ -427,7 +427,7 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Luồng khán giả chat lệnh điều khiển / thả xe liên tục (nhịp 0.8s - 2.0s)
+        /// Simulates continuous viewer chat commands and vehicle obstacle spawns (0.8s - 2.0s interval).
         /// </summary>
         private IEnumerator SimulateChatLoop()
         {

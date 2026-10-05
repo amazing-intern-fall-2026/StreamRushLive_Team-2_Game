@@ -4,9 +4,9 @@ using SteamRush.Features.UI;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Vật phẩm hồi năng lượng (Buff Item):
-    /// - Kế thừa ItemBase.
-    /// - Khi nhặt, hồi phục năng lượng cho EnergySystem và hiển thị popup trên HUD.
+    /// Energy restore item (Buff Item):
+    /// - Inherits from ItemBase.
+    /// - Restores energy to EnergySystem and triggers HUD feedback upon collection.
     /// </summary>
     public class BuffItem : ItemBase
     {

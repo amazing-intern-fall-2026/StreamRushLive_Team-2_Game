@@ -22,7 +22,7 @@ namespace SteamRush.Features.StreamIntegration
         [SerializeField] private FactionTugOfWarManager _factionManager;
 
         [Header("Audio Feedback")]
-        [Tooltip("Khoảng thời gian tối thiểu giữa 2 lần phát âm thanh Like (giây) để chống spam khi viewer tap dồn dập.")]
+        [Tooltip("Minimum interval between like sound effects to prevent audio spam.")]
         [SerializeField] private float _likeSFXCooldown = 1.2f;
         private float _lastLikeSFXTime = -999f;
 
@@ -98,7 +98,7 @@ namespace SteamRush.Features.StreamIntegration
                 _factionManager.AddLikes(faction, energyAmount);
             }
 
-            // Chống spam tiếng like dồn dập
+            // Anti-spam cooldown for like audio
             if (Time.unscaledTime - _lastLikeSFXTime >= _likeSFXCooldown)
             {
                 _lastLikeSFXTime = Time.unscaledTime;

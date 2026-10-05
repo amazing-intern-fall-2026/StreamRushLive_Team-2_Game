@@ -3,13 +3,12 @@ using UnityEngine;
 
 namespace SteamRush.Features.UI.Views
 {
-    // View: badge pill hiển thị thời gian trận đấu tăng dần (mm:ss), đặt ngay dưới ProgressBar.
-    // Đếm từ khi component được bật (Awake) - chưa có sự kiện "bắt đầu trận" riêng trong codebase.
+    // View: badge pill displaying elapsed match time (mm:ss) below ProgressBar.
     public class ElapsedTimeStopwatch : MonoBehaviour
     {
         [SerializeField] private TMP_Text timeText;
 
-        // Cap 999:59 theo spec (mm 3 chữ số tối đa) - tránh tràn hiển thị nếu live kéo dài bất thường.
+        // Cap at 999:59 per design specification
         private const float MaxSeconds = 999 * 60 + 59;
 
         private float _elapsedSeconds;

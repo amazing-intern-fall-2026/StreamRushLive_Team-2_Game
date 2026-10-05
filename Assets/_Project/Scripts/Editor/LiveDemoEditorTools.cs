@@ -13,7 +13,7 @@ namespace SteamRush.EditorTools
             var existing = Object.FindFirstObjectByType<LiveSessionDemoRunner>();
             if (existing != null)
             {
-                Debug.Log("[LiveDemoEditorTools] LiveSessionDemoRunner đã tồn tại trong scene: " + existing.gameObject.name);
+                Debug.Log("[LiveDemoEditorTools] LiveSessionDemoRunner already exists in scene: " + existing.gameObject.name);
                 Selection.activeGameObject = existing.gameObject;
                 return;
             }
@@ -24,7 +24,7 @@ namespace SteamRush.EditorTools
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene());
             UnityEditor.SceneManagement.EditorSceneManager.SaveScene(UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene());
 
-            Debug.Log("<color=#00FF88>[LiveDemoEditorTools] Đã thêm LiveSessionDemoRunner vào scene thành công!</color>");
+            Debug.Log("<color=#00FF88>[LiveDemoEditorTools] LiveSessionDemoRunner added to scene successfully!</color>");
             Selection.activeGameObject = go;
         }
 
@@ -33,7 +33,7 @@ namespace SteamRush.EditorTools
         {
             if (!Application.isPlaying)
             {
-                Debug.LogWarning("[LiveDemoEditorTools] Chức năng Toggle Live Demo chỉ hoạt động trong Play Mode!");
+                Debug.LogWarning("[LiveDemoEditorTools] Toggle Live Demo is only available in Play Mode!");
                 return;
             }
 
@@ -44,16 +44,16 @@ namespace SteamRush.EditorTools
             }
             else
             {
-                Debug.LogWarning("[LiveDemoEditorTools] Không tìm thấy LiveSessionDemoRunner trong scene!");
+                Debug.LogWarning("[LiveDemoEditorTools] LiveSessionDemoRunner not found in scene!");
             }
         }
 
-        [MenuItem("Tools/StreamRush/Live Demo/Toggle Mock Followers (Follower Chuyền Gậy)")]
+        [MenuItem("Tools/StreamRush/Live Demo/Toggle Mock Followers (Baton Relay)")]
         public static void ToggleFollowers()
         {
             if (!Application.isPlaying)
             {
-                Debug.LogWarning("[LiveDemoEditorTools] Chức năng Toggle Mock Followers chỉ hoạt động trong Play Mode!");
+                Debug.LogWarning("[LiveDemoEditorTools] Toggle Mock Followers is only available in Play Mode!");
                 return;
             }
 
@@ -64,7 +64,7 @@ namespace SteamRush.EditorTools
             }
             else
             {
-                Debug.LogWarning("[LiveDemoEditorTools] Không tìm thấy LiveSessionDemoRunner trong scene!");
+                Debug.LogWarning("[LiveDemoEditorTools] LiveSessionDemoRunner not found in scene!");
             }
         }
     }

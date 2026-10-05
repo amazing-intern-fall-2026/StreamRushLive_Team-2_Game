@@ -3,10 +3,8 @@ using SteamRush.Features.UI.Views;
 
 namespace SteamRush.Features.UI
 {
-    // Facade: điểm gọi vào duy nhất cho các module khác (RelayQueue, StreamIntegration...) khi cần
-    // cập nhật HUD. Bản thân HUDManager không chứa logic hiển thị, chỉ điều phối tới từng View
-    // (ProgressBarController/EnergyBarController/RunnerNameplateController) - mỗi View chỉ lo
-    // đúng 1 việc (SRP), không View nào gọi chéo sang View khác hay module khác.
+    // Facade pattern: Single entry point for external modules (RelayQueue, StreamIntegration...)
+    // to update HUD elements. Coordinates views (ProgressBar, EnergyBar, RunnerNameplate) adhering to SRP.
     public class HUDManager : MonoBehaviour
     {
         [SerializeField] private ProgressBarController progressBar;
@@ -35,31 +33,31 @@ namespace SteamRush.Features.UI
         {
             if (progressBar == null)
             {
-                Debug.LogWarning("[HUDManager] Chưa gán ProgressBarController trong Inspector - bỏ qua UpdateLegProgress.");
+                Debug.LogWarning("[HUDManager] ProgressBarController is not assigned in Inspector - skipping UpdateLegProgress.");
                 return;
             }
 
             progressBar.SetLegProgress(currentMeters, targetMeters);
         }
 
-        // currentEnergy: giá trị đã chuẩn hoá 0..1, phía gọi (module Like/Energy) tự tính trước khi truyền vào.
+        // currentEnergy: normalized 0..1 value provided by caller.
         public void UpdateEnergy(float currentEnergy)
         {
             if (energyBar == null)
             {
-                Debug.LogWarning("[HUDManager] Chưa gán EnergyBarController trong Inspector - bỏ qua UpdateEnergy.");
+                Debug.LogWarning("[HUDManager] EnergyBarController is not assigned in Inspector - skipping UpdateEnergy.");
                 return;
             }
 
             energyBar.SetEnergy(currentEnergy);
         }
 
-        // Cập nhật tên + avatar + trạng thái VIP hiển thị trên bảng tên world-space của runner đang chạy hiện tại.
+        // Updates name + avatar + VIP status on the world-space nameplate of the active runner.
         public void UpdateRunnerInfo(string name, Sprite avatar, bool isVip = false)
         {
             if (runnerNameplate == null)
             {
-                Debug.LogWarning("[HUDManager] Chưa gán RunnerNameplateController trong Inspector - bỏ qua UpdateRunnerInfo.");
+                Debug.LogWarning("[HUDManager] RunnerNameplateController is not assigned in Inspector - skipping UpdateRunnerInfo.");
                 return;
             }
 
@@ -71,14 +69,14 @@ namespace SteamRush.Features.UI
             UpdateRunnerInfo(name, avatar, false);
         }
 
-        // Cập nhật khung xem trước Next Runner trên HUD (nếu có label liên kết)
+        // Updates next runner preview on HUD
         public void UpdateNextRunnerPreview(string name, bool isVip)
         {
             if (nextRunnerLabel == null) return;
 
             if (string.IsNullOrEmpty(name))
             {
-                nextRunnerLabel.text = "<color=#888888>(Trống)</color>";
+                nextRunnerLabel.text = "<color=#888888>(Empty)</color>";
                 nextRunnerLabel.color = Color.gray;
             }
             else
@@ -88,29 +86,26 @@ namespace SteamRush.Features.UI
             }
         }
 
-        // Gán Transform runner hiện tại để bảng tên world-space biết vị trí cần bám theo phía trên đầu.
-        // Cần thiết để yêu cầu "nameplate lơ lửng trên đầu nhân vật" hoạt động; module RelayQueue
-        // (chưa có) sẽ là nơi gọi hàm này mỗi khi chuyển gậy sang runner mới.
+        // Assigns target transform for world-space nameplate tracking above runner character.
         public void UpdateRunnerTarget(Transform runner)
         {
             if (runnerNameplate == null)
             {
-                Debug.LogWarning("[HUDManager] Chưa gán RunnerNameplateController trong Inspector - bỏ qua UpdateRunnerTarget.");
+                Debug.LogWarning("[HUDManager] RunnerNameplateController is not assigned in Inspector - skipping UpdateRunnerTarget.");
                 return;
             }
 
             runnerNameplate.SetTarget(runner);
         }
 
-        // Hiện thông báo nổi lên trên Top Banner / Status Popup.
-        // Tự động loại bỏ các tiền tố "[Red Team]", "[Blue Team]" và gán màu sắc xanh/đỏ tương ứng.
+        // Displays notification on Top Banner / Status Popup with faction-colored styling.
         public void ShowStatusPopup(string message, bool isBuff, Sprite icon = null, Color? iconColor = null)
         {
             if (string.IsNullOrEmpty(message)) return;
 
             string lower = message.ToLowerInvariant();
 
-            // Loại bỏ hoàn toàn các thông báo rác / dư thừa không cần thiết lên Top Banner
+            // Suppress redundant notifications on Top Banner
             if (lower.Contains("out of energy") || 
                 lower.Contains("not enough energy") || 
                 lower.Contains("ended - sedan") || 
@@ -129,7 +124,7 @@ namespace SteamRush.Features.UI
                 isBlueTeam = false;
             }
 
-            // Loại bỏ hoàn toàn tiền tố [Red Team] và [Blue Team]
+            // Strip [Red Team] and [Blue Team] prefixes for cleaner display
             message = System.Text.RegularExpressions.Regex.Replace(message, @"\[(Blue|Red)\s*Team\]\s*:?\s*", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
 
             if (statusPopupSpawner != null)
@@ -137,11 +132,10 @@ namespace SteamRush.Features.UI
                 statusPopupSpawner.Spawn(message, isBlueTeam, icon, iconColor);
             }
 
-            // Top Banner (giữa trên cùng) - thay thế popup nổi trên đầu Runner (đã tắt qua _popupsEnabled)
-            // làm điểm hiển thị chính cho sự kiện chung của game. Tái sử dụng GiftToastQueue/GiftToastController.
+            // Top Banner display for general game notifications.
             if (topBannerQueue == null)
             {
-                Debug.LogWarning("[HUDManager] Chưa gán topBannerQueue trong Inspector - bỏ qua Top Banner cho ShowStatusPopup.");
+                Debug.LogWarning("[HUDManager] topBannerQueue is not assigned in Inspector - skipping Top Banner for ShowStatusPopup.");
                 return;
             }
 
@@ -151,7 +145,7 @@ namespace SteamRush.Features.UI
 
         private void Awake()
         {
-            // Vô hiệu hóa và ẩn hoàn toàn các container thông báo comment của 2 phe
+            // Disable side comment notification containers
             if (fanFeedQueue != null) fanFeedQueue.gameObject.SetActive(false);
             if (antiFeedQueue != null) antiFeedQueue.gameObject.SetActive(false);
         }
@@ -163,19 +157,19 @@ namespace SteamRush.Features.UI
         }
 
         /// <summary>
-        /// Đã loại bỏ hoàn toàn thông báo comment / hành động của Phe Fan theo yêu cầu.
+        /// Deprecated: Fan team chat notifications disabled per design.
         /// </summary>
         public void ShowFanAction(string sender, string action, Sprite icon = null)
         {
-            // Disabled: Loại bỏ thông báo comment của Phe Fan
+            // Disabled: Fan team comment notification suppressed
         }
 
         /// <summary>
-        /// Đã loại bỏ hoàn toàn thông báo comment / hành động của Phe Anti theo yêu cầu.
+        /// Deprecated: Anti team chat notifications disabled per design.
         /// </summary>
         public void ShowAntiAction(string sender, string action, Sprite icon = null)
         {
-            // Disabled: Loại bỏ thông báo comment của Phe Anti
+            // Disabled: Anti team comment notification suppressed
         }
     }
 }

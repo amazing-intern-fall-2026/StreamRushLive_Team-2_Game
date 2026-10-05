@@ -2,18 +2,15 @@ using UnityEngine;
 
 namespace SteamRush.Features.UI
 {
-    // Co giãn RectTransform theo Screen.safeArea (né notch/tai thỏ của máy), đồng thời chừa thêm
-    // khoảng trống thủ công ở đáy màn hình cho khung chat bình luận TikTok đè lên - phần này
-    // KHÔNG nằm trong Screen.safeArea vì đó là overlay riêng của app TikTok, hệ điều hành không
-    // biết để tính vào safe area. Gắn script này lên 1 container rỗng làm cha của các phần tử HUD
-    // cần né vùng chat (vd. ChatInputField, các nút/khung ở nửa dưới màn hình).
+    // Adapts RectTransform to Screen.safeArea (camera cutouts/notches) with additional bottom margin
+    // for TikTok live stream chat overlay.
     // ExecuteAlways: chay ca trong Edit Mode de Scene/Game view preview dung vi tri thuc te
     // (khong phai doi vao Play Mode moi thay dung, tranh nham lam gia dinh vi tri sai khi chinh UI).
     [ExecuteAlways]
     [RequireComponent(typeof(RectTransform))]
     public class SafeAreaHandler : MonoBehaviour
     {
-        [Tooltip("Khoảng trống thêm ở đáy màn hình (tỉ lệ 0..1 theo chiều cao) để né khung chat TikTok.")]
+        [Tooltip("Additional bottom offset (normalized 0..1 of screen height) to accommodate TikTok chat overlay.")]
         [SerializeField, Range(0f, 0.5f)] private float _extraBottomRatio = 0.12f;
 
         private RectTransform _rectTransform;
@@ -28,7 +25,7 @@ namespace SteamRush.Features.UI
 
         private void Update()
         {
-            // Safe area có thể đổi khi xoay máy hoặc thay đổi độ phân giải - so cache trước khi tính lại cho rẻ.
+            // Recompute safe area when screen orientation or resolution changes
             if (Screen.safeArea != _lastSafeArea || new Vector2Int(Screen.width, Screen.height) != _lastScreenSize)
             {
                 Apply();
@@ -59,7 +56,7 @@ namespace SteamRush.Features.UI
             anchorMax.x /= Screen.width;
             anchorMax.y /= Screen.height;
 
-            // Chừa thêm đáy cho khung chat TikTok - nằm ngoài phạm vi Screen.safeArea của hệ điều hành.
+            // Add bottom clearance for TikTok chat overlay
             anchorMin.y = Mathf.Clamp01(anchorMin.y + _extraBottomRatio);
 
             _rectTransform.anchorMin = anchorMin;

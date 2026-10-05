@@ -3,11 +3,9 @@ using UnityEngine;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Vật phẩm Khiên Chắn (Shield):
-    /// - Kế thừa ItemBase.
-    /// - Khi nhặt, kích hoạt trạng thái bảo vệ cho Runner.
-    /// - Shield tồn tại tối đa 20 giây.
-    /// - Shield sẽ được hệ thống Runner xử lý khi có va chạm.
+    /// Shield pickup item:
+    /// - Inherits from ItemBase.
+    /// - Grants temporary shield protection upon collection.
     /// </summary>
     public class ShieldItem : ItemBase
     {
@@ -25,7 +23,7 @@ namespace StreamRushLive.Features.Spawning
 
         public override void OnCollected(GameObject collector)
         {
-            // Tìm hệ thống Item Effect trên Runner vừa nhặt Item.
+            // Find item effect component on collecting runner
             RunnerItemEffects itemEffects = collector.GetComponent<RunnerItemEffects>();
 
             if (itemEffects == null)
@@ -41,7 +39,7 @@ namespace StreamRushLive.Features.Spawning
             }
             else
             {
-                Debug.LogWarning("[ShieldItem] Không tìm thấy RunnerItemEffects trên Runner.");
+                Debug.LogWarning("[ShieldItem] RunnerItemEffects not found on Runner.");
             }
         }
     }

@@ -6,12 +6,12 @@ using SteamRush.Track;
 namespace SteamRush.Features.UI
 {
     /// <summary>
-    /// Hiển thị thông tin trực quan theo thời gian thực cho Prototype Chatland:
-    /// - Tên Runner đang chạy
-    /// - Số lượng Follower đang chờ trong hàng đợi
-    /// - Tiến độ chặng đường (m / 100m)
-    /// - Tốc độ cuộn thế giới hiện tại (m/s)
-    /// - Hướng dẫn nhanh phím tắt / lệnh chat
+    /// Displays real-time status HUD:
+    /// - Active Runner Name
+    /// - Queued Followers Count
+    /// - Leg Progress (m / 100m)
+    /// - Current World Scroll Speed (m/s)
+    /// - Controls & Chat Command Quick Reference
     /// </summary>
     public class ChatRunnerStatusUI : MonoBehaviour
     {

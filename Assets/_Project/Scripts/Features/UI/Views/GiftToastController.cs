@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 namespace SteamRush.Features.UI.Views
 {
-    // View: 1 toast báo quà tặng (icon + tên viewer + tên vật thể trong game), tự huỷ khi xong - không truy cập module khác (SRP).
+    // View: displays single gift toast notification adhering to SRP.
     public class GiftToastController : MonoBehaviour
     {
         [SerializeField] private Image iconImage;
@@ -43,7 +43,7 @@ namespace SteamRush.Features.UI.Views
                 {
                     iconImage.gameObject.SetActive(true);
                     iconImage.sprite = icon;
-                    // Icon nguồn là hình trắng/nền trong suốt (game-icons.net) - cần tint màu để có màu sắc phù hợp vật phẩm.
+                    // Tint monochrome icon sprite to match item theme
                     iconImage.color = resolvedIconColor ?? Color.white;
                 }
                 else if (hideIconIfNull)
@@ -57,7 +57,7 @@ namespace SteamRush.Features.UI.Views
                 Color c = accentColor.Value;
                 bool isBlueTone = (c.b > c.r) || (c.g > c.r);
 
-                // Đồng bộ màu nền card theo phe (Xanh dương cho Blue Team, Đỏ đen cho Red Team)
+                // Sync card background color to faction (Blue for Fan, Red for Anti)
                 Image bgImage = GetComponent<Image>();
                 if (bgImage != null)
                 {
@@ -92,8 +92,7 @@ namespace SteamRush.Features.UI.Views
                 itemNameText.text = itemName;
             }
 
-            // Dùng scale + fade thay vì di chuyển RectTransform vì toast nằm trong VerticalLayoutGroup
-            // (layout tự set anchoredPosition/sizeDelta mỗi frame - animate 2 giá trị đó sẽ bị layout ghi đè).
+            // Use scale + fade animations inside VerticalLayoutGroup to avoid layout conflicts
             transform.localScale = Vector3.one * 0.85f;
             canvasGroup.alpha = 0f;
             _dismissed = false;
@@ -134,7 +133,7 @@ namespace SteamRush.Features.UI.Views
             }
             catch (System.Exception)
             {
-                // Đối tượng đã bị huỷ bởi Unity
+                // Target object already destroyed
             }
 
             Dismiss();

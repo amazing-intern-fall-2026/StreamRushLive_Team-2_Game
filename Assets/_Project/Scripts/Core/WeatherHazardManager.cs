@@ -11,20 +11,20 @@ namespace SteamRush.Features.Environment
         public static WeatherHazardManager Instance { get; private set; }
 
         [Header("Target Effect Objects")]
-        [Tooltip("Đối tượng FX_Rain trong Hierarchy. Nếu để trống, script sẽ tự tìm đối tượng có tên 'FX_Rain'")]
+        [Tooltip("FX_Rain GameObject in Hierarchy. If left empty, automatically finds 'FX_Rain'.")]
         [SerializeField] private GameObject _rainEffectObject;
 
-        [Tooltip("Tham chiếu tới FogManager. Nếu để trống, script sẽ tự tìm.")]
+        [Tooltip("FogManager reference. If left empty, automatically resolves in scene.")]
         [SerializeField] private FogManager _fogManager;
 
         [Header("Hazard Configuration")]
-        [Tooltip("Thời gian duy trì thời tiết bất lợi (mặc định 60 giây)")]
+        [Tooltip("Weather hazard duration in seconds (default: 60s).")]
         [SerializeField] private float _hazardDuration = 60f;
 
-        [Tooltip("Khoảng cách Fog Start khi có sương mù")]
+        [Tooltip("Target Fog Start distance during hazard")]
         [SerializeField] private float _fogStartTarget = -3.5f;
 
-        [Tooltip("Thời gian chuyển mượt sương mù khi bắt đầu và kết thúc (giây)")]
+        [Tooltip("Fog transition duration in seconds")]
         [SerializeField] private float _fogFadeDuration = 1.5f;
 
         private Coroutine _hazardRoutine;
@@ -52,7 +52,7 @@ namespace SteamRush.Features.Environment
         {
             FindReferencesIfMissing();
 
-            // Đảm bảo FX_Rain ban đầu đang tắt
+            // Ensure FX_Rain is initially disabled
             if (_rainEffectObject != null && _rainEffectObject.activeSelf)
             {
                 _rainEffectObject.SetActive(false);
@@ -69,7 +69,7 @@ namespace SteamRush.Features.Environment
         }
 
         /// <summary>
-        /// Tự động tìm kiếm FX_Rain và FogManager trong Hierarchy nếu chưa được gán qua Inspector.
+        /// Resolves FX_Rain and FogManager in Hierarchy if unassigned.
         /// </summary>
         public void FindReferencesIfMissing()
         {
@@ -78,7 +78,7 @@ namespace SteamRush.Features.Environment
                 _fogManager = FogManager.Instance ?? FindFirstObjectByType<FogManager>();
                 if (_fogManager == null)
                 {
-                    // Tự động tạo FogManager nếu chưa có trong scene
+                    // Auto-create FogManager if missing from scene
                     var fogObj = new GameObject("FogManager");
                     _fogManager = fogObj.AddComponent<FogManager>();
                 }
@@ -86,7 +86,7 @@ namespace SteamRush.Features.Environment
 
             if (_rainEffectObject == null)
             {
-                // Tìm kiếm trực tiếp theo tên FX_Rain trong Hierarchy
+                // Search directly by GameObject name FX_Rain
                 var found = GameObject.Find("FX_Rain");
                 if (found != null)
                 {
@@ -94,7 +94,7 @@ namespace SteamRush.Features.Environment
                 }
                 else
                 {
-                    // Tìm kiếm không phân biệt hoa thường hoặc chứa chữ Rain
+                    // Case-insensitive fallback search for rain effect
                     var allTransforms = FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
                     foreach (var t in allTransforms)
                     {
@@ -110,9 +110,9 @@ namespace SteamRush.Features.Environment
         }
 
         /// <summary>
-        /// Kích hoạt Gift Thời Tiết Bất Lợi: Chạy FX_Rain và bật Fog Start (-3.5f) trong 60 giây.
+        /// Activates rain weather hazard: enables FX_Rain and sets dense fog for duration.
         /// </summary>
-        /// <param name="duration">Thời gian duy trì (mặc định 60s)</param>
+        /// <param name="duration">Hazard duration in seconds (default: 60s)</param>
         [ContextMenu("Trigger Weather Hazard (60s)")]
         public void TriggerWeatherHazard(float duration = -1f)
         {
@@ -129,7 +129,7 @@ namespace SteamRush.Features.Environment
         }
 
         /// <summary>
-        /// Dừng ngay lập tức hiệu ứng thời tiết, tắt mưa và khôi phục sương mù.
+        /// Immediately stops weather hazard, disables rain, and restores fog.
         /// </summary>
         [ContextMenu("Stop Weather Hazard")]
         public void StopWeatherHazard()
@@ -180,7 +180,7 @@ namespace SteamRush.Features.Environment
                 {
                     ps.Stop();
                 }
-                // Tắt hẳn GameObject sau 1.5s để hạt mưa cũ rơi hết
+                // Disable GameObject after 1.5s to let remaining rain particles finish
                 StartCoroutine(DeactivateRainAfterDelay(1.5f));
             }
 

@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 namespace SteamRush.Features.UI.Views
 {
-    // View: chỉ hiển thị thanh tiến trình 100km, không truy cập module khác (SRP).
+    // View: displays 100km progress bar adhering to SRP.
     public class ProgressBarController : MonoBehaviour
     {
         [SerializeField] private Image fillBar;

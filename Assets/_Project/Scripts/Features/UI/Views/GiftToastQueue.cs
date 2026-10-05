@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SteamRush.Features.UI.Views
 {
-    // View: sinh toast quà tặng từ 1 template có sẵn, xếp hàng nhờ VerticalLayoutGroup trên container cha - không truy cập module khác (SRP).
+    // View: instantiates and queues gift toasts in VerticalLayoutGroup.
     public class GiftToastQueue : MonoBehaviour
     {
         [SerializeField] private GiftToastController toastTemplate;
@@ -36,11 +36,11 @@ namespace SteamRush.Features.UI.Views
         {
             if (toastTemplate == null)
             {
-                Debug.LogWarning("[GiftToastQueue] Chưa gán toastTemplate trong Inspector - bỏ qua Show.");
+                Debug.LogWarning("[GiftToastQueue] toastTemplate not assigned in Inspector - skipping Show.");
                 return;
             }
 
-            // Dọn sạch các toast đã bị huỷ hoặc null
+            // Clean up destroyed or null toast references
             _active.RemoveAll(item => item == null);
 
             while (_active.Count >= _maxConcurrentToasts)

@@ -82,8 +82,8 @@ namespace SteamRush.Features.UI
         }
 
         /// <summary>
-        /// Rút gọn số lượng người xem/thành viên thành ký tự viết tắt chuẩn (k, M, B).
-        /// VD: 800 -> "800", 1200 -> "1.2k", 15400 -> "15.4k", 100000 -> "100k", 2500000 -> "2.5M".
+        /// Formats viewer numbers into standard abbreviated strings (k, M, B).
+        /// E.g.: 800 -> "800", 1200 -> "1.2k", 15400 -> "15.4k", 100000 -> "100k", 2500000 -> "2.5M".
         /// </summary>
         public static string FormatNumberShorthand(long number)
         {

@@ -52,14 +52,14 @@ namespace SteamRush.Core
         }
     }
 
-    // Event phát khi Runner chết (đã bãi bỏ theo chuẩn GDD v0.3 / v1.2 Không máu - giữ lại để tương thích ngược nếu cần).
-    [System.Obsolete("GDD v0.3 / v1.2 đã loại bỏ hoàn toàn cơ chế máu/tim. Runner không chết vì va chạm.")]
+    // Obsolete death event (deprecated in GDD v0.3/v1.2 - kept for backward compatibility if needed).
+    [System.Obsolete("Deprecated in GDD v0.3/v1.2: Runner no longer has HP or death on collision.")]
     public readonly struct PlayerDeathEvent
     {
     }
 
-    // Yêu cầu hồi tim (đã bãi bỏ theo chuẩn GDD v0.3 / v1.2).
-    [System.Obsolete("GDD v0.3 / v1.2 đã loại bỏ hoàn toàn cơ chế máu/tim.")]
+    // Obsolete heart restore event (deprecated in GDD v0.3/v1.2).
+    [System.Obsolete("Deprecated in GDD v0.3/v1.2: HP/Heart mechanic removed.")]
     public readonly struct RestoreHeartsRequestEvent
     {
         public readonly int HeartCount;

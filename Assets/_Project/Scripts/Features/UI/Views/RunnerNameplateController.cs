@@ -4,8 +4,7 @@ using UnityEngine.UI;
 
 namespace SteamRush.Features.UI.Views
 {
-    // View: chỉ hiển thị bảng tên (avatar tròn + tên) world-space lơ lửng trên đầu runner,
-    // không truy cập module khác (SRP).
+    // View: displays world-space nameplate (avatar + name) floating above active runner.
     public class RunnerNameplateController : MonoBehaviour
     {
         private const float NameplateHeight = 2.2f;
@@ -15,9 +14,9 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private TMP_Text runnerName;
 
         [Header("VIP Styling")]
-        [Tooltip("Màu tên mặc định của Runner thường.")]
+        [Tooltip("Default name text color.")]
         [SerializeField] private Color normalColor = Color.white;
-        [Tooltip("Màu tên nổi bật khi Runner là VIP (vé F10).")]
+        [Tooltip("Highlighted name text color for VIP runners.")]
         [SerializeField] private Color vipColor = new Color(1f, 0.85f, 0.1f, 1f);
 
         [Header("Position Offset Settings")]
@@ -129,7 +128,7 @@ namespace SteamRush.Features.UI.Views
                 nameplateAnchor = target.Find("NameplateAnchor");
             }
 
-            // Nếu người dùng đã xoay sẵn trong Scene mà fixedRotation chưa đặt, lấy góc xoay đó làm mặc định
+            // Use existing scene rotation if fixedRotation is not configured
             if (fixedRotation == Vector3.zero && transform.rotation != Quaternion.identity)
             {
                 fixedRotation = transform.eulerAngles;
@@ -174,7 +173,7 @@ namespace SteamRush.Features.UI.Views
             }
         }
 
-        // Runner cần theo dõi để bảng tên bám theo đúng vị trí phía trên đầu; null = ẩn bảng tên (hàng đợi trống).
+        // Target runner transform to track above head; null hides nameplate
         public void SetTarget(Transform runner)
         {
             target = runner;
@@ -182,7 +181,7 @@ namespace SteamRush.Features.UI.Views
             gameObject.SetActive(target != null);
         }
 
-        // Cập nhật tên hiển thị, avatar tròn và trạng thái VIP của runner hiện tại trên bảng tên.
+        // Updates display name, avatar, and VIP badge status on nameplate
         public void SetRunnerInfo(string name, Sprite runnerAvatar, bool isVip)
         {
             if (runnerName != null)
@@ -211,7 +210,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Gán góc xoay cố định cho bảng tên và tắt chế độ bám theo camera.
+        /// Sets fixed world rotation for nameplate, disabling camera billboarding.
         /// </summary>
         public void SetFixedRotation(Vector3 euler)
         {
@@ -220,7 +219,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Gán góc xoay bù khi đang bật chế độ bám theo camera.
+        /// Sets camera billboarding rotation offset.
         /// </summary>
         public void SetRotationOffset(Vector3 offset)
         {
@@ -229,7 +228,7 @@ namespace SteamRush.Features.UI.Views
 
         private float GetTopY()
         {
-            // Ưu tiên anchor, sau đó dùng bounds của model, rồi collider và cuối cùng là mặc định.
+            // Priority: anchor transform -> model bounds -> collider -> default offset
             if (nameplateAnchor != null)
             {
                 return nameplateAnchor.position.y;
@@ -257,10 +256,10 @@ namespace SteamRush.Features.UI.Views
 
         private void LateUpdate()
         {
-            // Cập nhật góc xoay liên tục mỗi frame trong LateUpdate
+            // Update nameplate rotation in LateUpdate
             UpdateRotation();
 
-            // Cập nhật vị trí bám theo target nếu có
+            // Update nameplate position tracking target
             if (target != null)
             {
                 UpdatePosition();
@@ -268,7 +267,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Xử lý cập nhật góc xoay liên tục theo thiết lập Inspector mỗi frame
+        /// Applies billboard or fixed rotation each frame.
         /// </summary>
         private void UpdateRotation()
         {
@@ -295,7 +294,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Cập nhật vị trí bám sát phía trên đầu runner kết hợp độ lệch (Offsets) X, Y, Z
+        /// Updates position tracking runner head position with XYZ offsets.
         /// </summary>
         private void UpdatePosition()
         {

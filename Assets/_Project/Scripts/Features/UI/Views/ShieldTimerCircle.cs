@@ -8,9 +8,8 @@ using StreamRushLive.Features.Spawning;
 namespace SteamRush.Features.UI.Views
 {
     /// <summary>
-    /// Vòng tròn đếm ngược thời gian tác dụng của quà 'Khiên Bảo Vệ' (F1 / Donate Shield)
-    /// nằm thẳng hàng phía dưới vòng tròn 'Tăng Tốc (Sprint Buff)' bên phe Fan.
-    /// Có hiệu ứng Radial Fill 360 độ quét dần theo thời gian thực và đếm ngược 15 giây.
+    /// Countdown timer circle for Shield buff (Fan / Blue Team).
+    /// Displays 360-degree radial fill sweep and remaining seconds countdown.
     /// </summary>
     public class ShieldTimerCircle : MonoBehaviour
     {
@@ -103,7 +102,7 @@ namespace SteamRush.Features.UI.Views
 
         private void Start()
         {
-            // Mặc định ẩn khi chưa kích hoạt Shield
+            // Initially hidden until Shield activates
             if (!_isActive && canvasGroup != null)
             {
                 canvasGroup.alpha = 0f;
@@ -117,7 +116,7 @@ namespace SteamRush.Features.UI.Views
                 runnerItemEffects = FindFirstObjectByType<RunnerItemEffects>();
             }
 
-            // Đồng bộ trạng thái với RunnerItemEffects
+            // Synchronize state with RunnerItemEffects
             if (runnerItemEffects != null)
             {
                 if (runnerItemEffects.IsShieldActive && !_isActive)
@@ -140,14 +139,14 @@ namespace SteamRush.Features.UI.Views
                 return;
             }
 
-            // Cập nhật Radial Fill Ring (0..1)
+            // Update Radial Fill Ring (0..1)
             if (radialFillRing != null && _totalDuration > 0f)
             {
                 radialFillRing.fillAmount = Mathf.Clamp01(_remainingTime / _totalDuration);
                 radialFillRing.color = activeRingColor;
             }
 
-            // Cập nhật số giây còn lại
+            // Update remaining seconds
             if (timerText != null)
             {
                 timerText.text = $"{Mathf.CeilToInt(_remainingTime)}s";
@@ -155,7 +154,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Kích hoạt vòng tròn đếm ngược khiên (mặc định 15s)
+        /// Activates shield countdown circle.
         /// </summary>
         public void ActivateTimer(float duration = 15f)
         {
@@ -188,7 +187,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Tắt vòng tròn đếm ngược khiên (hết giờ hoặc đã chặn va chạm)
+        /// Deactivates shield countdown circle.
         /// </summary>
         public void DeactivateTimer()
         {
@@ -257,7 +256,7 @@ namespace SteamRush.Features.UI.Views
             containerRect = GetComponent<RectTransform>();
             if (containerRect == null) containerRect = gameObject.AddComponent<RectTransform>();
 
-            // Định vị bên dưới FanSprintTimerCircle (Y=95.6f), khoảng cách ~128px
+            // Stacked below FanSprintTimerCircle (~128px vertical offset)
             containerRect.anchorMin = new Vector2(0f, 0.80f);
             containerRect.anchorMax = new Vector2(0f, 0.80f);
             containerRect.pivot = new Vector2(0f, 0.5f);

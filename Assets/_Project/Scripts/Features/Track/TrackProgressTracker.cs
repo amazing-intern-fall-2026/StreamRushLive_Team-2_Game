@@ -85,7 +85,7 @@ namespace SteamRush.Track
         }
 
         /// <summary>
-        /// Giảm quãng đường hiện tại (dùng khi người chơi va chạm phải chướng ngại vật có hình phạt trừ quãng đường).
+        /// Deducts distance from progress on obstacle collision penalty.
         /// </summary>
         public void ReduceDistance(float distanceDelta)
         {

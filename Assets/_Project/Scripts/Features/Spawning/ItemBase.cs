@@ -4,10 +4,10 @@ using SteamRush.Features.Runner;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Lớp trừu tượng (Abstract Class) cơ sở cho toàn bộ vật phẩm (Items) trong game:
-    /// - Quản lý tên, loại ItemType.
-    /// - Tự động phát hiện va chạm Trigger với Player.
-    /// - Cung cấp hàm abstract OnCollected() để từng item con tự định nghĩa chức năng khi nhặt.
+    /// Abstract base class for all collectible items:
+    /// - Manages name and ItemType.
+    /// - Detects trigger interaction with player.
+    /// - Defines abstract OnCollected() hook for concrete items.
     /// </summary>
     [RequireComponent(typeof(Collider))]
     public abstract class ItemBase : MonoBehaviour
@@ -27,7 +27,7 @@ namespace StreamRushLive.Features.Spawning
 
         protected virtual void Reset()
         {
-            // Mặc định cài đặt collider là Trigger khi gắn script này
+            // Set collider to trigger by default
             Collider col = GetComponent<Collider>();
             if (col != null)
             {
@@ -46,7 +46,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Kích hoạt thu thập vật phẩm. Có thể được gọi từ Trigger hoặc gọi trực tiếp từ RunnerCollisionHandler.
+        /// Triggers collection logic. Called on trigger contact or from RunnerCollisionHandler.
         /// </summary>
         public void Collect(GameObject collector)
         {
@@ -62,7 +62,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Hàm trừu tượng: Mỗi loại item con bắt buộc phải cài đặt logic này (ví dụ hồi máu, cộng năng lượng, buff tốc độ,...).
+        /// Abstract hook implemented by concrete items.
         /// </summary>
         public abstract void OnCollected(GameObject collector);
 

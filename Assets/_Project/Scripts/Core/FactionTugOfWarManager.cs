@@ -17,7 +17,7 @@ namespace SteamRush.Features.StreamIntegration
     /// </summary>
     public class FactionTugOfWarManager : MonoBehaviour
     {
-        [Tooltip("Ngưỡng năng lượng để phe Anti tự động sinh xe cản đường (Full thanh = AntiMaxValue). Mặc định = 1000.")]
+        [Tooltip("Energy threshold for Anti team to auto-spawn obstacle vehicles (Full bar = AntiMaxValue). Default = 1000.")]
         [SerializeField] private int _antiCarThreshold = 1000;
 
         private int _antiCarCost = 100;

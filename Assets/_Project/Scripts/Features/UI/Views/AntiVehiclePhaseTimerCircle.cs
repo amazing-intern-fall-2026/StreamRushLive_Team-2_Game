@@ -8,8 +8,8 @@ using StreamRushLive.Features.Spawning;
 namespace SteamRush.Features.UI.Views
 {
     /// <summary>
-    /// Vòng tròn đếm ngược Giai đoạn Xe Bán Tải / Xe Tải Hạng Nặng (Anti Vehicle Phase).
-    /// Hiển thị thẳng hàng bên phải màn hình (phe Anti / Red Team), đếm ngược thời gian thực từ SingleObstacleSpawner.
+    /// Countdown timer circle for Anti Vehicle Phase (Pickup Truck / Heavy Truck).
+    /// Aligned on the right side of the screen (Anti / Red Team).
     /// </summary>
     public class AntiVehiclePhaseTimerCircle : MonoBehaviour
     {
@@ -53,8 +53,8 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private Vector2 circleSize = new Vector2(116f, 116f);
 
         [Header("Colors & Timing")]
-        [SerializeField] private Color pickupRingColor = new Color(1f, 0.55f, 0.1f, 1f); // Cam hổ phách
-        [SerializeField] private Color heavyRingColor = new Color(1f, 0.18f, 0.15f, 1f);  // Đỏ rực
+        [SerializeField] private Color pickupRingColor = new Color(1f, 0.55f, 0.1f, 1f); // Amber orange
+        [SerializeField] private Color heavyRingColor = new Color(1f, 0.18f, 0.15f, 1f);  // Bright crimson
         [SerializeField] private Color activeRingColor = new Color(1f, 0.2f, 0.1f, 1f);
         [SerializeField] private Color bgColor = new Color(0.08f, 0.04f, 0.06f, 0.92f);
         [SerializeField] private Color innerColor = new Color(0.10f, 0.03f, 0.05f, 0.98f);
@@ -117,7 +117,7 @@ namespace SteamRush.Features.UI.Views
 
             VehicleTier? currentPhase = obstacleSpawner.ActiveVehiclePhase;
 
-            // Không có Phase nào đang hoạt động
+            // No active phase
             if (!currentPhase.HasValue)
             {
                 if (_isActive)
@@ -128,7 +128,7 @@ namespace SteamRush.Features.UI.Views
                 return;
             }
 
-            // Phase mới được kích hoạt hoặc chuyển đổi giữa Pickup <-> Heavy
+            // Phase activated or transitioned between Pickup <-> Heavy
             if (!_isActive || _displayedPhase != currentPhase.Value)
             {
                 ActivateTimer(
@@ -136,7 +136,7 @@ namespace SteamRush.Features.UI.Views
                     obstacleSpawner.VehiclePhaseDuration);
             }
 
-            // Lấy thời gian còn lại trực tiếp từ SingleObstacleSpawner
+            // Retrieve remaining time directly from SingleObstacleSpawner
             _remainingTime = obstacleSpawner.VehiclePhaseRemainingTime;
 
             if (_totalDuration > 0f && radialFillRing != null)
@@ -152,7 +152,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Hiện timer cho Phase Pickup hoặc Heavy.
+        /// Shows timer circle for active vehicle phase (Pickup or Heavy).
         /// </summary>
         public void ActivateTimer(VehicleTier phase, float duration)
         {
@@ -199,7 +199,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Ẩn timer khi Phase kết thúc.
+        /// Hides timer circle when vehicle phase concludes.
         /// </summary>
         public void DeactivateTimer()
         {

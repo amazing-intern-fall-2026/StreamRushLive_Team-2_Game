@@ -4,36 +4,26 @@ using UnityEngine;
 namespace SteamRush.Track
 {
     /// <summary>
-    /// Điều phối tốc độ cuộn của TOÀN BỘ thế giới (Track, Background, Spawner, MovingWorldObject...).
-    /// Runner đứng cố định tại X = 9.55; mọi cảm giác "di chuyển" đến từ việc thay đổi CurrentSpeed.
-    ///   - Singleton Instance, Speed Ramp tăng dần theo thời gian, Recovery curve khi va chạm.
-    /// Triển khai Controls & World Speed Mechanics + Collision Pipeline (GDD v1.2):
-    ///   - Slide & Active World Deceleration (nhấp nhả / đè giữ Ctrl-S-↓)
-    ///   - Active Sprint (giữ Shift/E, tiêu hao Energy)
-    ///   - Khi va chạm: giảm về 0 (0.3-0.5s) -> giữ 0 (thời gian ngã tuỳ obstacle)
-    ///     -> tăng mượt lại 10.0 m/s
-    ///
-    /// THÊM MỚI cho GDD v1.3 (bản thử nghiệm Chat 3-Lane, song song với v1.2):
-    ///   - CommandOverride: state riêng cho lệnh chat "fast"/"slow" từ ChatLaneRunnerController —
-    ///     ép tốc độ về 1 mục tiêu cụ thể trong 1 khoảng thời gian cố định rồi tự trả về bình
-    ///     thường. KHÔNG dùng chung với Sprint (Sprint cần giữ phím liên tục + khoá theo Energy,
-    ///     khác hẳn ngữ nghĩa 1 lệnh chat kích hoạt tức thì trong khung giờ cố định).
-    ///
-    /// THÊM MỚI cho GDD v1.4.1 (Finish Line Victory):
-    ///   - Victory: khác mọi state khác ở chỗ KHÔNG tự trả về Normal - giảm mượt về 0 rồi giữ
-    ///     nguyên vĩnh viễn (đến khi scene load lại). Mọi API trigger state khác đều bị chặn khi
-    ///     đang Victory để không có gì "đánh thức" thế giới cuộn lại giữa lễ ăn mừng.
+    /// Coordinates scroll speed for the entire world (Track, Background, Spawner, MovingWorldObject...).
+    /// Runner remains stationary at X = 9.55; all motion perception comes from CurrentSpeed modulation.
+    /// Implements:
+    ///   - Controls & World Speed Mechanics + Collision Pipeline (GDD v1.2)
+    ///   - Slide & Active Deceleration
+    ///   - Active Sprint
+    ///   - Collision Recovery Pipeline (Decel -> Hold 0 -> Reaccel)
+    ///   - Command Override state for chat commands (fast/slow)
+    ///   - Victory state (Finish Line sequence)
     /// </summary>
     public class WorldSpeedManager : MonoBehaviour
     {
         public static WorldSpeedManager Instance { get; private set; }
 
         [Header("Base Speed")]
-        [Tooltip("Tốc độ cuộn mặc định khi không Slide / không Sprint. GDD v1.2 = 10.0 m/s.")]
+        [Tooltip("Default world scroll speed when not sliding or sprinting (default: 10.0 m/s).")]
         [SerializeField] private float _baseSpeed = 10f;
 
         [Header("Speed Ramp")]
-        [Tooltip("Bật/tắt tăng tốc dần theo thời gian. Mặc định = false để tốc độ không tự tăng dần.")]
+        [Tooltip("Enable/disable passive speed ramp over time.")]
         [SerializeField] private bool _enableSpeedRamp = false;
         [Tooltip("Reference benchmark time in seconds (e.g. 60 = 1 minute).")]
         [SerializeField] private float _rampReferenceSeconds = 60f;
@@ -41,41 +31,41 @@ namespace SteamRush.Track
         [SerializeField] private float _rampReferenceMultiplier = 1.2f;
 
         [Header("Slide - Tap")]
-        [Tooltip("Thời lượng hiệu ứng khi NHẤP NHẢ (giây). GDD v1.2 = 0.8s.")]
+        [Tooltip("Tap slide duration in seconds (default: 0.8s).")]
         [SerializeField] private float _slideTapDuration = 0.8f;
-        [Tooltip("Tỉ lệ tốc độ còn lại khi Tap (0.5 = giảm 50%, 10.0 -> 5.0 m/s theo GDD).")]
+        [Tooltip("Speed fraction during tap slide (0.5 = 50% speed).")]
         [SerializeField, Range(0f, 1f)] private float _slideTapSpeedMultiplier = 0.5f;
 
         [Header("Slide - Hold")]
-        [Tooltip("Tốc độ hãm khi ĐÈ GIỮ, m/s² . GDD v1.2 = 8.0 m/s².")]
+        [Tooltip("Deceleration rate when holding slide (m/s²).")]
         [SerializeField] private float _holdDecelRate = 8f;
 
         [Header("Speed Transition")]
-        [Tooltip("Tốc độ tăng mượt khi quay lại bình thường (nhả Slide, hết Tap, ramp bình thường).")]
+        [Tooltip("Acceleration rate when returning to normal speed.")]
         [SerializeField] private float _normalAccelRate = 8f;
 
         [Header("Sprint")]
-        [Tooltip("Tốc độ tối đa khi Sprint. GDD v1.2 = 18.0 m/s.")]
+        [Tooltip("Maximum sprint speed (m/s).")]
         [SerializeField] private float _sprintMaxSpeed = 18f;
-        [Tooltip("Gia tốc Sprint = _normalAccelRate * hệ số này (GDD = 2x).")]
+        [Tooltip("Sprint acceleration multiplier.")]
         [SerializeField] private float _sprintAccelMultiplier = 2f;
-        [Tooltip("Năng lượng tiêu hao mỗi giây khi Sprint. GDD = 3.0 Energy/s.")]
+        [Tooltip("Energy consumed per second while sprinting.")]
         [SerializeField] private float _sprintEnergyDrainPerSecond = 3f;
-        [Tooltip("Ngưỡng % Energy (0-1) để khóa Sprint. GDD = 10% -> 0.1.")]
+        [Tooltip("Energy threshold (0-1) below which sprint is locked.")]
         [SerializeField, Range(0f, 1f)] private float _sprintEnergyLockThreshold = 0.1f;
 
         [Header("Collision Recovery")]
-        [Tooltip("Thời gian giảm về 0 m/s ngay khi va chạm. GDD v1.2 = 0.3-0.5s.")]
+        [Tooltip("Deceleration duration to 0 m/s on collision.")]
         [SerializeField] private float _recoveryDecelDuration = 0.4f;
-        [Tooltip("Thời gian hồi phục mặc định nếu obstacle không truyền riêng (giây).")]
+        [Tooltip("Default recovery duration if unspecified by obstacle.")]
         [SerializeField] private float _defaultRecoveryTotalDuration = 1.2f;
 
         [Header("Command Override (Chat fast sprint - GDD v1.3)")]
-        [Tooltip("Tốc độ tăng/giảm mỗi giây khi đang tiến tới mục tiêu Command Override.")]
+        [Tooltip("Acceleration/deceleration rate toward command override target speed.")]
         [SerializeField] private float _commandOverrideAccelRate = 24f;
 
         [Header("Victory (Finish Line - GDD v1.4.1)")]
-        [Tooltip("Thời gian giảm mượt về 0 m/s khi Runner băng qua Cổng Về Đích.")]
+        [Tooltip("Deceleration duration to 0 m/s upon crossing finish line.")]
         [SerializeField] private float _victoryDecelDuration = 1.5f;
 
         private enum SpeedState { Normal, SlideTap, SlideHold, Sprint, Recovery, CommandOverride, ReverseKnockback, Victory }
@@ -85,28 +75,27 @@ namespace SteamRush.Track
         private float _elapsedTime;
         private float _slideTapTimer;
 
-        // Recovery state riêng (3 pha: decel -> hold 0 -> reaccel)
+        // Recovery state (3 phases: decel -> hold 0 -> reaccel)
         private float _recoveryElapsed;
         private float _recoveryTotalDuration;
         private float _recoverySpeedAtImpact;
 
-        // Reverse Knockback state (GDD v1.2 Mục 4: Xung cuộn ngược thế giới đẩy lùi Runner)
+        // Reverse Knockback state: world scrolls in reverse to simulate pushback
         private float _reverseKnockbackElapsed;
         private float _reverseKnockbackDuration = 0.5f;
         private float _reverseKnockbackPeakSpeed = -8f;
 
-        // Command Override state riêng (GDD v1.3)
+        // Command Override state for chat commands
         private float _commandOverrideTimer;
         private float _commandOverrideTargetSpeed;
 
-        // Victory state riêng (GDD v1.4.1)
+        // Victory state at finish line
         private float _victorySpeedAtStart;
         private float _victoryElapsed;
 
         /// <summary>
-        /// Tốc độ cuộn hiện tại của thế giới. Giữ public set để tương thích ngược với
-        /// TrackTileLooper.WorldSpeed (setter cũ) — KHÔNG tự ý gán từ bên ngoài, hãy dùng
-        /// các hàm state (BeginSlideTap/HoldSlide/.../TriggerRecovery) thay vì set trực tiếp.
+        /// Current world scroll speed. Setter kept public for backward compatibility.
+        /// Use state methods instead of setting directly from external code.
         /// </summary>
         public float CurrentSpeed { get; set; }
         public float BaseSpeed => _baseSpeed;
@@ -119,12 +108,11 @@ namespace SteamRush.Track
         public bool IsVictoryStopped => _state == SpeedState.Victory;
 
         /// <summary>
-        /// EnergySystem cần set giá trị này mỗi frame (0-1) trong Update() của nó,
-        /// TRƯỚC khi WorldSpeedManager.Update() chạy (hoặc set ngay khi Energy thay đổi).
+        /// Normalized energy percent (0-1) supplied by EnergySystem.
         /// </summary>
         public float CurrentEnergyPercent01 { get; set; } = 1f;
 
-        /// <summary>Bắn ra mỗi frame khi đang Sprint để EnergySystem trừ năng lượng tương ứng.</summary>
+        /// <summary>Invoked each frame while sprinting to deduct energy.</summary>
         public event Action<float> OnSprintEnergyConsumed;
 
         private void Awake()
@@ -194,12 +182,12 @@ namespace SteamRush.Track
                 _state = SpeedState.Normal;
                 CurrentSpeed = Mathf.MoveTowards(CurrentSpeed, normalTargetSpeed, _normalAccelRate * dt);
             }
-            // Trong lúc Tap, tốc độ đã set tức thì lúc bấm (xem BeginSlideTap), giữ nguyên.
+            // Maintain tap speed during tap slide window
         }
 
         private void UpdateSprint(float dt)
         {
-            // Hết năng lượng / dưới ngưỡng khóa -> tự hủy Sprint, quay lại Normal.
+            // Energy depleted below lock threshold -> cancel sprint, return to Normal
             if (CurrentEnergyPercent01 < _sprintEnergyLockThreshold)
             {
                 _state = SpeedState.Normal;
@@ -214,10 +202,10 @@ namespace SteamRush.Track
         }
 
         /// <summary>
-        /// 3 pha theo GDD mục 4:
-        /// Pha 1 (0 -> _recoveryDecelDuration): giảm đều về 0.
-        /// Pha 2 (_recoveryDecelDuration -> _recoveryTotalDuration): giữ nguyên 0 (Runner đang ngã).
-        /// Pha 3 (sau _recoveryTotalDuration): tăng mượt trở lại tốc độ chuẩn, rồi thoát Recovery.
+        /// 3-phase recovery pipeline:
+        /// Phase 1: Decelerate smoothly to 0.
+        /// Phase 2: Hold at 0 during knockdown animation.
+        /// Phase 3: Smoothly re-accelerate to normal speed and exit recovery.
         /// </summary>
         private void UpdateRecovery(float dt, float normalTargetSpeed)
         {
@@ -243,9 +231,7 @@ namespace SteamRush.Track
         }
 
         /// <summary>
-        /// GDD v1.3 mục 5.2 (lệnh chat fast/slow): tiến dần CurrentSpeed về
-        /// _commandOverrideTargetSpeed, đếm ngược _commandOverrideTimer, hết giờ thì tự thoát về
-        /// Normal (Update() sẽ lại tự MoveTowards về tốc độ ramp chuẩn ở frame kế tiếp).
+        /// Handles chat command speed overrides (fast/slow) for fixed duration.
         /// </summary>
         private void UpdateCommandOverride(float dt, float normalTargetSpeed)
         {
@@ -259,9 +245,7 @@ namespace SteamRush.Track
         }
 
         /// <summary>
-        /// GDD v1.2 Mục 4: Xung cuộn ngược thế giới theo hàm Sine (CurrentSpeed < 0)
-        /// Mặt đường, vỉa hè và chướng ngại vật trôi giật lùi về phía sau (+X).
-        /// Hết thời lượng sẽ hãm về 0 rồi mượt mà lấy lại tốc độ qua TriggerRecovery.
+        /// Executes reverse world scroll impulse on heavy collision (CurrentSpeed < 0).
         /// </summary>
         private void UpdateReverseKnockback(float dt, float normalTargetSpeed)
         {
@@ -270,20 +254,19 @@ namespace SteamRush.Track
 
             if (progress < 1f)
             {
-                // Hàm Sine nửa chu kỳ (0 -> 1 -> 0): từ 0 vút lên tốc độ giật lùi cao nhất rồi hãm lại về 0
+                // Half-cycle sine wave: ramps to peak reverse speed and eases back to 0
                 CurrentSpeed = _reverseKnockbackPeakSpeed * Mathf.Sin(progress * Mathf.PI);
             }
             else
             {
                 CurrentSpeed = 0f;
-                // Chuyển sang Recovery để hồi phục mượt mà từ 0 -> tốc độ bình thường
+                // Transition to recovery to restore normal speed
                 TriggerRecovery(0.4f);
             }
         }
 
         /// <summary>
-        /// Giảm đều từ tốc độ lúc kích hoạt về 0 trong _victoryDecelDuration, sau đó GIỮ NGUYÊN 0
-        /// vĩnh viễn - không như Recovery/CommandOverride, state này không tự thoát.
+        /// Smoothly brings world speed to 0 for victory ceremony. Permanent until scene reload.
         /// </summary>
         private void UpdateVictory(float dt)
         {
@@ -294,43 +277,43 @@ namespace SteamRush.Track
 
         // --- PUBLIC INPUT API (RunnerInputHandler) ---
 
-        /// <summary>Gọi khi người chơi NHẤP NHẢ phím Slide (Ctrl / S / ↓).</summary>
+        /// <summary>Called on tap slide input (Ctrl / S / DownArrow).</summary>
         public void BeginSlideTap()
         {
             if (_state == SpeedState.SlideHold || _state == SpeedState.Recovery || _state == SpeedState.Victory) return;
 
             _state = SpeedState.SlideTap;
             _slideTapTimer = _slideTapDuration;
-            CurrentSpeed *= _slideTapSpeedMultiplier; // giảm tức thì -50%
+            CurrentSpeed *= _slideTapSpeedMultiplier; // instantaneous speed cut
         }
 
-        /// <summary>Gọi mỗi frame khi người chơi ĐÈ GIỮ phím Slide (đã vượt ngưỡng phân biệt Tap/Hold).</summary>
+        /// <summary>Called each frame while holding slide input.</summary>
         public void HoldSlide()
         {
-            if (_state == SpeedState.Recovery || _state == SpeedState.Victory) return; // đang ngã / đã kết thúc thì không cho Slide
+            if (_state == SpeedState.Recovery || _state == SpeedState.Victory) return; // ignore slide during recovery/victory
             _state = SpeedState.SlideHold;
         }
 
-        /// <summary>Gọi khi người chơi NHẢ phím Slide sau khi đã ở trạng thái Hold.</summary>
+        /// <summary>Called when releasing held slide.</summary>
         public void ReleaseSlide()
         {
             if (_state == SpeedState.SlideHold)
             {
-                _state = SpeedState.Normal; // Update() sẽ MoveTowards mượt về tốc độ bình thường
+                _state = SpeedState.Normal; // smooth return to normal speed
             }
-            // Nếu đang SlideTap, để nó tự hết theo _slideTapTimer, không cắt ngang.
+            // Let tap slide complete naturally
         }
 
-        /// <summary>Gọi mỗi frame khi người chơi GIỮ Shift/E.</summary>
+        /// <summary>Called each frame while holding sprint input.</summary>
         public void HoldSprint()
         {
-            if (IsSliding || _state == SpeedState.Recovery || _state == SpeedState.Victory) return; // Slide/Recovery/Victory ưu tiên hơn
-            if (CurrentEnergyPercent01 < _sprintEnergyLockThreshold) return; // khóa khi thiếu năng lượng
+            if (IsSliding || _state == SpeedState.Recovery || _state == SpeedState.Victory) return; // slide/recovery/victory take priority
+            if (CurrentEnergyPercent01 < _sprintEnergyLockThreshold) return; // locked when energy is insufficient
 
             _state = SpeedState.Sprint;
         }
 
-        /// <summary>Gọi khi người chơi NHẢ Shift/E.</summary>
+        /// <summary>Called when releasing sprint input.</summary>
         public void ReleaseSprint()
         {
             if (_state == SpeedState.Sprint)
@@ -340,17 +323,16 @@ namespace SteamRush.Track
         }
 
         /// <summary>
-        /// Gọi khi Runner va chạm vật cản: tốc độ giảm đều về 0 trong _recoveryDecelDuration (0.3-0.5s),
-        /// giữ 0 trong lúc Runner đang ngã, rồi tăng mượt trở lại tốc độ chuẩn.
+        /// Called when the runner collides with an obstacle: decelerates to 0 within _recoveryDecelDuration (0.3-0.5s),
+        /// holds at 0 during knockdown, and smoothly re-accelerates to normal speed.
         /// </summary>
         /// <param name="totalRecoveryDuration">
-        /// Tổng thời gian từ lúc va chạm tới lúc bắt đầu tăng tốc lại — theo GDD mỗi loại vật cản
-        /// có giá trị riêng (Rào thấp/Xà cao = 1.2s, Xe cắt ngang/Vật rơi = 1.8s...). Nếu obstacle
-        /// chưa expose field này thì dùng mặc định _defaultRecoveryTotalDuration.
+        /// Total recovery duration from collision until re-acceleration starts.
+        /// If unspecified, uses _defaultRecoveryTotalDuration.
         /// </param>
         public void TriggerRecovery(float totalRecoveryDuration = -1f)
         {
-            if (_state == SpeedState.Victory) return; // đã kết thúc chặng đua, va chạm không còn ý nghĩa
+            if (_state == SpeedState.Victory) return; // ignore collisions post-victory
 
             _recoverySpeedAtImpact = CurrentSpeed;
             _recoveryElapsed = 0f;
@@ -361,15 +343,12 @@ namespace SteamRush.Track
         // --- COMMAND OVERRIDE API (Chat fast/slow) ---
 
         /// <summary>
-        /// GDD v1.3 mục 5.2: lệnh chat "fast" hoặc "slow". Ép CurrentSpeed tiến dần về
-        /// <paramref name="targetSpeed"/> trong <paramref name="duration"/> giây, sau đó tự trả
-        /// lại Normal (tốc độ ramp chuẩn của GDD v1.2 tiếp tục chạy như cũ).
-        /// Va chạm (TriggerRecovery) vẫn luôn được ưu tiên ngắt ngang state này nếu xảy ra.
+        /// Applies speed override from chat commands (fast/slow).
         /// </summary>
         public void TriggerCommandSpeed(float targetSpeed, float duration)
         {
-            if (_state == SpeedState.ReverseKnockback || _state == SpeedState.Victory) return; // đang bị cuộn ngược / đã kết thúc thì không được đè tốc độ
-            if (_state == SpeedState.Recovery && _recoveryElapsed < _recoveryTotalDuration) return; // đang trong pha ngã dừng va chạm thì chờ hồi phục xong
+            if (_state == SpeedState.ReverseKnockback || _state == SpeedState.Victory) return; // ignore during reverse knockback or victory
+            if (_state == SpeedState.Recovery && _recoveryElapsed < _recoveryTotalDuration) return; // ignore during active collision knockdown
 
             _commandOverrideTargetSpeed = targetSpeed;
             _commandOverrideTimer = duration;
@@ -377,7 +356,7 @@ namespace SteamRush.Track
         }
 
         /// <summary>
-        /// Hủy lệnh Command Override sớm (khi hết năng lượng hoặc muốn trở về bình thường tức thì).
+        /// Cancels active command override early.
         /// </summary>
         public void CancelCommandSpeed()
         {
@@ -389,15 +368,13 @@ namespace SteamRush.Track
         }
 
         /// <summary>
-        /// GDD v1.2 Mục 4: Kích hoạt xung cuộn ngược thế giới khi va chạm vật cản lớn.
-        /// Toàn bộ mặt đường, vỉa hè và tòa nhà sẽ trôi ngược hướng (+X) trong một khoảng thời gian ngắn
-        /// theo hàm Sine, tạo cảm giác Runner bị đẩy/kéo giật lùi về vị trí cũ trên cung đường.
+        /// Triggers reverse world scroll impulse on heavy collision.
         /// </summary>
-        /// <param name="peakReverseSpeed">Tốc độ giật lùi cực đại (mặc định -8.5 m/s, giá trị âm).</param>
-        /// <param name="duration">Thời lượng giật lùi (mặc định 0.5s).</param>
+        /// <param name="peakReverseSpeed">Peak reverse speed in m/s (negative value).</param>
+        /// <param name="duration">Impulse duration in seconds.</param>
         public void TriggerReverseWorldKnockback(float peakReverseSpeed = -8.5f, float duration = 0.5f)
         {
-            if (_state == SpeedState.Victory) return; // đã kết thúc chặng đua, va chạm không còn ý nghĩa
+            if (_state == SpeedState.Victory) return; // ignore collisions post-victory
 
             _reverseKnockbackElapsed = 0f;
             _reverseKnockbackDuration = Mathf.Max(0.1f, duration);
@@ -406,9 +383,7 @@ namespace SteamRush.Track
         }
 
         /// <summary>
-        /// GDD v1.4.1 mục 7: gọi khi Runner băng qua Cổng Về Đích. Giảm mượt CurrentSpeed từ giá
-        /// trị hiện tại về 0 trong <paramref name="decelDuration"/> giây rồi giữ nguyên vĩnh viễn -
-        /// KHÔNG tự tăng tốc lại như các state khác. Mọi API trigger state khác bị chặn sau khi gọi.
+        /// Smoothly decelerates world speed to 0 when crossing the finish line.
         /// </summary>
         public void TriggerVictoryStop(float decelDuration = -1f)
         {

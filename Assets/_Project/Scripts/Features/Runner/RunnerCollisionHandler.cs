@@ -20,14 +20,14 @@ namespace SteamRush.Features.Runner
         [SerializeField] private float _hitStopDuration = 0.15f;
 
         [Header("Penalty Settings (GDD v1.2)")]
-        [Tooltip("Phần trăm năng lượng bị trừ khi va chạm.")]
+        [Tooltip("Percentage energy deducted on obstacle collision.")]
         [SerializeField] private float _energyPenaltyPercent = 25f;
 
-        [Tooltip("Quãng đường phạt bị đẩy lùi (mét).")]
+        [Tooltip("Progress penalty distance pushed backward (meters).")]
         [SerializeField] private float _defaultDistancePenalty = 10f;
 
         [Header("Invulnerability Settings")]
-        [Tooltip("Thời gian miễn nhiễm (nhấp nháy + trigger mode) để vật cản đi qua.")]
+        [Tooltip("Invulnerability duration (blinking + trigger mode) for obstacles to pass through.")]
         [SerializeField] private float _invulnerabilityDuration = 0.8f;
 
         private RunnerController _controller;
@@ -57,9 +57,7 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Bật hoặc tắt trạng thái Hyper Dash.
-        /// Khi Hyper Dash hoạt động, Runner trở thành Trigger
-        /// để có thể đi xuyên qua vật cản.
+        /// Toggles Hyper Dash state. Runner turns into Trigger to phase through obstacles.
         /// </summary>
         public void SetHyperDashState(bool isActive)
         {
@@ -72,7 +70,7 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Điểm nhận tương tác Trigger.
+        /// Trigger interaction handler.
         /// </summary>
         private void OnTriggerEnter(Collider other)
         {
@@ -80,7 +78,7 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Điểm nhận tương tác Collision.
+        /// Collision interaction handler.
         /// </summary>
         private void OnCollisionEnter(Collision collision)
         {
@@ -156,7 +154,7 @@ namespace SteamRush.Features.Runner
                     return;
                 }
 
-                // ObstacleBase đã xử lý va chạm này rồi.
+                // ObstacleBase already handled this collision
                 if (!obstacle.HasCollided)
                 {
                     obstacle.TriggerHit(gameObject);
@@ -169,7 +167,7 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            // Fallback cho obstacle chưa có ObstacleBase hoặc nhận diện xe DrivingObstacleCar
+            // Fallback for obstacles without ObstacleBase or DrivingObstacleCar
             StreamRushLive.Features.Spawning.DrivingObstacleCar drivingCar = obj.GetComponentInParent<StreamRushLive.Features.Spawning.DrivingObstacleCar>();
             if (drivingCar != null && drivingCar.IsShieldDeflected)
             {
@@ -198,7 +196,7 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Được ObstacleBase gọi sau khi obstacle xác nhận Runner bị hit.
+        /// Called by ObstacleBase when a collision with runner is confirmed.
         /// </summary>
         public void HandleObstacleHitFromSource(ObstacleBase obstacle)
         {
@@ -217,10 +215,10 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Xử lý một lần Runner bị vật cản đánh trúng (GDD v1.2 / Prototype 3-Lane):
-        /// - Phạt trừ cự ly tiến trình (-15m) & năng lượng (-25%).
-        /// - Reverse World Knockback (-8.5 m/s) & đẩy lùi Runner về sau.
-        /// - i-Frames 2.0s nhấp nháy bất tử bảo vệ Runner.
+        /// Executes collision resolution on runner:
+        /// - Applies progress and energy penalties
+        /// - Triggers reverse world knockback impulse
+        /// - Activates invulnerability i-frames
         /// </summary>
         private IEnumerator HandleObstacleHit(ObstacleBase obstacle)
         {
@@ -365,7 +363,7 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Kiểm tra nhanh xem Runner có đang được bảo vệ bởi Khiên hay không.
+        /// Checks if the runner is currently shielded.
         /// </summary>
         public bool HasShieldActive()
         {
@@ -374,9 +372,8 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Kiểm tra Runner có Shield hay không.
-        /// Nếu có, Shield sẽ chặn 1 đòn va chạm của xe/vật cản, đồng thời đẩy xe văng dạt sang 2 bên lề đường,
-        /// bảo toàn hoàn toàn cự ly tiến trình (-0m) và năng lượng (-0%).
+        /// Checks and consumes shield to block an obstacle collision,
+        /// deflecting colliding vehicles without penalty.
         /// </summary>
         public bool TryConsumeShield(GameObject obstacleObj = null)
         {
@@ -390,7 +387,7 @@ namespace SteamRush.Features.Runner
             bool blocked = itemEffects.ConsumeShield();
             if (blocked)
             {
-                // Miễn nhiễm ngắn 0.8s để chống lại mọi va chạm dư thừa từ các collider phụ của cùng chiếc xe vừa bị đẩy văng
+                // Short 0.8s immunity against secondary colliders of the deflected obstacle
                 _shieldDeflectImmunityTimer = 0.8f;
 
                 if (obstacleObj != null)
@@ -407,7 +404,7 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Thực hiện hiệu ứng đẩy xe va chạm văng bốc lên và dạt ra 2 bên lề đường.
+        /// Launches deflected obstacle away from the track.
         /// </summary>
         private void DeflectObstacle(GameObject obstacleObj)
         {

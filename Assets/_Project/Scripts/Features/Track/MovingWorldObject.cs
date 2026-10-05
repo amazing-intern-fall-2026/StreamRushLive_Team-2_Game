@@ -3,8 +3,8 @@ using UnityEngine;
 namespace SteamRush.Track
 {
     /// <summary>
-    /// Gắn vào bất kỳ vật thể nào di chuyển cùng thế giới (chướng ngại vật, buff item...)
-    /// để trôi ngược về phía Player theo trục -X với tốc độ từ WorldSpeedManager.
+    /// Attached to objects that move with the world (obstacles, items, etc.)
+    /// to scroll along -X based on WorldSpeedManager speed.
     /// </summary>
     public class MovingWorldObject : MonoBehaviour
     {

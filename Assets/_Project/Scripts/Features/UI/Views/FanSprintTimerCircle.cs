@@ -8,9 +8,8 @@ using SteamRush.Features.Runner;
 namespace SteamRush.Features.UI.Views
 {
     /// <summary>
-    /// Vòng tròn đếm ngược thời gian tác dụng của quà 'Bình Tăng Tốc (Sprint Buff)' (F2)
-    /// nằm đối xứng phía bên thanh năng lượng Fan (Phe Xanh).
-    /// Có hiệu ứng Radial Fill 360 độ quét dần theo thời gian thực và đếm ngược số giây (30s).
+    /// Countdown timer circle for Sprint Buff (Fan / Blue Team).
+    /// Displays 360-degree radial fill sweep and remaining seconds countdown.
     /// </summary>
     public class FanSprintTimerCircle : MonoBehaviour
     {
@@ -83,7 +82,7 @@ namespace SteamRush.Features.UI.Views
 
         private void Start()
         {
-            // Mặc định ẩn khi chưa kích hoạt Sprint Buff
+            // Initially hidden until Sprint Buff activates
             if (!_isActive && canvasGroup != null)
             {
                 canvasGroup.alpha = 0f;
@@ -97,7 +96,7 @@ namespace SteamRush.Features.UI.Views
                 runnerController = FindFirstObjectByType<ChatLaneRunnerController>();
             }
 
-            // Theo dõi trạng thái từ ChatLaneRunnerController
+            // Track status from ChatLaneRunnerController
             if (runnerController != null)
             {
                 if (runnerController.IsSprintBuffActive && !_isActive)
@@ -120,14 +119,14 @@ namespace SteamRush.Features.UI.Views
                 return;
             }
 
-            // Cập nhật Radial Fill Ring (0..1)
+            // Update Radial Fill Ring (0..1)
             if (radialFillRing != null && _totalDuration > 0f)
             {
                 radialFillRing.fillAmount = Mathf.Clamp01(_remainingTime / _totalDuration);
                 radialFillRing.color = activeRingColor;
             }
 
-            // Cập nhật số giây còn lại
+            // Update remaining seconds
             if (timerText != null)
             {
                 timerText.text = $"{Mathf.CeilToInt(_remainingTime)}s";
@@ -135,7 +134,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Kích hoạt vòng tròn đếm ngược
+        /// Activates countdown circle.
         /// </summary>
         public void ActivateTimer(float duration)
         {
@@ -168,7 +167,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Tắt vòng tròn đếm ngược
+        /// Deactivates countdown circle.
         /// </summary>
         public void DeactivateTimer()
         {
