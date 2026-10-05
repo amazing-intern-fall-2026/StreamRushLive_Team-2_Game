@@ -394,8 +394,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.GiftDanceController
   _danceLayerName: Dance
   _danceStateName: Dance
-  _danceDuration: 60
   _blendTime: 0.25
+  _victoryDanceStateName: VictoryDance
 --- !u!1 &667503015618846190
 GameObject:
   m_ObjectHideFlags: 0
@@ -2105,7 +2105,7 @@ SkinnedMeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 62e25ef75a2216f418d06453c9ad15cb, type: 2}
+  - {fileID: 2100000, guid: 9b1e949463f76a443a971d91572f31ef, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
