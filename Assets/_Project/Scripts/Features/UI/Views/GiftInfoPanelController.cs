@@ -13,20 +13,23 @@ namespace SteamRush.Features.UI.Views
     /// </summary>
     public enum GiftSortOption
     {
+        [InspectorName("By Element Order (Left -> Right, Top -> Bottom)")]
+        ByElementOrder = 0,
+
         [InspectorName("Team: Blue -> Red -> Special")]
-        ByTeam_BlueRedSpecial = 0,
+        ByTeam_BlueRedSpecial = 1,
 
         [InspectorName("Team: Red -> Blue -> Special")]
-        ByTeam_RedBlueSpecial = 1,
+        ByTeam_RedBlueSpecial = 2,
 
         [InspectorName("By Gift ID")]
-        ByGiftId = 2,
+        ByGiftId = 3,
 
         [InspectorName("By Value")]
-        ByValue = 3,
+        ByValue = 4,
 
         [InspectorName("None")]
-        None = 4
+        None = 5
     }
 
     /// <summary>
@@ -44,8 +47,8 @@ namespace SteamRush.Features.UI.Views
         [Range(1, 4)]
         [SerializeField] private int _rowCount = 2;
 
-        [Tooltip("Auto-sort mode for gift cards on UI.")]
-        [SerializeField] private GiftSortOption _sortOption = GiftSortOption.ByTeam_BlueRedSpecial;
+        [Tooltip("Auto-sort mode for gift cards on UI (Mặc định: hiển thị theo đúng thứ tự từng Element từ trái qua phải, từ trên xuống dưới).")]
+        [SerializeField] private GiftSortOption _sortOption = GiftSortOption.ByElementOrder;
 
         [Tooltip("Auto-arrange and re-align gift cards when modified in Inspector or Runtime.")]
         [SerializeField] private bool _autoArrangeOnChanged = true;
@@ -141,6 +144,15 @@ namespace SteamRush.Features.UI.Views
             var rawMappings = _liveClient != null ? _liveClient.GiftMappings : null;
             if (rawMappings == null || rawMappings.Count == 0)
             {
+                var router = FindFirstObjectByType<TikTokGiftRouter>();
+                if (router != null)
+                {
+                    rawMappings = router.GiftMappings;
+                }
+            }
+
+            if (rawMappings == null || rawMappings.Count == 0)
+            {
                 ClearAllCards();
                 if (placeholder != null) placeholder.gameObject.SetActive(true);
                 return;
@@ -182,8 +194,13 @@ namespace SteamRush.Features.UI.Views
             GridLayoutGroup glg = _contentContainer.GetComponent<GridLayoutGroup>();
             if (glg != null)
             {
-                glg.cellSize = new Vector2(cardW, cardH);
+                // Đảm bảo hiển thị chuẩn từ trái qua phải, từ trên xuống dưới
+                glg.startCorner = GridLayoutGroup.Corner.UpperLeft;
+                glg.startAxis = GridLayoutGroup.Axis.Horizontal;
+                glg.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
                 glg.constraintCount = cols;
+                glg.childAlignment = TextAnchor.MiddleCenter;
+                glg.cellSize = new Vector2(cardW, cardH);
                 glg.spacing = new Vector2(spX, spY);
                 glg.padding = new RectOffset((int)padX, (int)padX, (int)padY, (int)padY);
             }
@@ -225,6 +242,11 @@ namespace SteamRush.Features.UI.Views
 
             switch (_sortOption)
             {
+                case GiftSortOption.ByElementOrder:
+                case GiftSortOption.None:
+                    // Giữ nguyên 100% thứ tự từng Element như khai báo trong Gift Mappings (trái qua phải, trên xuống dưới)
+                    break;
+
                 case GiftSortOption.ByTeam_BlueRedSpecial:
                     list.Sort((a, b) =>
                     {
@@ -255,7 +277,6 @@ namespace SteamRush.Features.UI.Views
                     list.Sort((a, b) => a.customValue.CompareTo(b.customValue));
                     break;
 
-                case GiftSortOption.None:
                 default:
                     break;
             }
@@ -537,6 +558,17 @@ namespace SteamRush.Features.UI.Views
             {
                 _cardIdMap.Add(mapping.giftId, cardRt);
             }
+        }
+
+        [ContextMenu("Hiển Thị Theo Thứ Tự Element (Trái -> Phải, Trên -> Dưới)")]
+        public void SetToElementOrder()
+        {
+            _sortOption = GiftSortOption.ByElementOrder;
+#if UNITY_EDITOR
+            UnityEditor.EditorUtility.SetDirty(this);
+#endif
+            BuildGiftDisplay();
+            Debug.Log("<color=#00FF88>[GiftInfoPanel] Đã chuyển sang hiển thị theo đúng thứ tự Element (trái qua phải, trên xuống dưới).</color>");
         }
 
         [ContextMenu("Đồng Bộ Thứ Tự Quà Vào TikTokLiveClient")]

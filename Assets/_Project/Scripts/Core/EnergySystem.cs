@@ -9,18 +9,19 @@ namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
     /// Quản lý năng lượng của Runner.
-    /// Energy tự giảm theo thời gian.
-    /// Khi Energy > 0, Runner được tăng 50% tốc độ (Sprint).
+    /// Năng lượng không tự giảm theo thời gian và không trừ khi bứt tốc (Sprint là miễn phí).
+    /// Thay vào đó, mỗi lần đổi làn sẽ bị trừ năng lượng (mặc định -10 điểm / 1%).
+    /// Khi va chạm chướng ngại vật bị phạt trừ năng lượng (-25%).
     /// </summary>
     public class EnergySystem : MonoBehaviour
     {
         [Header("Energy Settings")]
         [SerializeField] private float maxEnergy = 100f;
-        [SerializeField] private float energyDrainPerSecond = 10f;
+        [Tooltip("Lượng năng lượng bị trừ mỗi lần Runner đổi làn (mặc định = 10 điểm).")]
+        [SerializeField] private float laneChangeEnergyCost = 10f;
 
-        [Header("Speed Settings")]
+        [Header("Speed Settings (Optional Override)")]
         [SerializeField] private float normalSpeed = 8f; // Chuẩn 8 m/s
-        [SerializeField] private float sprintMultiplier = 1.5f; // Sprint +50% = 12 m/s
 
         [Header("References")]
         [SerializeField] private WorldSpeedManager worldSpeedManager;
@@ -29,13 +30,13 @@ namespace StreamRushLive.Features.Spawning
         public UnityEvent<float> OnEnergyNormalizedChanged = new UnityEvent<float>();
 
         private float currentEnergy;
-        private RunnerCollisionHandler runnerCollision;
         private bool _hasSpeedOverride;
         private float _speedOverride;
 
         public float MaxEnergy => maxEnergy;
         public float CurrentEnergy => currentEnergy;
         public float EnergyNormalized => Mathf.Clamp01(currentEnergy / maxEnergy);
+        public float LaneChangeEnergyCost => laneChangeEnergyCost;
 
         private void Start()
         {
@@ -51,36 +52,39 @@ namespace StreamRushLive.Features.Spawning
                 hudManager = FindFirstObjectByType<HUDManager>();
             }
 
-            runnerCollision = FindFirstObjectByType<RunnerCollisionHandler>();
+            SyncHUD();
         }
 
         private void Update()
         {
-            DrainEnergy();
-            SyncWorldSpeed();
+            // Không còn DrainEnergy() theo thời gian. Năng lượng chỉ bị trừ khi đổi làn hoặc va chạm.
             SyncHUD();
         }
 
-        private void DrainEnergy()
+        /// <summary>
+        /// Trừ năng lượng khi Runner thực hiện thao tác đổi làn.
+        /// </summary>
+        public void ConsumeLaneChangeEnergy(float cost = -1f)
         {
-            if (currentEnergy > 0f)
-            {
-                currentEnergy -= energyDrainPerSecond * Time.deltaTime;
-                currentEnergy = Mathf.Max(currentEnergy, 0f);
-            }
+            float actualCost = cost >= 0f ? cost : laneChangeEnergyCost;
+            currentEnergy = Mathf.Max(0f, currentEnergy - actualCost);
+            SyncHUD();
         }
 
-        private void SyncWorldSpeed()
+        /// <summary>
+        /// Kiểm tra và trừ năng lượng đổi làn. Trả về false nếu không đủ năng lượng.
+        /// </summary>
+        public bool TryConsumeLaneChangeEnergy(float cost = -1f)
         {
-            if (worldSpeedManager == null) return;
-
-            // Nếu Player đang xử lý va chạm (choáng/dừng) thì không ghi đè tốc độ
-            if (runnerCollision != null && runnerCollision.IsHandlingHit)
+            float actualCost = cost >= 0f ? cost : laneChangeEnergyCost;
+            if (currentEnergy < actualCost)
             {
-                return;
+                return false;
             }
 
-            worldSpeedManager.CurrentSpeed = GetCurrentSpeed();
+            currentEnergy -= actualCost;
+            SyncHUD();
+            return true;
         }
 
         private void SyncHUD()
@@ -95,10 +99,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Trả về tốc độ hiện tại của Runner.
-        /// Energy > 0: tăng 50%.
-        /// Energy = 0: tốc độ bình thường.
-        /// Speed Override: dùng tốc độ đặc biệt của Item như Hyper Dash.
+        /// Trả về tốc độ hiện tại của Runner nếu có ghi đè từ Buff/Item.
         /// </summary>
         public float GetCurrentSpeed()
         {
@@ -107,35 +108,35 @@ namespace StreamRushLive.Features.Spawning
                 return _speedOverride;
             }
 
-            if (currentEnergy > 0f)
-            {
-                return normalSpeed * sprintMultiplier;
-            }
-
             return normalSpeed;
         }
 
         /// <summary>
-        /// Ghi đè tốc độ hiện tại bằng tốc độ đặc biệt của Item.
-        /// Dùng cho các Item có hiệu ứng tốc độ như Hyper Dash.
+        /// Ghi đè tốc độ hiện tại bằng tốc độ đặc biệt của Item (như Hyper Dash).
         /// </summary>
         public void SetSpeedOverride(float speed)
         {
             _hasSpeedOverride = true;
             _speedOverride = Mathf.Max(0f, speed);
 
-            SyncWorldSpeed();
+            if (worldSpeedManager != null)
+            {
+                worldSpeedManager.CurrentSpeed = _speedOverride;
+            }
         }
 
         /// <summary>
-        /// Xóa tốc độ ghi đè và trả hệ thống về tốc độ bình thường dựa trên Energy.
+        /// Xóa tốc độ ghi đè.
         /// </summary>
         public void ClearSpeedOverride()
         {
             _hasSpeedOverride = false;
             _speedOverride = 0f;
 
-            SyncWorldSpeed();
+            if (worldSpeedManager != null)
+            {
+                worldSpeedManager.CurrentSpeed = normalSpeed;
+            }
         }
 
         /// <summary>

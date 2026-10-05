@@ -29,6 +29,8 @@ namespace SteamRush.Features.Runner
         [SerializeField] private float _fastTargetSpeed = 18f;
         [Tooltip("Tham chiếu FactionTugOfWarManager để kiểm tra và trừ năng lượng Fan.")]
         [SerializeField] private FactionTugOfWarManager _factionManager;
+        [Tooltip("Tham chiếu EnergySystem (nếu có trong scene) để đồng bộ trừ năng lượng khi đổi làn.")]
+        [SerializeField] private StreamRushLive.Features.Spawning.EnergySystem _energySystem;
 
         [Header("Control Energy Costs (GDD v1.4.1 mục 2.2)")]
         [Tooltip("Chi phí năng lượng Fan khi đổi làn 1 lần. GDD v1.4.1 = -1% (-10 điểm trên thang 1000).")]
@@ -208,6 +210,11 @@ namespace SteamRush.Features.Runner
             if (_factionManager == null)
             {
                 _factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
+            }
+
+            if (_energySystem == null)
+            {
+                _energySystem = FindFirstObjectByType<StreamRushLive.Features.Spawning.EnergySystem>();
             }
 
             if (_hudManager == null)
@@ -422,14 +429,36 @@ namespace SteamRush.Features.Runner
                 _factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
             }
 
-            if (_factionManager == null)
+            if (_energySystem == null)
             {
-                // Chưa nối FactionTugOfWarManager trong scene (vd. scene test riêng) — không khoá,
+                _energySystem = FindFirstObjectByType<StreamRushLive.Features.Spawning.EnergySystem>();
+            }
+
+            if (_factionManager == null && _energySystem == null)
+            {
+                // Chưa nối FactionTugOfWarManager hoặc EnergySystem trong scene (vd. scene test riêng) — không khoá,
                 // cho phép thao tác như cũ để không chặn việc test các phần khác.
                 return true;
             }
 
-            return _factionManager.TrySpendFanEnergy(cost);
+            bool canPay = true;
+
+            if (_factionManager != null)
+            {
+                canPay = _factionManager.TrySpendFanEnergy(cost);
+            }
+            else if (_energySystem != null)
+            {
+                canPay = _energySystem.TryConsumeLaneChangeEnergy(cost);
+            }
+
+            // Nếu cả hai cùng có mặt trong scene, đồng bộ trừ luôn cả EnergySystem
+            if (canPay && _factionManager != null && _energySystem != null)
+            {
+                _energySystem.ConsumeLaneChangeEnergy(cost);
+            }
+
+            return canPay;
         }
 
         private void NotifyEnergyDepleted(string actionName)

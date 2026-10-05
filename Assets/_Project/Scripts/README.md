@@ -31,7 +31,7 @@ Assets/_Project/Scripts/
 | Tên Script | Vai trò & Trách nhiệm chính |
 | :--- | :--- |
 | **`EventBus.cs`** | **Hệ thống Publish / Subscribe tĩnh Decoupled.** Cho phép các module giao tiếp mà không cần tham chiếu trực tiếp nhau. Ví dụ: Khi phe Anti đủ like, `FactionTugOfWarManager` phát `RequestCarSpawnEvent`, `ChatRunnerCarSpawnAdapter` lắng nghe và yêu cầu Spawner thả xe. |
-| **`EnergySystem.cs`** | **Hệ thống quản lý Năng lượng của Runner.** Năng lượng tự động tiêu hao theo thời gian (`energyDrainPerSecond = 10/s`). Khi năng lượng > 0, Runner được tăng tốc bứt phá (Sprint). Phát sự kiện `OnEnergyNormalizedChanged` cập nhật thanh năng lượng trên HUD. |
+| **`EnergySystem.cs`** | **Hệ thống quản lý Năng lượng của Runner.** Năng lượng không tự tiêu hao theo thời gian và không trừ khi bứt tốc (Sprint là miễn phí). Thay vào đó, mỗi khi Runner đổi làn sẽ bị trừ năng lượng (mặc định -10 điểm / 1%) và bị phạt khi va chạm (-25%). Phát sự kiện `OnEnergyNormalizedChanged` cập nhật thanh năng lượng trên HUD. |
 | **`WorldSpeedManager.cs`** | **Bộ điều phối vận tốc của toàn bộ thế giới cuộn.** Điều chỉnh tốc độ cơ bản (8.0 m/s), bứt tốc Sprint (18.0 m/s), hãm trượt Slide, và hồi phục gia tốc mượt mà. Đặc biệt sở hữu hàm `TriggerReverseWorldKnockback(peakSpeed: -8.5m/s)` tạo xung lực cuộn ngược toàn bộ phố xá khi có va chạm mạnh. |
 
 ---

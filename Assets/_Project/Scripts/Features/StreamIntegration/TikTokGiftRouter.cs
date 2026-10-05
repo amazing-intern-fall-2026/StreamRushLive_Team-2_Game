@@ -86,6 +86,9 @@ namespace SteamRush.Features.StreamIntegration
         [Tooltip("Configured list of gift mappings linking TikTok gift IDs/names to gameplay actions.")]
         [SerializeField] private List<TikTokGiftMapping> _giftMappings = new List<TikTokGiftMapping>();
 
+        [Tooltip("Khi bật, danh sách quà trên UI sẽ hiển thị chính xác theo thứ tự từng Element (từ trái qua phải, từ trên xuống dưới).")]
+        [SerializeField] private bool _showByElementOrder = true;
+
         [Header("Subsystems")]
         [SerializeField] private GiftManager _giftManager;
         [SerializeField] private ChatRunnerQueueManager _queueManager;
@@ -394,7 +397,30 @@ namespace SteamRush.Features.StreamIntegration
         private void RefreshGiftPanelInEditor()
         {
             if (this == null || _giftPanelController == null) return;
+            if (_showByElementOrder)
+            {
+                _giftPanelController.SortOption = GiftSortOption.ByElementOrder;
+            }
             _giftPanelController.BuildGiftDisplay();
+        }
+
+        [ContextMenu("Show Gifts By Element Order (Left -> Right, Top -> Bottom)")]
+        public void ShowGiftsByElementOrder()
+        {
+            _showByElementOrder = true;
+            if (_giftPanelController == null)
+            {
+                _giftPanelController = FindFirstObjectByType<GiftInfoPanelController>();
+            }
+
+            if (_giftPanelController != null)
+            {
+                _giftPanelController.SortOption = GiftSortOption.ByElementOrder;
+                _giftPanelController.BuildGiftDisplay();
+            }
+            UnityEditor.EditorUtility.SetDirty(this);
+            if (_giftPanelController != null) UnityEditor.EditorUtility.SetDirty(_giftPanelController);
+            Debug.Log("<color=#00FF88>[TikTokGiftRouter] Đã chuyển UI sang hiển thị theo đúng thứ tự Element trong Gift Mappings (trái qua phải, trên xuống dưới).</color>");
         }
 
         [ContextMenu("Sort Gift Mappings By Team")]

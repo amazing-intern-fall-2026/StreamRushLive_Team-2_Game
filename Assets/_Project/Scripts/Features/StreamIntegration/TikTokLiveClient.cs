@@ -101,6 +101,12 @@ namespace SteamRush.Features.StreamIntegration
             return _giftRouter != null && _giftRouter.RemoveGiftMapping(giftId, giftName);
         }
 
+        [ContextMenu("Show Gifts By Element Order On UI")]
+        public void ShowGiftsByElementOrderOnUI()
+        {
+            _giftRouter?.ShowGiftsByElementOrder();
+        }
+
         #endregion
 
         #region Unity Lifecycle
