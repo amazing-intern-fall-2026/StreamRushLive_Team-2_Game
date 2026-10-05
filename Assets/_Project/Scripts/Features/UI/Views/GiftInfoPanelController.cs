@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using SteamRush.Core;
 using SteamRush.Features.StreamIntegration;
 
 namespace SteamRush.Features.UI.Views
@@ -484,16 +485,17 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Creates an individual gift card item.
+        /// Creates an individual gift card item with interactive Button support.
         /// </summary>
         private void CreateOriginalCard(TikTokGiftMapping mapping, float cardWidth, float cardHeight)
         {
-            GameObject cardObj = new GameObject($"Card_{mapping.giftName}", typeof(RectTransform), typeof(Image));
+            GameObject cardObj = new GameObject($"Card_{mapping.giftName}", typeof(RectTransform), typeof(Image), typeof(Button));
             cardObj.transform.SetParent(_contentContainer, false);
             RectTransform cardRt = cardObj.GetComponent<RectTransform>();
 
             Image bg = cardObj.GetComponent<Image>();
             bg.color = _cardBgColor;
+            bg.raycastTarget = true;
 
             Sprite pillSprite = FindSpriteInAssets("UI_BannerPill") ?? FindSpriteInAssets("UI_Pill");
             if (pillSprite != null)
@@ -521,6 +523,7 @@ namespace SteamRush.Features.UI.Views
 
             Image iconImg = iconObj.GetComponent<Image>();
             iconImg.preserveAspect = true;
+            iconImg.raycastTarget = false; // Không chặn click của thẻ Button
             Sprite resolvedIcon = mapping.giftIcon != null ? mapping.giftIcon : GetOfficialTikTokGiftIcon(mapping.giftId, mapping.giftName);
             iconImg.sprite = resolvedIcon != null ? resolvedIcon : _fallbackIcon;
 
@@ -544,7 +547,61 @@ namespace SteamRush.Features.UI.Views
             descTxt.enableAutoSizing = true;
             descTxt.fontSizeMin = 8.5f;
             descTxt.fontSizeMax = 13.5f;
+            descTxt.raycastTarget = false; // Không chặn click của thẻ Button
 
+            // 3. Cấu hình Button tương tác cho thẻ quà
+            Button cardBtn = cardObj.GetComponent<Button>();
+            cardBtn.targetGraphic = bg;
+            ColorBlock colors = cardBtn.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1.35f, 1.35f, 1.35f, 1f);
+            colors.pressedColor = new Color(0.7f, 0.7f, 0.7f, 1f);
+            colors.selectedColor = Color.white;
+            colors.fadeDuration = 0.08f;
+            cardBtn.colors = colors;
+
+            TikTokGiftMapping capturedMapping = mapping;
+            cardBtn.onClick.RemoveAllListeners();
+            cardBtn.onClick.AddListener(() =>
+            {
+                TriggerGiftEvent(capturedMapping);
+            });
+
+            RegisterCardMaps(mapping, cardRt);
+        }
+
+        /// <summary>
+        /// Kích hoạt event của món quà khi người dùng bấm trực tiếp vào thẻ quà trên UI.
+        /// </summary>
+        public void TriggerGiftEvent(TikTokGiftMapping mapping)
+        {
+            if (mapping == null) return;
+
+            Debug.Log($"<color=#00FFFF>[GiftInfoPanel] Đã bấm thẻ quà: [{mapping.giftName}] (ID: {mapping.giftId}, Action: {mapping.action})</color>");
+
+            // 1. Hoạt ảnh nảy thẻ quà trên UI
+            HighlightGift(mapping.giftId, mapping.giftName);
+
+            // 2. Kích hoạt trực tiếp action của chính thẻ này qua TikTokGiftRouter
+            var router = FindFirstObjectByType<TikTokGiftRouter>();
+            if (router != null)
+            {
+                router.TriggerGiftMappingDirect(mapping, "Streamer");
+            }
+            else
+            {
+                // Dự phòng qua EventBus nếu không tìm thấy router
+                EventBus.Publish(new TikTokGiftEvent(
+                    userId: "streamer_tester",
+                    displayName: "Streamer",
+                    giftId: mapping.giftId,
+                    giftName: mapping.giftName,
+                    giftIconUrl: null,
+                    coins: 10,
+                    repeatCount: 1,
+                    totalCoins: 10
+                ));
+            }
         }
 
         private void RegisterCardMaps(TikTokGiftMapping mapping, RectTransform cardRt)

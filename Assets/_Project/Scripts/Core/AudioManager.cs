@@ -235,19 +235,39 @@ public class AudioManager : MonoBehaviour
         #region SFX Playback & Anti-Spam Control
 
         /// <summary>
-        /// Kiểm tra xem SFXType này có bị throttle do vừa mới phát cách đây dưới minSFXRepeatInterval giây hay không.
+        /// Lấy khoảng thời gian giãn cách tối thiểu giữa 2 lần phát tùy theo từng loại SFX để chống spam dồn dập.
         /// </summary>
-        public bool IsSFXPlaying(SFXType type)
+        private float GetMinRepeatInterval(SFXType type)
         {
-            return _lastPlayTimeByType.TryGetValue(type, out float lastTime) && (Time.unscaledTime - lastTime) < minSFXRepeatInterval;
+            return type switch
+            {
+                SFXType.StreamLike => 1.2f,        // Like dồn dập -> giãn cách ít nhất 1.2s
+                SFXType.StreamDonateGift => 1.5f,  // Quà donate lớn (clip dài 5s) -> giãn cách ít nhất 1.5s
+                SFXType.CollectEnergy => 0.6f,     // Thu thập năng lượng -> giãn cách ít nhất 0.6s
+                _ => minSFXRepeatInterval           // Mặc định 0.12s cho các thao tác phản hồi nhanh (nhảy, chuyển làn)
+            };
         }
 
         /// <summary>
-        /// Kiểm tra xem AudioClip này có bị throttle do vừa mới phát cách đây dưới minSFXRepeatInterval giây hay không.
+        /// Kiểm tra xem SFXType này có bị throttle do vừa mới phát cách đây dưới ngưỡng an toàn hay không.
+        /// </summary>
+        public bool IsSFXPlaying(SFXType type)
+        {
+            float interval = GetMinRepeatInterval(type);
+            return _lastPlayTimeByType.TryGetValue(type, out float lastTime) && (Time.unscaledTime - lastTime) < interval;
+        }
+
+        /// <summary>
+        /// Kiểm tra xem AudioClip này có bị throttle do vừa mới phát cách đây dưới khoảng an toàn hay không.
         /// </summary>
         public bool IsSFXPlaying(AudioClip clip)
         {
-            return clip != null && _lastPlayTimeByClip.TryGetValue(clip, out float lastTime) && (Time.unscaledTime - lastTime) < minSFXRepeatInterval;
+            float interval = minSFXRepeatInterval;
+            if (clip != null && clip.length > 2f)
+            {
+                interval = Mathf.Min(clip.length * 0.4f, 1.5f);
+            }
+            return clip != null && _lastPlayTimeByClip.TryGetValue(clip, out float lastTime) && (Time.unscaledTime - lastTime) < interval;
         }
 
         /// <summary>

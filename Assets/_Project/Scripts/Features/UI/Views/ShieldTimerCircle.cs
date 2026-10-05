@@ -69,6 +69,8 @@ namespace SteamRush.Features.UI.Views
                 return;
             }
             _instance = this;
+            _isActive = false;
+            _remainingTime = 0f;
 
             if (runnerItemEffects == null)
             {
@@ -76,6 +78,11 @@ namespace SteamRush.Features.UI.Views
             }
 
             BuildUIIfMissing();
+
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = 0f;
+            }
         }
 
         private void OnDestroy()
@@ -83,6 +90,14 @@ namespace SteamRush.Features.UI.Views
             if (_instance == this)
             {
                 _instance = null;
+            }
+        }
+
+        private void OnValidate()
+        {
+            if (!_isActive && canvasGroup != null)
+            {
+                canvasGroup.alpha = 0f;
             }
         }
 
@@ -319,6 +334,11 @@ namespace SteamRush.Features.UI.Views
             timerText.fontStyle = FontStyles.Bold;
             timerText.alignment = TextAlignmentOptions.Center;
             timerText.color = Color.white;
+
+            if (!_isActive && canvasGroup != null)
+            {
+                canvasGroup.alpha = 0f;
+            }
         }
 
         private static Sprite GetOrCreateCircleSprite()

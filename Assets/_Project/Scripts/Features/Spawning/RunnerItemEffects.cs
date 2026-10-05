@@ -27,6 +27,35 @@ namespace StreamRushLive.Features.Spawning
         public bool IsHighJumpActive => highJumpActive;
         public float CurrentJumpForceMultiplier => currentJumpForceMultiplier;
 
+        private void Awake()
+        {
+            // Luôn đảm bảo trạng thái buff được reset sạch sẽ khi khởi động game
+            shieldActive = false;
+            highJumpActive = false;
+            currentJumpForceMultiplier = 1f;
+        }
+
+        private void OnEnable()
+        {
+            if (!Application.isPlaying)
+            {
+                shieldActive = false;
+                highJumpActive = false;
+                currentJumpForceMultiplier = 1f;
+            }
+        }
+
+        private void OnValidate()
+        {
+            // Không bao giờ cho phép lưu shieldActive = true vào scene hoặc prefab khi không chạy Play
+            if (!Application.isPlaying)
+            {
+                shieldActive = false;
+                highJumpActive = false;
+                currentJumpForceMultiplier = 1f;
+            }
+        }
+
         /// <summary>
         /// Kích hoạt Shield cho Runner (mặc định 15s theo yêu cầu GDD).
         /// Nếu Runner đang có Shield, thời gian sẽ được tính lại từ đầu.
