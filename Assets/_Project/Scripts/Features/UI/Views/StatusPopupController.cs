@@ -30,9 +30,9 @@ namespace SteamRush.Features.UI.Views
             @"[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF\u2300-\u23FF\u2B50-\u2B55\uFE0F]",
             System.Text.RegularExpressions.RegexOptions.Compiled);
 
-        // Faction color coding: Blue Team (buff) / Red Team (debuff).
-        private static readonly Color BuffColor = new Color(0.25f, 0.75f, 1f); // Blue Team color
-        private static readonly Color DebuffColor = new Color(1f, 0.3f, 0.25f); // Red Team color
+        // Faction color coding: Blue Team (buff) / Red Team (debuff) mapped from HudTheme.
+        private static Color BuffColor => HudTheme.Current.blue;
+        private static Color DebuffColor => HudTheme.Current.red;
 
         // Inherit base position from template at spawn time
         private Vector2 startAnchoredPosition;

@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04ee2d078b5902940982412c31137cfc, type: 3}
+  m_Name: HudTheme
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.UI.HudTheme
+  pillDark: {fileID: 21300000, guid: d0ad30c5df21b324381bf13ab34988a1, type: 3}
+  pillBlue: {fileID: 21300000, guid: ea29607519568b644b2f6edf6692a370, type: 3}
+  pillRed: {fileID: 21300000, guid: ac53a09e048412e428c78cff13d8dc5e, type: 3}
+  pillGold: {fileID: 21300000, guid: d2e523bc64be10d48b7eb7ef3129808a, type: 3}
+  pillTeal: {fileID: 21300000, guid: 01ab9ae74b0b8b04a998e06a372ae556, type: 3}
+  pillGrey: {fileID: 21300000, guid: 1ee98f5999cfa08469b53d5ae4a19431, type: 3}
+  pillWhite: {fileID: 21300000, guid: 590fca51c8f96784cb032e57fdeb7ddc, type: 3}
+  panelFrame: {fileID: 21300000, guid: 4b414943752f2e44090dd874ed46f824, type: 3}
+  panelTabbed: {fileID: 21300000, guid: 9baf89304be800d45a58eaa36ccf44d9, type: 3}
+  panelDark: {fileID: 21300000, guid: 805f9f63b7ec0fd4998cb6c51a56b6be, type: 3}
+  panelInset: {fileID: 21300000, guid: 36a636c3e07f5504a98a9dcb45fa0c1a, type: 3}
+  panelFlat: {fileID: 21300000, guid: e96be3c2e6d907741939a389219ea24f, type: 3}
+  circleBlue: {fileID: 21300000, guid: b8f87346c72a3ca4c91c5eb46943c8bf, type: 3}
+  circleRed: {fileID: 21300000, guid: c9ad41a87db5de24f9642d47dfd62f63, type: 3}
+  circleGold: {fileID: 21300000, guid: 7735a783cd4a50f49ad1657c37168779, type: 3}
+  circleGreen: {fileID: 21300000, guid: 0781d261e7ae7ce4493fa793a059050f, type: 3}
+  circleTeal: {fileID: 21300000, guid: 1d87e88371786c44baabf4a755b61146, type: 3}
+  iconTimer: {fileID: 21300000, guid: edddce2c0ac6e1d449db81486a4342ee, type: 3}
+  iconUser: {fileID: 21300000, guid: b46eb3276b3ab634881d938b1f4f0de7, type: 3}
+  iconCommand: {fileID: 21300000, guid: 61676bcbf6bc9384d960b28d61d1231c, type: 3}
+  iconFlag: {fileID: 21300000, guid: d9c40ac66ee5bd74f8bb926247eaeba1, type: 3}
+  iconCrown: {fileID: 21300000, guid: a15e35acf6246404d93fcb899b8dde78, type: 3}
+  blue: {r: 0.2509804, g: 0.6784314, b: 1, a: 1}
+  blueDark: {r: 0.14117648, g: 0.27058825, b: 0.54901963, a: 1}
+  blueLight: {r: 0.54901963, g: 0.79607844, b: 1, a: 1}
+  red: {r: 1, g: 0.3019608, b: 0.34117648, a: 1}
+  redDark: {r: 0.52156866, g: 0.14117648, b: 0.18039216, a: 1}
+  redLight: {r: 1, g: 0.6039216, b: 0.62352943, a: 1}
+  gold: {r: 0.9882353, g: 0.85490197, b: 0.12941177, a: 1}
+  green: {r: 0.4627451, g: 0.81960785, b: 0.17254902, a: 1}
+  tealDark: {r: 0.1254902, g: 0.38039216, b: 0.44705883, a: 1}
+  textPrimary: {r: 1, g: 1, b: 1, a: 1}
+  textSecondary: {r: 0.7490196, g: 0.8901961, b: 0.9098039, a: 1}
+  fontBold: {fileID: 11400000, guid: 30596ec5b5b2aef44a2f0b6bbac20068, type: 2}
+  fontHeavy: {fileID: 11400000, guid: ea7e08b9d379472469519728c09332e2, type: 2}
+  timerBgTint: {r: 0.64, g: 0.47, b: 0.64, a: 1}
+  timerInnerTint: {r: 0.5, g: 0.36, b: 0.5, a: 1}

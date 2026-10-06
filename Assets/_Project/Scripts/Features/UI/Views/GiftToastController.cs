@@ -57,27 +57,28 @@ namespace SteamRush.Features.UI.Views
                 Color c = accentColor.Value;
                 bool isBlueTone = (c.b > c.r) || (c.g > c.r);
 
-                // Sync card background color to faction (Blue for Fan, Red for Anti)
+                // Donation and celebration toasts use bright blue/red pill skins from the theme kit.
+                HudTheme theme = HudTheme.Current;
                 Image bgImage = GetComponent<Image>();
                 if (bgImage != null)
                 {
-                    bgImage.color = isBlueTone
-                        ? new Color(0.04f, 0.12f, 0.28f, 0.95f)
-                        : new Color(0.22f, 0.04f, 0.06f, 0.95f);
+                    Sprite pill = theme.FactionPill(isBlueTone);
+                    if (pill != null)
+                    {
+                        bgImage.sprite = pill;
+                        bgImage.type = Image.Type.Sliced;
+                    }
+                    bgImage.color = Color.white;
                 }
 
                 if (cardOutline != null)
                 {
-                    cardOutline.effectColor = isBlueTone
-                        ? new Color(0.25f, 0.72f, 1f, 0.95f)
-                        : new Color(1f, 0.28f, 0.22f, 0.95f);
+                    cardOutline.enabled = false;
                 }
 
                 if (itemNameText != null)
                 {
-                    itemNameText.color = isBlueTone
-                        ? new Color(0.88f, 0.96f, 1f, 1f)
-                        : new Color(1f, 0.92f, 0.92f, 1f);
+                    itemNameText.color = theme.textPrimary;
                 }
             }
 

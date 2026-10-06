@@ -28,7 +28,12 @@ namespace SteamRush.Features.UI.Views
 
             if (statsText != null)
             {
-                statsText.text = $"<size=70%><color=#94A3B8>TOTAL DISTANCE</color></size>\n<b><color=#FFD166>{FormatDistance(totalDistanceMeters, goalDistanceMeters)}</color></b>\n\n<size=70%><color=#94A3B8>CLEAR TIME</color></size>\n<b><color=#38E54D>{elapsedTimeText}</color></b>\n\n<size=60%><color=#F59E0B>★ STREAM RUSH LIVE • RUN COMPLETED ★</color></size>";
+                HudTheme theme = HudTheme.Current;
+                string label = ColorUtility.ToHtmlStringRGB(theme.textSecondary);
+                string gold = ColorUtility.ToHtmlStringRGB(theme.gold);
+                string white = ColorUtility.ToHtmlStringRGB(theme.textPrimary);
+                // Dòng trống dùng <size=30%> để khoảng cách gọn - cho phép chữ số liệu to mà panel vẫn nằm trên avatar Runner.
+                statsText.text = $"<size=62%><color=#{label}>TOTAL DISTANCE</color></size>\n<size=125%><b><color=#{gold}>{FormatDistance(totalDistanceMeters, goalDistanceMeters)}</color></b></size>\n<size=30%> </size>\n<size=62%><color=#{label}>CLEAR TIME</color></size>\n<size=125%><b><color=#{white}>{elapsedTimeText}</color></b></size>\n<size=30%> </size>\n<size=55%><color=#{gold}>STREAM RUSH LIVE - RUN COMPLETED</color></size>";
             }
 
             if (canvasGroup != null) canvasGroup.alpha = 0f;
