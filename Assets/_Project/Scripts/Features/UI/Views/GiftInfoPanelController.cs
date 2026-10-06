@@ -490,6 +490,7 @@ namespace SteamRush.Features.UI.Views
             cardObj.transform.SetParent(_contentContainer, false);
             RectTransform cardRt = cardObj.GetComponent<RectTransform>();
 
+            Image bg = cardObj.GetComponent<Image>();
             // Card cell styled with dark panel from HudTheme tinted by gift category (Blue/Red/Special/Like).
             HudTheme theme = HudTheme.Current;
             HudCategory category = GetCategory(mapping.action);
