@@ -45,8 +45,12 @@ namespace SteamRush.Features.Runner
         [SerializeField] private GameObject _roadsideProxyPrefab;
         [Tooltip("Z position of the left sidewalk.")]
         [SerializeField] private float _leftSidewalkZ = -5.8f;
+        [Tooltip("Y rotation angle for character on left sidewalk (facing oncoming runner and road).")]
+        [SerializeField] private float _leftSidewalkRotY = -60f;
         [Tooltip("Z position of the right sidewalk.")]
         [SerializeField] private float _rightSidewalkZ = 5.8f;
+        [Tooltip("Y rotation angle for character on right sidewalk (facing oncoming runner and road).")]
+        [SerializeField] private float _rightSidewalkRotY = -120f;
         [Tooltip("Y elevation of the sidewalk.")]
         [SerializeField] private float _sidewalkY = 0.2f;
         [Tooltip("Nameplate prefab displaying the viewer name above the waiting character.")]
@@ -59,6 +63,13 @@ namespace SteamRush.Features.Runner
         [SerializeField] private Color _normalNameColor = Color.white;
         [Tooltip("Name color when the roadside character is a VIP ticket holder.")]
         [SerializeField] private Color _vipNameColor = Color.yellow;
+
+        [Header("Roadside Visual Highlight")]
+        [Tooltip("Material used for roadside waiting character outline (e.g. Cyan/Blue).")]
+        [SerializeField] private Material _roadsideOutlineMaterial;
+        [Tooltip("Outline color for roadside character.")]
+        [SerializeField] private Color _roadsideOutlineColor = new Color(0.15f, 0.75f, 1f, 1f); // Electric Cyan Blue
+        [SerializeField] private float _roadsideOutlineWidth = 0.015f;
 
         private readonly HashSet<string> _vipFollowerIds = new HashSet<string>();
 
@@ -349,6 +360,47 @@ namespace SteamRush.Features.Runner
                 ResumeFromWaiting();
             }
         }
+
+        /// <summary>
+        /// When a viewer follows, they immediately get queued or spawned ahead as the next roadside handover runner.
+        /// Replaces the former VIP ticket gift mechanism so following is all that is required to become runner.
+        /// </summary>
+        public void EnqueueFollowerAsRunner(string userId)
+        {
+            if (string.IsNullOrEmpty(userId)) return;
+
+            AudioManager.Instance?.PlaySFX(SFXType.StreamNewFollower);
+
+            if (_enableRoadsideHandover)
+            {
+                if (_activeProxy == null)
+                {
+                    // No proxy currently waiting -> spawn roadside waiting character immediately ahead of runner
+                    SpawnRoadsideProxyInternal(userId, false);
+                }
+                else
+                {
+                    // A proxy is already standing on the sidewalk -> queue this follower as the next runner
+                    _followerQueue.Enqueue((userId, false));
+                }
+            }
+            else
+            {
+                _followerQueue.Enqueue((userId, false));
+                if (_distanceSinceLastLeg >= _legDistanceMeters)
+                {
+                    AdvanceToNextRunner();
+                }
+            }
+
+            UpdateNextRunnerHud();
+            OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
+
+            if (_isWaitingForFollower)
+            {
+                ResumeFromWaiting();
+            }
+        }
         // ===== [VIP Baton Pass] END =====
 
         private void Update()
@@ -474,7 +526,7 @@ namespace SteamRush.Features.Runner
 
             bool isLeft = UnityEngine.Random.value > 0.5f;
             float targetZ = isLeft ? _leftSidewalkZ : _rightSidewalkZ;
-            Quaternion spawnRot = isLeft ? Quaternion.Euler(0f, 65f, 0f) : Quaternion.Euler(0f, -65f, 0f);
+            Quaternion spawnRot = isLeft ? Quaternion.Euler(0f, _leftSidewalkRotY, 0f) : Quaternion.Euler(0f, _rightSidewalkRotY, 0f);
 
             Vector3 rootPos = new Vector3(_runnerTransform.position.x + _spawnAheadMeters, 0f, 0f);
 
@@ -543,8 +595,29 @@ namespace SteamRush.Features.Runner
 
             AttachNameplateToProxy(characterInstance, _pendingNextRunnerId, _pendingNextRunnerIsVip);
 
+            AttachRoadsideOutline(characterInstance);
+
             UpdateNextRunnerHud();
             OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
+        }
+
+        private void AttachRoadsideOutline(GameObject proxyObj)
+        {
+            if (proxyObj == null) return;
+            var outline = proxyObj.GetComponent<CharacterVisualOutline>();
+            if (outline == null)
+            {
+                outline = proxyObj.AddComponent<CharacterVisualOutline>();
+            }
+
+            if (_roadsideOutlineMaterial == null)
+            {
+#if UNITY_EDITOR
+                _roadsideOutlineMaterial = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Materials/Roadside_Outline_Mat.mat");
+#endif
+            }
+
+            outline.ConfigureOutline(_roadsideOutlineMaterial, _roadsideOutlineColor, _roadsideOutlineWidth);
         }
 
         private void ExecuteRoadsideHandover()
@@ -597,6 +670,12 @@ namespace SteamRush.Features.Runner
                         _currentOutfitName = child.name;
                     }
                 }
+            }
+
+            var runnerOutline = _runnerTransform.GetComponent<CharacterVisualOutline>();
+            if (runnerOutline != null)
+            {
+                runnerOutline.RefreshOutline();
             }
 
             _pendingNextOutfit = null;

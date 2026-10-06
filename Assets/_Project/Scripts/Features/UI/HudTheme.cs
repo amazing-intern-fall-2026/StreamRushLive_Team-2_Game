@@ -3,9 +3,8 @@ using UnityEngine;
 
 namespace SteamRush.Features.UI
 {
-    // Theme dung chung cho toan bo HUD (bo Hyper Casual UI Pack - Smashy Tech): moi sprite/mau cua
-    // HUD lay tu day thay vi hardcode trong tung script. Asset nam o Resources/HudTheme.asset de cac
-    // view tu dung UI luc runtime (timer circle, gift card...) cung lay duoc ma khong can serialize ref.
+    // Shared HUD Theme (Hyper Casual UI Pack - Smashy Tech): All HUD sprites and colors are retrieved from here
+    // instead of being hardcoded in individual scripts. Asset is located at Resources/HudTheme.asset.
     [CreateAssetMenu(fileName = "HudTheme", menuName = "SteamRush/UI/Hud Theme")]
     public class HudTheme : ScriptableObject
     {
@@ -19,7 +18,7 @@ namespace SteamRush.Features.UI
                 if (_current == null)
                 {
                     _current = Resources.Load<HudTheme>(ResourcePath);
-                    // Khong co asset (vd scene test thieu Resources) -> dung theme rong, view tu fallback ve mau mac dinh.
+                    // Fallback to empty instance if asset missing in test scenes
                     if (_current == null) _current = CreateInstance<HudTheme>();
                 }
                 return _current;
@@ -29,21 +28,21 @@ namespace SteamRush.Features.UI
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics() => _current = null;
 
-        [Header("Pills (9-slice, cao 50px)")]
+        [Header("Pills (9-slice, 50px height)")]
         public Sprite pillDark;
         public Sprite pillBlue;
         public Sprite pillRed;
         public Sprite pillGold;
         public Sprite pillTeal;
-        public Sprite pillGrey;     // pill xam toi trung tinh (track progress bar, stopwatch)
-        public Sprite pillWhite;    // pill trang bac - nhuom FactionDark lam lon thanh Fan/Anti, badge so nguoi; vien o gift loai Like
+        public Sprite pillGrey;     // Neutral dark grey pill (track progress bar, stopwatch)
+        public Sprite pillWhite;    // White silver pill - tinted FactionDark for Fan/Anti badges
 
         [Header("Panels (9-slice)")]
-        public Sprite panelFrame;   // khung vang, than teal - popup lon (Victory)
-        public Sprite panelTabbed;  // khung vang co tab vang o giua tren (How To Play) - chu tieu de dat trong tab
-        public Sprite panelDark;    // teal dam phang - the nho (gift card, banner)
-        public Sprite panelInset;   // khung toi co vien - vung chua (gift panel, quick help)
-        public Sprite panelFlat;    // o phang mau sang (kit) - nhuom dam theo loai gift bang CategoryFill
+        public Sprite panelFrame;   // Gold frame, teal body - large popup (Victory)
+        public Sprite panelTabbed;  // Gold frame with center top tab (How To Play)
+        public Sprite panelDark;    // Flat dark teal - cards, banners
+        public Sprite panelInset;   // Inset bordered frame - container regions
+        public Sprite panelFlat;    // Flat light panel - tinted via CategoryFill
 
         [Header("Circles (timer ring, avatar ring, handle)")]
         public Sprite circleBlue;
@@ -59,8 +58,7 @@ namespace SteamRush.Features.UI
         public Sprite iconFlag;
         public Sprite iconCrown;
 
-        // MOT bang mau duy nhat cho moi phe, moi UI (thanh, badge, o How To Play, o gift, banner/feed donate, chu noi) deu lay tu day:
-        //   xxx      = vien / diem nhan sang    xxxDark  = nen dam    xxxLight = chu tren nen dam
+        // Shared faction color palette:
         [Header("Faction colors (Blue = Fan, Red = Anti)")]
         public Color blue = new Color32(0x40, 0xAD, 0xFF, 0xFF);
         public Color blueDark = new Color32(0x24, 0x45, 0x8C, 0xFF);
@@ -80,7 +78,7 @@ namespace SteamRush.Features.UI
         public TMP_FontAsset fontBold;
         public TMP_FontAsset fontHeavy;
 
-        [Header("Timer circle (disc nen + disc trong, tint tu sprite teal)")]
+        [Header("Timer circle (disc background + inner disc, tinted from teal sprite)")]
         public Color timerBgTint = new Color(0.64f, 0.47f, 0.64f, 1f);
         public Color timerInnerTint = new Color(0.50f, 0.36f, 0.50f, 1f);
 
@@ -91,7 +89,7 @@ namespace SteamRush.Features.UI
         public Sprite FactionPill(bool isBlue) => isBlue ? pillBlue : pillRed;
         public Sprite FactionCircle(bool isBlue) => isBlue ? circleBlue : circleRed;
 
-        // 4 loai the gift: vien = pill mau loai, lon = pillGrey nhuom mau loai, chu = mau sang cung loai.
+        // Gift category frame mapping
         public Sprite CategoryFrame(HudCategory c)
         {
             switch (c)
@@ -103,7 +101,7 @@ namespace SteamRush.Features.UI
             }
         }
 
-        // Mau nen o theo loai (nhuom len panelFlat): Blue/Red lay tu bang mau phe; Like = teal dam; Special = nau vang.
+        // Category fill color mapping
         public Color CategoryFill(HudCategory c)
         {
             switch (c)
@@ -115,7 +113,7 @@ namespace SteamRush.Features.UI
             }
         }
 
-        // Mau vien sang cua o theo loai - Blue/Red cung 1 mau voi moi vien/diem nhan khac cua phe.
+        // Category border color mapping
         public Color CategoryBorder(HudCategory c)
         {
             switch (c)
@@ -127,7 +125,7 @@ namespace SteamRush.Features.UI
             }
         }
 
-        // Mau chu theo loai tren nen dam: giong tieu de Team Blue/Red cua How To Play.
+        // Category text color on dark background
         public Color CategoryText(HudCategory c)
         {
             switch (c)
@@ -139,8 +137,7 @@ namespace SteamRush.Features.UI
             }
         }
 
-        // Moi loai timer co 1 vong sprite (mau co san trong kit) + mau nhan - cac TimerCircle chi goi ham nay
-        // thay vi tu ve sprite tron / hardcode mau trong BuildUI.
+        // Timer circle visual skin configuration
         public TimerCircleSkin GetTimerSkin(TimerCircleKind kind)
         {
             Sprite ring;

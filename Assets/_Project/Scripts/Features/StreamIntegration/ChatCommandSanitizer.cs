@@ -4,8 +4,8 @@ using UnityEngine;
 
 namespace SteamRush.Features.StreamIntegration
 {
-    // Loc va tach lenh dieu khien tu comment livestream (GDD v1.3 muc 6: chuoi toi da 3 lenh).
-    // Class logic thuan, khong MonoBehaviour - de goi/test doc lap, khong phu thuoc vong doi Unity.
+    // Sanitizes and parses control commands from livestream comments (up to 3 commands per message).
+    // Pure C# logic class without MonoBehaviour dependency for unit testing.
     public class ChatCommandSanitizer
     {
         private static readonly char[] _separatorChars = { ',', '.', '!', '-', '/' };
@@ -19,8 +19,7 @@ namespace SteamRush.Features.StreamIntegration
         };
         private const int _maxCommands = 3;
 
-        // Thay cac ky tu phan cach thanh khoang trang, lowercase toan bo, roi boc toi da 3 lenh
-        // hop le (left/right/fast va cac alias a/d/l/r/w) theo dung thu tu xuat hien trong chuoi goc.
+        // Normalizes separators to whitespace, lowercases input, and extracts up to 3 valid commands.
         public List<string> SanitizeAndParse(string rawInput)
         {
             List<string> parsedCommands = new List<string>();

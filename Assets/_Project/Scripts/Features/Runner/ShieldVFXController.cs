@@ -4,19 +4,17 @@ using StreamRushLive.Features.Spawning;
 
 namespace SteamRush.Features.Runner
 {
-    // Bat/tat VFX khien bao ve (Shield Shader FREE - hologram sphere) quanh Runner theo RunnerItemEffects.IsShieldActive.
-    // RunnerItemEffects khong co event san (chi co IsShieldActive + ActivateShield()/ConsumeShield()),
-    // nen poll moi frame giong het pattern ShieldTimerCircle.Update() da dung cho khung dem nguoc -
-    // tranh sua RunnerItemEffects.cs (file core dung chung cho ShieldItem/MockChatConsole/collision).
+    // Controls activation and animation of the protective shield hologram VFX around Runner.
+    // Polls RunnerItemEffects.IsShieldActive matching ShieldTimerCircle pattern.
     public class ShieldVFXController : MonoBehaviour
     {
         [SerializeField] private RunnerItemEffects itemEffects;
         [SerializeField] private GameObject shieldVFXPrefab;
 
-        [Tooltip("Vi tri tuong doi so voi Runner root - can chinh de khien bao quanh than nguoi, khong lech len dau/xuong chan.")]
+        [Tooltip("Relative position to Runner root to center around character torso.")]
         [SerializeField] private Vector3 localOffset = new Vector3(0f, 1.1f, 0f);
 
-        [Tooltip("Nhan them vao scale goc cua prefab (mac dinh 1 - unit sphere) de tinh chinh kich thuoc khien ma khong can sua prefab.")]
+        [Tooltip("Scale multiplier relative to original prefab dimensions.")]
         [SerializeField] private float scaleMultiplier = 1f;
 
         [SerializeField] private float animDuration = 0.35f;

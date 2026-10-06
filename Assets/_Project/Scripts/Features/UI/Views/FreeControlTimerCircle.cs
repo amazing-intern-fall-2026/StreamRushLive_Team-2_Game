@@ -228,7 +228,7 @@ namespace SteamRush.Features.UI.Views
                 if (canvas != null) parentTransform = canvas.transform;
             }
 
-            if (parentTransform != null && transform.parent != parentTransform)
+            if (transform.parent == null && parentTransform != null)
             {
                 transform.SetParent(parentTransform, false);
             }
@@ -237,30 +237,6 @@ namespace SteamRush.Features.UI.Views
 
             containerRect = GetComponent<RectTransform>();
             if (containerRect == null) containerRect = gameObject.AddComponent<RectTransform>();
-
-            // Positioning: Align with FanSprintTimerCircle RectTransform and stack underneath (-256px offset).
-            // Reset Z axis to 0 to prevent camera clipping.
-            var fanSprint = FanSprintTimerCircle.Instance;
-            RectTransform fanSprintRect = fanSprint != null ? fanSprint.GetComponent<RectTransform>() : null;
-
-            if (fanSprintRect != null)
-            {
-                containerRect.anchorMin = fanSprintRect.anchorMin;
-                containerRect.anchorMax = fanSprintRect.anchorMax;
-                containerRect.pivot = fanSprintRect.pivot;
-                containerRect.sizeDelta = fanSprintRect.sizeDelta;
-                // Stack below FanSprintTimerCircle and ShieldTimerCircle (-128px per circle)
-                containerRect.anchoredPosition3D = fanSprintRect.anchoredPosition3D + new Vector3(0f, -256f, 0f);
-            }
-            else
-            {
-                // Fallback when FanSprintTimerCircle is not found in scene
-                containerRect.anchorMin = new Vector2(0f, 0.80f);
-                containerRect.anchorMax = new Vector2(0f, 0.80f);
-                containerRect.pivot = new Vector2(0f, 0.5f);
-                containerRect.sizeDelta = new Vector2(116f, 116f);
-                containerRect.anchoredPosition3D = new Vector3(53f, -160f, 0f);
-            }
 
             canvasGroup = GetComponent<CanvasGroup>();
             if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();

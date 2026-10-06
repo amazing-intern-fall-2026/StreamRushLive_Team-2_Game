@@ -36,7 +36,7 @@ namespace SteamRush.Features.Runner
         [SerializeField] private GameObject debugPanelContainer;
         [SerializeField] private Button toggleDebugButton;
         [SerializeField] private TMP_Text toggleButtonText;
-        [SerializeField] private bool isDebugUIVisible = true;
+        [SerializeField] private bool isDebugUIVisible = false;
 
         public static MockChatConsole Instance { get; private set; }
 
@@ -176,6 +176,12 @@ namespace SteamRush.Features.Runner
                 toggleDebugButton.onClick.AddListener(ToggleDebugUI);
             }
 
+            if (SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance != null &&
+                SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance.CurrentConfig != null)
+            {
+                isDebugUIVisible = SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance.CurrentConfig.enableDebugUI;
+            }
+
             UpdateDebugUIVisibility();
         }
 
@@ -202,8 +208,9 @@ namespace SteamRush.Features.Runner
             CreateDebugButton(_energyDebugPanelObj.transform, "Btn_FanMinus", "Blue -1% [Shift+F6]", new Color(0.08f, 0.25f, 0.55f, 0.95f), () => DebugDecreaseFanEnergy(10));
             CreateDebugButton(_energyDebugPanelObj.transform, "Btn_AntiPlus", "Red +1% [F11]", new Color(0.85f, 0.28f, 0.15f, 0.95f), () => DebugIncreaseAntiEnergy(10));
             CreateDebugButton(_energyDebugPanelObj.transform, "Btn_AntiMinus", "Red -1% [Shift+F11]", new Color(0.55f, 0.15f, 0.08f, 0.95f), () => DebugDecreaseAntiEnergy(10));
-            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_FreeControl", "⚡ Free 30s [Shift+F1]", new Color(0.08f, 0.65f, 0.72f, 0.95f), () => MockActivateFreeControl());
-            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_Finish", "🏁 Finish [F12]", new Color(0.92f, 0.65f, 0.1f, 0.95f), () => MockTriggerFinishLineApproach(50f));
+            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_FreeControl", "Free 30s [Shift+F1]", new Color(0.08f, 0.65f, 0.72f, 0.95f), () => MockActivateFreeControl());
+            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_LiveDemo", "Bot Demo [L]", new Color(0.15f, 0.55f, 0.6f, 0.95f), () => ToggleLiveDemoSimulation());
+            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_Finish", "Finish [F12]", new Color(0.92f, 0.65f, 0.1f, 0.95f), () => MockTriggerFinishLineApproach(50f));
         }
 
         private void CreateDebugButton(Transform parent, string name, string label, Color bgColor, UnityEngine.Events.UnityAction action)
@@ -267,7 +274,7 @@ namespace SteamRush.Features.Runner
             textRect.sizeDelta = Vector2.zero;
 
             toggleButtonText = textObj.GetComponent<TextMeshProUGUI>();
-            toggleButtonText.text = "💬 Debug [F12]";
+            toggleButtonText.text = "Debug [F12]";
             toggleButtonText.fontSize = 14;
             toggleButtonText.alignment = TextAlignmentOptions.Center;
             toggleButtonText.color = new Color(0.5f, 0.85f, 1f, 1f);
@@ -276,6 +283,12 @@ namespace SteamRush.Features.Runner
         public void ToggleDebugUI()
         {
             isDebugUIVisible = !isDebugUIVisible;
+            UpdateDebugUIVisibility();
+        }
+
+        public void SetDebugUIVisible(bool visible)
+        {
+            isDebugUIVisible = visible;
             UpdateDebugUIVisibility();
         }
 
@@ -312,7 +325,7 @@ namespace SteamRush.Features.Runner
 
             if (toggleButtonText != null)
             {
-                toggleButtonText.text = isDebugUIVisible ? "❌ Hide Debug" : "💬 Debug [~]";
+                toggleButtonText.text = isDebugUIVisible ? "Hide Debug" : "Debug [~]";
             }
         }
 
@@ -333,6 +346,22 @@ namespace SteamRush.Features.Runner
         {
             if (Keyboard.current == null)
                 return;
+
+            // When user is typing inside any InputField, ignore all debug hotkeys
+            if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null)
+            {
+                var selected = UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject;
+                if (selected.GetComponent<TMP_InputField>() != null || selected.GetComponent<UnityEngine.UI.InputField>() != null)
+                {
+                    return;
+                }
+            }
+
+            // Also ignore all debug hotkeys when PreGameConfig setup modal is open
+            if (SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance != null && SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance.IsOpen)
+            {
+                return;
+            }
 
             bool isShift = Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed;
 
@@ -766,6 +795,18 @@ namespace SteamRush.Features.Runner
             Debug.Log($"[MockChatConsole] {sender} activated Free-Control Buff (30s).");
         }
 
+        public void ToggleLiveDemoSimulation()
+        {
+            var demo = LiveSessionDemoRunner.Instance ?? FindFirstObjectByType<LiveSessionDemoRunner>();
+            if (demo != null)
+            {
+                demo.ToggleLiveDemo();
+                if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                string stateText = demo.IsRunning ? "ON" : "OFF";
+                hudManager?.ShowStatusPopup($"[Live Demo] Bot Simulation: {stateText}", demo.IsRunning);
+            }
+        }
+
         // Key 9 or Shift+F2: Toggle sprint buff for testing
         private void MockToggleSprintBuffDebug()
         {
@@ -1038,11 +1079,11 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
             if (queueManager != null)
             {
                 string newId = string.IsNullOrEmpty(customUserId) ? ("Follower_" + Random.Range(100, 999)) : customUserId;
-                queueManager.TryEnqueueFollower(newId);
+                queueManager.EnqueueFollowerAsRunner(newId);
                 AudioManager.Instance?.PlaySFX(SFXType.StreamNewFollower);
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-                hudManager?.ShowFanAction(newId, "Followed & Queued");
-                Debug.Log($"[MockChatConsole] F5 -> Enqueued new follower: {newId}");
+                hudManager?.ShowFanAction(newId, "Followed -> Next Runner!");
+                Debug.Log($"[MockChatConsole] Shift+F5 -> Follower set as next runner: {newId}");
             }
             else
             {
@@ -1140,11 +1181,11 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
                 return;
             }
 
-            string newId = string.IsNullOrEmpty(customUserId) ? ("VIP_" + Random.Range(100, 999)) : customUserId;
-            queueManager.TryEnqueuePriorityFollower(newId);
+            string newId = string.IsNullOrEmpty(customUserId) ? ("Follower_" + Random.Range(100, 999)) : customUserId;
+            queueManager.EnqueueFollowerAsRunner(newId);
 
             if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-            hudManager?.ShowFanAction(newId, "VIP Baton Pass");
+            hudManager?.ShowFanAction(newId, "Followed -> Next Runner!");
         }
 
         private void MockToggleUnlimitedModeDebug()

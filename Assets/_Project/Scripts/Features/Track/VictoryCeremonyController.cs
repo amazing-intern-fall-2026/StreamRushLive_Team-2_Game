@@ -6,9 +6,8 @@ using StreamRushLive.Features.Spawning;
 
 namespace SteamRush.Track
 {
-    // GDD v1.4.1 muc 7: dieu phoi toan bo Le An Mung khi Runner bang qua Cong Ve Dich - CHI goi
-    // API cong khai da chuan bi san o WorldSpeedManager/SingleObstacleSpawner/ChatLaneRunnerController
-    // (Buoc 2-5), khong dung lai logic rieng cua tung class do (Decoupling - AGENTS.md muc 9).
+    // GDD v1.4.1 Section 7: Coordinates Victory Celebration when Runner crosses the finish line archway.
+    // Calls public APIs on WorldSpeedManager, SingleObstacleSpawner, ChatLaneRunnerController adhering to Decoupling.
     public class VictoryCeremonyController : MonoBehaviour
     {
         [SerializeField] private FinishLineArchway finishLineArchway;
@@ -24,15 +23,15 @@ namespace SteamRush.Track
         [Header("Confetti VFX (Lana Studio Hyper Casual FX)")]
         [SerializeField] private GameObject confettiBlastPrefab;
         [SerializeField] private GameObject confettiDirectionalPrefab;
-        [Tooltip("Khoang cach giua 2 dot ban confetti lien tiep (giay).")]
+        [Tooltip("Interval between consecutive confetti bursts (seconds).")]
         [SerializeField] private float confettiInterval = 1.5f;
-        [Tooltip("So dot ban confetti lien tiep de tao cam giac 'ngop troi' thay vi 1 phat roi tat.")]
+        [Tooltip("Number of consecutive bursts to create an immersive celebration.")]
         [SerializeField] private int confettiBursts = 5;
         [SerializeField] private float confettiLifetime = 4f;
 
         [Header("Timing")]
         [SerializeField] private float victoryDecelDuration = 1.5f;
-        [Tooltip("Cho World giam toc xong roi moi hien popup, tranh popup bat len dung luc con giat.")]
+        [Tooltip("Wait for world deceleration to settle before showing popup.")]
         [SerializeField] private float popupDelay = 1.5f;
 
         private bool _triggered;
@@ -70,7 +69,7 @@ namespace SteamRush.Track
             if (_triggered) return;
             _triggered = true;
 
-            Debug.Log("[VictoryCeremony] Runner ve dich! Bat dau Le An Mung.");
+            Debug.Log("[VictoryCeremony] Runner crossed finish line! Starting Victory Celebration.");
 
             worldSpeedManager?.TriggerVictoryStop(victoryDecelDuration);
             obstacleSpawner?.SetSpawningLocked(true);
@@ -105,7 +104,7 @@ namespace SteamRush.Track
             if (playerReference == null) return;
 
             Vector3 center = playerReference.position + Vector3.up * 1.5f;
-            // Ban 2 ben duong (GDD: "ngop troi hai ben duong") - blast ben nay, directional ben kia.
+            // Launch confetti from both sides of the track
             SpawnOneConfetti(confettiBlastPrefab, center + new Vector3(0f, 0f, 2.5f));
             SpawnOneConfetti(confettiDirectionalPrefab, center + new Vector3(0f, 0f, -2.5f));
         }

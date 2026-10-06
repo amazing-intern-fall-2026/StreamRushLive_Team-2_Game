@@ -4,8 +4,7 @@ namespace SteamRush.Features.UI
 {
     // Adapts RectTransform to Screen.safeArea (camera cutouts/notches) with additional bottom margin
     // for TikTok live stream chat overlay.
-    // ExecuteAlways: chay ca trong Edit Mode de Scene/Game view preview dung vi tri thuc te
-    // (khong phai doi vao Play Mode moi thay dung, tranh nham lam gia dinh vi tri sai khi chinh UI).
+    // ExecuteAlways: active in Edit Mode so Scene/Game view previews layout accurately.
     [ExecuteAlways]
     [RequireComponent(typeof(RectTransform))]
     public class SafeAreaHandler : MonoBehaviour
@@ -34,11 +33,7 @@ namespace SteamRush.Features.UI
 
         private void Apply()
         {
-            // ExecuteAlways co the goi Apply() vao dung luc Screen.width/height con la 0 (vd. khung
-            // hinh dau tien luc vua vao Play Mode, hoac Editor chua kip resize Game view) - chia cho
-            // 0 se ghi NaN vinh vien vao anchorMin/anchorMax, lam ca RectTransform lan cac con ben
-            // duoi (ChatInputField, QuickHelpBar) bien mat het. Bo qua lan goi do, cho lan Update() ke
-            // tiep khi Screen co kich thuoc hop le.
+            // Guard against zero dimensions on initial editor/play mode frame to avoid NaN anchors
             if (Screen.width <= 0 || Screen.height <= 0)
             {
                 return;

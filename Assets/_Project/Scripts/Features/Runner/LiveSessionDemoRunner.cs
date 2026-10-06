@@ -57,6 +57,38 @@ namespace SteamRush.Features.Runner
         [Tooltip("Total accumulated likes in the live room")]
         [SerializeField] private int totalRoomLikes = 15400;
 
+        [Header("Sub-Feature Toggles")]
+        [Tooltip("Enable/disable automated chat comments loop")]
+        [SerializeField] private bool enableChatSimulation = true;
+        [Tooltip("Enable/disable automated gifts donation loop")]
+        [SerializeField] private bool enableGiftSimulation = true;
+        [Tooltip("Enable/disable automated audience join & faction switch loop")]
+        [SerializeField] private bool enableAudienceSimulation = true;
+
+        public bool EnableChatSimulation
+        {
+            get => enableChatSimulation;
+            set => enableChatSimulation = value;
+        }
+
+        public bool EnableGiftSimulation
+        {
+            get => enableGiftSimulation;
+            set => enableGiftSimulation = value;
+        }
+
+        public bool EnableLikeSimulation
+        {
+            get => enableLikeSimulation;
+            set => enableLikeSimulation = value;
+        }
+
+        public bool EnableAudienceSimulation
+        {
+            get => enableAudienceSimulation;
+            set => enableAudienceSimulation = value;
+        }
+
         public bool IsRunning => isRunning;
         public int TotalRoomViewers => totalRoomViewers;
         public int TotalRoomLikes => totalRoomLikes;
@@ -158,13 +190,33 @@ namespace SteamRush.Features.Runner
 
             if (autoStart)
             {
-                StartLiveDemo();
+                var configMgr = FindFirstObjectByType<SteamRush.Features.UI.PreGameConfig.PreGameConfigManager>();
+                if (configMgr == null)
+                {
+                    StartLiveDemo();
+                }
             }
         }
 
         private void Update()
         {
             if (Keyboard.current == null) return;
+
+            // When user is typing inside any InputField, ignore debug hotkeys
+            if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null)
+            {
+                var selected = UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject;
+                if (selected.GetComponent<TMPro.TMP_InputField>() != null || selected.GetComponent<UnityEngine.UI.InputField>() != null)
+                {
+                    return;
+                }
+            }
+
+            // Also ignore all debug hotkeys when PreGameConfig setup modal is open
+            if (SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance != null && SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance.IsOpen)
+            {
+                return;
+            }
 
             if (Keyboard.current.lKey.wasPressedThisFrame || Keyboard.current.pKey.wasPressedThisFrame)
             {
@@ -235,15 +287,41 @@ namespace SteamRush.Features.Runner
 
             InitInitialFactionMembers();
 
-            _chatRoutine = StartCoroutine(SimulateChatLoop());
-            _giftRoutine = StartCoroutine(SimulateGiftLoop());
-            if (enableMockFollowers)
+            if (enableChatSimulation) _chatRoutine = StartCoroutine(SimulateChatLoop());
+            if (enableGiftSimulation) _giftRoutine = StartCoroutine(SimulateGiftLoop());
+            if (enableMockFollowers) _queueRoutine = StartCoroutine(SimulateQueueLoop());
+            if (enableAudienceSimulation)
             {
-                _queueRoutine = StartCoroutine(SimulateQueueLoop());
+                _joinRoutine = StartCoroutine(SimulateAudienceJoinLoop());
+                _switchRoutine = StartCoroutine(SimulateFactionSwitchLoop());
             }
-            _joinRoutine = StartCoroutine(SimulateAudienceJoinLoop());
-            _switchRoutine = StartCoroutine(SimulateFactionSwitchLoop());
-            _likeRoutine = StartCoroutine(SimulateLikeLoop());
+            if (enableLikeSimulation) _likeRoutine = StartCoroutine(SimulateLikeLoop());
+        }
+
+        /// <summary>
+        /// Configures and applies all live session simulation features from Pre-Game Config.
+        /// </summary>
+        public void ConfigureDemoSimulation(bool masterEnabled, bool chatEnabled = true, bool giftEnabled = true, bool likeEnabled = true, bool followersEnabled = false, bool delayEnabled = false)
+        {
+            enableChatSimulation = chatEnabled;
+            enableGiftSimulation = giftEnabled;
+            enableLikeSimulation = likeEnabled;
+            enableAudienceSimulation = chatEnabled || giftEnabled;
+            EnableMockFollowers = followersEnabled;
+            EnableStreamDelay = delayEnabled;
+
+            if (masterEnabled)
+            {
+                if (isRunning)
+                {
+                    StopLiveDemo();
+                }
+                StartLiveDemo();
+            }
+            else
+            {
+                StopLiveDemo();
+            }
         }
 
         public void StopLiveDemo()
@@ -614,7 +692,7 @@ namespace SteamRush.Features.Runner
                 alignment = TextAnchor.MiddleLeft
             };
             redDotStyle.normal.textColor = new Color(1f, 0.25f, 0.25f);
-            GUI.Label(new Rect(Screen.width - boxWidth, 12, 55, 24), "● LIVE", redDotStyle);
+            GUI.Label(new Rect(Screen.width - boxWidth, 12, 55, 24), "[LIVE]", redDotStyle);
 
             GUIStyle textStyle = new GUIStyle(GUI.skin.label)
             {
@@ -626,9 +704,9 @@ namespace SteamRush.Features.Runner
 
             string likesText = totalRoomLikes >= 1000 ? $"{(totalRoomLikes / 1000f):F1}k" : totalRoomLikes.ToString();
             string viewersText = SteamRush.Features.UI.FactionTugOfWarUI.FormatNumberShorthand(totalRoomViewers);
-            string followerInfo = enableMockFollowers ? " | <color=#00FF88>🏃 Follower: ON (O)</color>" : " | <color=#888888>🏃 Follower: OFF (O)</color>";
-            string delayInfo = enableStreamDelay ? $" | <color=#FFD700>📶 {((streamDelayMin + streamDelayMax) * 0.5f):F1}s (K)</color>" : " | <color=#888888>📶 0s (K)</color>";
-            string info = $"{viewersText} Viewers | <color=#FF4D88>❤️ {likesText}</color> | <color=#38B6FF>Blue: {SteamRush.Features.UI.FactionTugOfWarUI.FormatNumberShorthand(fanCount)}</color> vs <color=#FF4D4D>Red: {SteamRush.Features.UI.FactionTugOfWarUI.FormatNumberShorthand(antiCount)}</color>{followerInfo}{delayInfo}";
+            string followerInfo = enableMockFollowers ? " | <color=#00FF88>Follower: ON (O)</color>" : " | <color=#888888>Follower: OFF (O)</color>";
+            string delayInfo = enableStreamDelay ? $" | <color=#FFD700>Delay: {((streamDelayMin + streamDelayMax) * 0.5f):F1}s (K)</color>" : " | <color=#888888>Delay: 0s (K)</color>";
+            string info = $"{viewersText} Viewers | <color=#FF4D88>Likes: {likesText}</color> | <color=#38B6FF>Blue: {SteamRush.Features.UI.FactionTugOfWarUI.FormatNumberShorthand(fanCount)}</color> vs <color=#FF4D4D>Red: {SteamRush.Features.UI.FactionTugOfWarUI.FormatNumberShorthand(antiCount)}</color>{followerInfo}{delayInfo}";
             GUI.Label(new Rect(Screen.width - boxWidth + 55, 12, boxWidth - 60, 24), info, textStyle);
         }
     }

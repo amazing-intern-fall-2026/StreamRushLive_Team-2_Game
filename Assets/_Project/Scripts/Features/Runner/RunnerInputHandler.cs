@@ -47,8 +47,8 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            // Da qua Cong Ve Dich (GDD v1.4.1 - Victory Celebration): khoa het phim test QA,
-            // tai su dung co IsVictoryStopped da co san thay vi them co rieng.
+            // Post finish line archway (GDD v1.4.1 - Victory Celebration): ignore manual QA inputs
+            // by checking existing IsVictoryStopped state flag.
             if (_speedManager != null && _speedManager.IsVictoryStopped)
             {
                 return;

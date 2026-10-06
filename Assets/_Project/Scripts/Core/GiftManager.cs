@@ -163,6 +163,9 @@ namespace StreamRushLive.Features.Gifts
         public int HeavyTruckCost => _heavyTruckConfig.energyCost;
 
         public float GiftDanceDuration => _giftDanceDuration;
+
+        public void SetSprintDuration(float duration) => _sprintDuration = Mathf.Max(1f, duration);
+        public void SetFreeControlDuration(float duration) => _freeControlDuration = Mathf.Max(1f, duration);
         #endregion
 
         /// <summary>

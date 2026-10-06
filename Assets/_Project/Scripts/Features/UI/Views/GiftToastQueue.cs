@@ -8,9 +8,8 @@ namespace SteamRush.Features.UI.Views
     {
         [SerializeField] private GiftToastController toastTemplate;
 
-        // Gioi han so toast hien thi CUNG LUC. Donate/su kien don dap (spam) khong duoc de khung
-        // toast phinh to vo han roi che mat Runner (bug thuc te da gap) - toast cu nhat bi ep
-        // bien mat ngay khi vuot gioi han, nhuong cho toast moi nhat.
+        // Limit concurrent toast count to prevent UI overflow from donation spam.
+        // Oldest toasts are forcefully dismissed to make room for newer notifications.
         [SerializeField] private int _maxConcurrentToasts = 3;
 
         private readonly List<GiftToastController> _active = new List<GiftToastController>();
@@ -55,7 +54,7 @@ namespace SteamRush.Features.UI.Views
 
             GiftToastController instance = Instantiate(toastTemplate, toastTemplate.transform.parent);
             instance.gameObject.SetActive(true);
-            instance.transform.SetAsFirstSibling(); // Chen len dau de thong bao cu troi dan xuong duoi
+            instance.transform.SetAsFirstSibling(); // Prepend to top so older items push downward
             instance.Dismissed += OnToastDismissed;
             _active.Add(instance);
             instance.Play(viewerName, itemName, icon, iconColor, accentColor, showItemName);

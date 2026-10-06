@@ -36,6 +36,16 @@ namespace StreamRushLive.Features.Spawning
         {
             if (Keyboard.current == null) return;
 
+            // When user is typing inside any InputField, ignore debug hotkeys
+            if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null)
+            {
+                var selected = UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject;
+                if (selected.GetComponent<TMPro.TMP_InputField>() != null || selected.GetComponent<UnityEngine.UI.InputField>() != null)
+                {
+                    return;
+                }
+            }
+
             // Phím 1: Spawn Obstacle ngẫu nhiên
             if (Keyboard.current.digit1Key.wasPressedThisFrame || Keyboard.current.numpad1Key.wasPressedThisFrame)
             {

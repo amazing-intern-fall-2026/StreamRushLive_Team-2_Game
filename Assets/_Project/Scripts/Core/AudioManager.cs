@@ -92,12 +92,40 @@ public class AudioManager : MonoBehaviour
         private Coroutine _bgmCrossfadeRoutine;
         private bool _isDanceMusicActive = false;
 
+        private bool _isMuted = false;
+        public bool IsMuted
+        {
+            get => _isMuted;
+            set => SetMuted(value);
+        }
+
+        public event System.Action<bool> OnMuteStateChanged;
+
+        public void ToggleMute()
+        {
+            SetMuted(!_isMuted);
+        }
+
+        public void SetMuted(bool muted)
+        {
+            _isMuted = muted;
+            AudioListener.volume = _isMuted ? 0f : masterVolume;
+            PlayerPrefs.SetInt("Game_Audio_Muted", _isMuted ? 1 : 0);
+            PlayerPrefs.Save();
+            OnMuteStateChanged?.Invoke(_isMuted);
+            Debug.Log($"[AudioManager] Game audio {(_isMuted ? "MUTED" : "UNMUTED")} (AudioListener.volume = {AudioListener.volume:F2})");
+        }
+
         public float MasterVolume
         {
             get => masterVolume;
             set
             {
                 masterVolume = Mathf.Clamp01(value);
+                if (!_isMuted)
+                {
+                    AudioListener.volume = masterVolume;
+                }
                 UpdateVolumes();
             }
         }
@@ -132,6 +160,16 @@ public class AudioManager : MonoBehaviour
 
             Instance = this;
             DontDestroyOnLoad(gameObject);
+
+            if (PlayerPrefs.HasKey("Game_Audio_Muted"))
+            {
+                _isMuted = PlayerPrefs.GetInt("Game_Audio_Muted", 0) == 1;
+                AudioListener.volume = _isMuted ? 0f : masterVolume;
+            }
+            else
+            {
+                AudioListener.volume = masterVolume;
+            }
 
             BuildLookup();
             SetupAudioSources();

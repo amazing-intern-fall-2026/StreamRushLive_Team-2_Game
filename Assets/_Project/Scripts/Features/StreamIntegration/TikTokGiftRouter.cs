@@ -49,7 +49,10 @@ namespace SteamRush.Features.StreamIntegration
         Dynamic_ByFaction,
 
         [InspectorName("Like: +Energy")]
-        Like_Energy
+        Like_Energy,
+
+        [InspectorName("Follow: Runner")]
+        Follow_Runner
     }
 
     [System.Serializable]
@@ -289,9 +292,10 @@ namespace SteamRush.Features.StreamIntegration
                 case GiftActionType.Special_RainHazard:
                     _giftManager?.ActivateRainHazard(displayName);
                     break;
+                case GiftActionType.Follow_Runner:
                 case GiftActionType.Special_VIPRelayTicket:
-                    _queueManager?.TryEnqueuePriorityFollower(displayName);
-                    ShowPopup($"VIP: [{displayName}]", true);
+                    _queueManager?.EnqueueFollowerAsRunner(displayName);
+                    ShowPopup($"Runner: [{displayName}]", true);
                     break;
                 case GiftActionType.Like_Energy:
                     int energy = 10;
@@ -318,10 +322,10 @@ namespace SteamRush.Features.StreamIntegration
                 return;
             }
 
-            if (lowerName.Contains("vip") || lowerName.Contains("ticket"))
+            if (lowerName.Contains("follow") || lowerName.Contains("vip") || lowerName.Contains("ticket") || lowerName.Contains("runner"))
             {
-                _queueManager?.TryEnqueuePriorityFollower(displayName);
-                ShowPopup($"VIP: [{displayName}]", true);
+                _queueManager?.EnqueueFollowerAsRunner(displayName);
+                ShowPopup($"Runner: [{displayName}]", true);
                 return;
             }
 

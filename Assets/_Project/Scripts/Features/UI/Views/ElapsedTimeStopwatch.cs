@@ -14,8 +14,7 @@ namespace SteamRush.Features.UI.Views
         private float _elapsedSeconds;
         private bool _isRunning = true;
 
-        // VictoryCeremonyController doc lai text mm:ss cuoi cung de hien trong popup vinh danh -
-        // doc thang tu timeText da cap nhat san, khong lap lai logic format o day.
+        // Read by VictoryCeremonyController to display final clear time in victory popup.
         public string CurrentDisplayText => timeText != null ? timeText.text : "00:00";
 
         private void Update()
@@ -26,7 +25,7 @@ namespace SteamRush.Features.UI.Views
             UpdateDisplay();
         }
 
-        // Goi tu VictoryCeremonyController de dong bang thoi gian hoan thanh cuoi cung khi qua dich.
+        // Called by VictoryCeremonyController to freeze final clear time when crossing finish line.
         public void StopTimer()
         {
             _isRunning = false;

@@ -47,10 +47,6 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private TMP_Text iconText;
         [SerializeField] private CanvasGroup canvasGroup;
 
-        [Header("Position")]
-        [SerializeField] private Vector2 anchoredPosition = new Vector2(-52f, -120f);
-        [SerializeField] private Vector2 circleSize = new Vector2(116f, 116f);
-
         // Circle sprite and label colors are retrieved from HudTheme (HudTheme.GetTimerSkin).
 
         private float _totalDuration = 60f;
@@ -303,24 +299,16 @@ namespace SteamRush.Features.UI.Views
                 }
             }
 
-            if (parentTransform != null &&
-                transform.parent != parentTransform)
+            if (transform.parent == null && parentTransform != null)
             {
                 transform.SetParent(parentTransform, false);
             }
 
             containerRect = GetComponent<RectTransform>();
-
             if (containerRect == null)
             {
                 containerRect = gameObject.AddComponent<RectTransform>();
             }
-
-            containerRect.anchorMin = new Vector2(1f, 0.80f);
-            containerRect.anchorMax = new Vector2(1f, 0.80f);
-            containerRect.pivot = new Vector2(1f, 0.5f);
-            containerRect.anchoredPosition = anchoredPosition;
-            containerRect.sizeDelta = circleSize;
 
             canvasGroup = GetComponent<CanvasGroup>();
 

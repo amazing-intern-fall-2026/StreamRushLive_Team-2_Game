@@ -23,12 +23,15 @@ namespace SteamRush.Features.UI
         [SerializeField] private Color nextRunnerNormalColor = Color.white;
         [SerializeField] private Color nextRunnerVipColor = new Color(1f, 0.85f, 0.1f, 1f);
 
-        // Xanh duong dong bo voi mau Phe Fan (Fan_Bg Outline / FactionTugOfWarUI) thay vi xanh la.
+        // Synchronized accent color with Fan faction palette (Fan_Bg Outline / FactionTugOfWarUI)
         [SerializeField] private Color _buffAccentColor = new Color(0.35f, 0.75f, 1f, 1f);
         [SerializeField] private Color _debuffAccentColor = new Color(1f, 0.3f, 0.25f, 1f);
 
-        // GDD v1.3.1 muc 7: hien thi cu ly theo met CUA CHANG hien tai (khong phai tong 100km).
-        // currentMeters/targetMeters do TrackProgressTracker cung cap (CurrentLegDistanceMeters/RelayDistanceMeters).
+        private static readonly System.Text.RegularExpressions.Regex EmojiRegex = new System.Text.RegularExpressions.Regex(
+            @"[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF\u2300-\u23FF\u2B50-\u2B55\uFE0F]",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        // Displays current leg distance progress (m / targetMeters) supplied by TrackProgressTracker
         public void UpdateLegProgress(float currentMeters, float targetMeters)
         {
             if (progressBar == null)
@@ -126,6 +129,7 @@ namespace SteamRush.Features.UI
 
             // Strip [Red Team] and [Blue Team] prefixes for cleaner display
             message = System.Text.RegularExpressions.Regex.Replace(message, @"\[(Blue|Red)\s*Team\]\s*:?\s*", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+            message = EmojiRegex.Replace(message, "").Trim();
 
             if (statusPopupSpawner != null)
             {
@@ -150,10 +154,10 @@ namespace SteamRush.Features.UI
             if (antiFeedQueue != null) antiFeedQueue.gameObject.SetActive(false);
         }
 
-        // Da loai bo thong bao Gift Toast theo yeu cau cua nguoi dung
+        // Gift Toast notifications disabled per design
         public void ShowGiftToast(string viewerName, string itemName, Sprite giftIcon, Color? iconColor = null)
         {
-            // Disabled: Khong hien thi Gift Toast
+            // Disabled
         }
 
         /// <summary>

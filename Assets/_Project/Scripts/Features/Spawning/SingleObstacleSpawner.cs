@@ -38,9 +38,7 @@ namespace StreamRushLive.Features.Spawning
 
         [HideInInspector] [SerializeField] private GameObject shieldItemPrefab;
         [HideInInspector] [SerializeField] private GameObject energyBuffItemPrefab;
-
-        [Tooltip("Warning laser line effect prefab.")]
-        [SerializeField] private GameObject laserIndicatorPrefab;
+        [HideInInspector] [SerializeField] private GameObject laserIndicatorPrefab;
 
         [Tooltip("Player transform reference for spawn calculation.")]
         [SerializeField] private Transform playerReference;
@@ -58,15 +56,9 @@ namespace StreamRushLive.Features.Spawning
         [Tooltip("Z coordinate of right lane (-Z looking toward camera).")]
         [SerializeField] private float laneOffsetRight = -3.0f;
 
-        [Header("Spawn Distance & Warning")]
+        [Header("Spawn Distance")]
         [Tooltip("Spawn distance ahead of player in meters.")]
         [SerializeField] private float spawnDistanceAhead = 35f;
-
-        [Tooltip("Warning laser duration in seconds prior to vehicle spawn.")]
-        [SerializeField] private float laserWarningDuration = 2.0f;
-
-        [Tooltip("Warning laser blink interval.")]
-        [SerializeField] private float laserBlinkInterval = 0.15f;
 
         [Header("Obstacle Concurrency Limit")]
         [Tooltip("Maximum concurrent active obstacles to ensure at least one open lane for runner.")]
@@ -103,8 +95,8 @@ namespace StreamRushLive.Features.Spawning
         /// <summary>Remaining seconds of active vehicle phase.</summary>
         public float VehiclePhaseRemainingTime => _vehiclePhaseRemainingTime;
 
-        // Khoa toan bo spawn (GDD v1.4.1 - Victory Celebration): goi khi Runner bang qua Cong Ve
-        // Dich, khong con xe/item nao duoc sinh them du chat con gui lenh gi di nua.
+        // Spawning lock (GDD v1.4.1 - Victory Celebration): called when Runner crosses finish line archway;
+        // completely halts all subsequent obstacle and vehicle spawning requests.
         private bool _spawningLocked;
         public bool IsSpawningLocked => _spawningLocked;
 
@@ -120,11 +112,13 @@ namespace StreamRushLive.Features.Spawning
             public GameObject LaserInstance;
             public GameObject CarInstance;
             public Transform PlayerRef;
+            public bool IsPendingSpawn;
 
             public bool IsActive
             {
                 get
                 {
+                    if (IsPendingSpawn) return true;
                     if (LaserInstance != null) return true;
                     if (CarInstance != null)
                     {
@@ -417,6 +411,29 @@ namespace StreamRushLive.Features.Spawning
         }
         // ===== [Dhuy] END =====
 
+        /// <summary>
+        /// Checks whether the rain weather hazard / environment gift is currently active.
+        /// </summary>
+        public bool IsRainHazardActive()
+        {
+            var wm = SteamRush.Features.Environment.WeatherHazardManager.Instance;
+            if (wm == null)
+            {
+                wm = FindFirstObjectByType<SteamRush.Features.Environment.WeatherHazardManager>();
+            }
+
+            if (wm != null)
+            {
+                return wm.IsHazardActive;
+            }
+
+            // Fallback for isolated test environments without WeatherHazardManager
+            var rainObj = GameObject.Find("FX_Rain");
+            if (rainObj != null && rainObj.activeInHierarchy) return true;
+
+            return false;
+        }
+
         private void SpawnCarOnSelectedLane(int laneIndex, float selectedLane, VehicleTier? tier = null)
         {
             if (playerReference == null)
@@ -425,38 +442,24 @@ namespace StreamRushLive.Features.Spawning
                 if (runner != null) playerReference = runner.transform;
             }
 
-            if (playerReference == null || laserIndicatorPrefab == null)
+            if (playerReference == null)
             {
-                Debug.LogWarning("[SingleObstacleSpawner] Missing Player reference or laser prefab.");
+                Debug.LogWarning("[SingleObstacleSpawner] Missing Player reference.");
                 return;
             }
-
-            // Position warning laser on selected lane ahead of runner
-            Vector3 warningPosition = new Vector3(
-                playerReference.position.x + (spawnDistanceAhead * 0.5f),
-                0.05f,
-                selectedLane);
-
-            GameObject laserInstance = Instantiate(
-                laserIndicatorPrefab,
-                warningPosition,
-                Quaternion.identity);
-
-            // Scale laser along run axis X to form a clear lane warning line
-            laserInstance.transform.localScale = new Vector3(spawnDistanceAhead, 0.05f, 2.2f);
 
             var obstacle = new ActiveObstacle
             {
                 LaneIndex = laneIndex,
                 LaneZ = selectedLane,
-                LaserInstance = laserInstance,
+                LaserInstance = null,
                 CarInstance = null,
-                PlayerRef = playerReference
+                PlayerRef = playerReference,
+                IsPendingSpawn = false
             };
             _activeObstacles.Add(obstacle);
 
-            // Blink warning for 3.5s prior to vehicle spawn
-            StartCoroutine(BlinkLaserThenSpawnCar(obstacle, laserInstance, selectedLane, tier));
+            InstantiateCar(obstacle, selectedLane, tier);
         }
 
         /// <summary>
@@ -477,47 +480,18 @@ namespace StreamRushLive.Features.Spawning
             return VehicleTier.SedanCar;
         }
 
-        private IEnumerator BlinkLaserThenSpawnCar(ActiveObstacle obstacle, GameObject laserInstance, float selectedLane, VehicleTier? requestedTier)
+        private GameObject InstantiateCar(ActiveObstacle obstacle, float selectedLane, VehicleTier? requestedTier)
         {
-            Renderer[] renderers = laserInstance != null ? laserInstance.GetComponentsInChildren<Renderer>(true) : new Renderer[0];
-            float elapsed = 0f;
-            bool isVisible = true;
-            float blinkInterval = Mathf.Max(0.01f, laserBlinkInterval);
-
-            // Blink laser renderer during warning duration
-            while (elapsed < laserWarningDuration)
+            if (playerReference == null)
             {
-                if (laserInstance == null) yield break;
-
-                if (playerReference != null)
-                {
-                    laserInstance.transform.position = new Vector3(
-                        playerReference.position.x + (spawnDistanceAhead * 0.5f),
-                        0.05f,
-                        selectedLane);
-                }
-
-                SetRenderersEnabled(renderers, isVisible);
-                isVisible = !isVisible;
-
-                float waitTime = Mathf.Min(blinkInterval, laserWarningDuration - elapsed);
-                yield return new WaitForSeconds(waitTime);
-                elapsed += waitTime;
-            }
-
-            if (laserInstance != null)
-            {
-                Destroy(laserInstance);
-            }
-
-            if (obstacle != null)
-            {
-                obstacle.LaserInstance = null;
+                var runner = FindFirstObjectByType<ChatLaneRunnerController>();
+                if (runner != null) playerReference = runner.transform;
             }
 
             if (playerReference == null)
             {
-                yield break;
+                if (obstacle != null) obstacle.IsPendingSpawn = false;
+                return null;
             }
 
             // Resolve tier at actual instantiation time
@@ -533,7 +507,8 @@ namespace StreamRushLive.Features.Spawning
             if (prefabToSpawn == null)
             {
                 Debug.LogWarning("[SingleObstacleSpawner] No vehicle prefabs available to spawn!");
-                yield break;
+                if (obstacle != null) obstacle.IsPendingSpawn = false;
+                return null;
             }
 
             // Rotate vehicle facing incoming runner (-X)
@@ -584,12 +559,14 @@ namespace StreamRushLive.Features.Spawning
 
             if (obstacle != null)
             {
+                obstacle.IsPendingSpawn = false;
                 obstacle.CarInstance = carInstance;
                 obstacle.PlayerRef = playerReference;
             }
 
             InitializeCarMovement(carInstance, chosenTier);
             Debug.Log($"[SingleObstacleSpawner] Spawned [{chosenTier}] '{prefabToSpawn.name}' on lane Z={selectedLane:F1}, {spawnDistanceAhead}m ahead.");
+            return carInstance;
         }
 
         public GameObject GetCarPrefab(VehicleTier tier)
@@ -686,14 +663,6 @@ namespace StreamRushLive.Features.Spawning
             }
 
             movingObject.Initialize(worldSpeedManager);
-        }
-
-        private static void SetRenderersEnabled(Renderer[] renderers, bool isEnabled)
-        {
-            for (int i = 0; i < renderers.Length; i++)
-            {
-                renderers[i].enabled = isEnabled;
-            }
         }
     }
 }

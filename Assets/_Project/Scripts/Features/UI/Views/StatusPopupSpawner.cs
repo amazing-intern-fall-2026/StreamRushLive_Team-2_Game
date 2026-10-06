@@ -12,8 +12,8 @@ namespace SteamRush.Features.UI.Views
     /// </summary>
     public class StatusPopupSpawner : MonoBehaviour
     {
-        // GDD v1.3.1 - yeu cau UI: tat chu noi tren dau Runner de khong che tam nhin + bang ten.
-        // Giu nguyen toan bo logic hang cho ben duoi (co the can lai sau), chi chan o diem vao Spawn().
+        // Floating status text disabled to avoid obstructing Runner visibility and nametag.
+        // Queue logic is retained for optional reuse.
         [SerializeField] private bool _popupsEnabled = false;
 
         [SerializeField] private StatusPopupController popupTemplate;

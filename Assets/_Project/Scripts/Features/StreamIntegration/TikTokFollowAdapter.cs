@@ -85,13 +85,16 @@ namespace SteamRush.Features.StreamIntegration
 
             if (_queueManager != null)
             {
-                _queueManager.TryEnqueueFollower(displayName);
+                _queueManager.EnqueueFollowerAsRunner(displayName);
             }
 
             if (_showPopups && _hudManager != null)
             {
-                _hudManager.ShowStatusPopup($"[{displayName}] Joined Queue!", true);
+                _hudManager.ShowStatusPopup($"[{displayName}] Followed -> Next Runner!", true);
             }
+
+            var giftPanel = FindFirstObjectByType<SteamRush.Features.UI.Views.GiftInfoPanelController>();
+            giftPanel?.HighlightGift(0, "Follow");
 
             _followerJoined?.Invoke(evt.UserId, displayName);
             AudioManager.Instance?.PlaySFX(SFXType.StreamNewFollower);

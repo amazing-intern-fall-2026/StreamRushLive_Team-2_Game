@@ -4,14 +4,9 @@ using SteamRush.Features.Runner;
 
 namespace SteamRush.Track
 {
-    // GDD v1.4.1 muc 7: sinh Cong Ve Dich bac ngang 3 lan SOM khi con lai <= earlyAppearDistanceMeters
-    // truoc dich (thay vi doi du 100% moi hien) - de nguoi xem thay no tu xa tien lai gan dan, giong
-    // cam giac tien den vach dich thuc te. Vi TrackTileLooper cong AddDistance() bang chinh
-    // WorldSpeed*deltaTime giong het cach MovingWorldObject cuon vat the, dat spawn X = playerX +
-    // remainingMeters la du de cong "den dung luc" khi TotalDistanceMeters cham Goal - khong can
-    // dong bo lai gi them.
-    // Phat hien thoi diem Runner bang qua bang polling vi tri X (dong bo style ActiveObstacle.IsActive
-    // trong SingleObstacleSpawner.cs) thay vi Trigger Collider.
+    // GDD v1.4.1 Section 7: Spawns the 3-lane finish line archway early when remaining distance
+    // <= earlyAppearDistanceMeters, allowing viewers to see it approach naturally.
+    // Detects when the runner crosses via polling X position matching SingleObstacleSpawner style.
     public class FinishLineArchway : MonoBehaviour
     {
         [SerializeField] private GameObject archwayPrefab;
@@ -19,7 +14,7 @@ namespace SteamRush.Track
         [SerializeField] private Transform playerReference;
         [SerializeField] private WorldSpeedManager worldSpeedManager;
 
-        [Tooltip("Xuat hien som khi quang duong con lai <= gia tri nay (m), de thay Cong Ve Dich tu xa tien lai gan dan thay vi bat ngo hien dung luc du so.")]
+        [Tooltip("Spawns archway early when remaining distance <= this value (meters) so viewers see it approach smoothly.")]
         [SerializeField] private float earlyAppearDistanceMeters = 200f;
 
         public event Action RunnerCrossedFinishLine;
@@ -81,13 +76,12 @@ namespace SteamRush.Track
             _archwayInstance = Instantiate(archwayPrefab, spawnPos, archwayPrefab.transform.rotation);
             _archwayInstance.name = "FinishLineArchway_Instance";
 
-            // despawnXThreshold rat am - Cong Ve Dich phai o lai lam backdrop cho le an mung,
-            // khong tu huy nhu xe can duong/item thong thuong.
+            // Set very negative despawnXThreshold so archway remains as a backdrop during victory celebration
             var mover = _archwayInstance.GetComponent<MovingWorldObject>();
             if (mover == null) mover = _archwayInstance.AddComponent<MovingWorldObject>();
             mover.Initialize(worldSpeedManager, -9999f);
 
-            Debug.Log($"[FinishLineArchway] Da sinh Cong Ve Dich tai X={spawnPos.x:F1} (con lai {remainingMeters:F0}m truoc dich).");
+            Debug.Log($"[FinishLineArchway] Spawned Finish Line Archway at X={spawnPos.x:F1} ({remainingMeters:F0}m before goal).");
         }
 
         private void Update()
@@ -97,7 +91,7 @@ namespace SteamRush.Track
             if (_archwayInstance.transform.position.x <= playerReference.position.x)
             {
                 _crossed = true;
-                Debug.Log("[FinishLineArchway] Runner da bang qua Cong Ve Dich!");
+                Debug.Log("[FinishLineArchway] Runner crossed finish line!");
                 RunnerCrossedFinishLine?.Invoke();
             }
         }

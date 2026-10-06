@@ -20,7 +20,7 @@ namespace SteamRush.Features.Runner
         [SerializeField] private float _blendTime = 0.25f;
 
         [Header("Victory Dance (GDD v1.4.1 - Finish Line)")]
-        [Tooltip("Ten state animation rieng cho luc ve dich (Kevin Iglesias HumanM@Dance01), khac voi state Dance dung cho Gift Meme-Dance de khong bi trung - cung layer 'Dance', chi khac state.")]
+        [Tooltip("Animation state name for finish line victory celebration (Kevin Iglesias HumanM@Dance01) in Dance layer.")]
         [SerializeField] private string _victoryDanceStateName = "VictoryDance";
 
         private Animator _animator;

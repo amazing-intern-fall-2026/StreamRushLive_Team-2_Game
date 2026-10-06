@@ -41,7 +41,7 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private TMP_Text iconText;
         [SerializeField] private CanvasGroup canvasGroup;
 
-        // Sprite vong + mau nhan lay tu HudTheme (HudTheme.GetTimerSkin) - khong con tu ve sprite/mau o day.
+        // Circle sprite and label colors are retrieved from HudTheme (HudTheme.GetTimerSkin).
         private float _totalDuration = 30f;
         private float _remainingTime = 0f;
         private bool _isActive = false;
@@ -220,19 +220,13 @@ namespace SteamRush.Features.UI.Views
                 if (canvas != null) parentTransform = canvas.transform;
             }
 
-            if (parentTransform != null && transform.parent != parentTransform)
+            if (transform.parent == null && parentTransform != null)
             {
                 transform.SetParent(parentTransform, false);
             }
 
             containerRect = GetComponent<RectTransform>();
             if (containerRect == null) containerRect = gameObject.AddComponent<RectTransform>();
-
-            containerRect.anchorMin = new Vector2(0f, 0.80f);
-            containerRect.anchorMax = new Vector2(0f, 0.80f);
-            containerRect.pivot = new Vector2(0f, 0.5f);
-            containerRect.anchoredPosition = new Vector2(52f, 0f);
-            containerRect.sizeDelta = new Vector2(116f, 116f);
 
             canvasGroup = GetComponent<CanvasGroup>();
             if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
