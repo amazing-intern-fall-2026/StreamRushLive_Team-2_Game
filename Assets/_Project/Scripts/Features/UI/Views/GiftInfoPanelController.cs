@@ -55,12 +55,7 @@ namespace SteamRush.Features.UI.Views
 
         [Header("Card Configuration")]
         [SerializeField] private float _cardSpacing = 8f;
-        [SerializeField] private Color _cardBgColor = new Color(0.10f, 0.12f, 0.18f, 0.85f);
-
-        [Header("Team Colors")]
-        [SerializeField] private Color _blueTeamColor = new Color(0.0f, 0.90f, 1.0f, 1f);   // Neon Cyan Blue
-        [SerializeField] private Color _redTeamColor = new Color(1.0f, 0.22f, 0.28f, 1f);   // Neon Crimson Red
-        [SerializeField] private Color _specialColor = new Color(1.0f, 0.85f, 0.15f, 1f);   // Neon Gold Yellow
+        // Sprite viền/nền + màu chữ theo 4 loại (Blue/Red/Special/Like) lấy từ HudTheme dùng chung - không còn serialize riêng ở đây.
 
         [Header("UI References")]
         [SerializeField] private RectTransform _contentContainer;
@@ -374,10 +369,11 @@ namespace SteamRush.Features.UI.Views
             Image panelImg = GetComponent<Image>();
             if (panelImg != null)
             {
-                Sprite pill = FindSpriteInAssets("UI_BannerPill");
-                if (pill != null) panelImg.sprite = pill;
+                Sprite frame = HudTheme.Current.panelFrame; // khung vàng + nền teal y hệt thẻ How To Play (cùng độ dày viền)
+                if (frame != null) panelImg.sprite = frame;
                 panelImg.type = Image.Type.Sliced;
-                panelImg.color = new Color(0.07f, 0.07f, 0.10f, 0.55f);
+                panelImg.color = Color.white;
+                panelImg.pixelsPerUnitMultiplier = 0.6f;
             }
 
             if (_scrollRect == null)
@@ -395,8 +391,9 @@ namespace SteamRush.Features.UI.Views
             RectTransform scrollRt = _scrollRect.GetComponent<RectTransform>();
             scrollRt.anchorMin = Vector2.zero;
             scrollRt.anchorMax = Vector2.one;
-            scrollRt.offsetMin = new Vector2(8f, 6f);
-            scrollRt.offsetMax = new Vector2(-8f, -6f);
+            // Chừa chỗ cho viền vàng dày của khung (xem pixelsPerUnitMultiplier ở trên).
+            scrollRt.offsetMin = new Vector2(20f, 18f);
+            scrollRt.offsetMax = new Vector2(-20f, -18f);
 
             _scrollRect.horizontal = false;
             _scrollRect.vertical = false;
@@ -493,19 +490,42 @@ namespace SteamRush.Features.UI.Views
             RectTransform cardRt = cardObj.GetComponent<RectTransform>();
 
             Image bg = cardObj.GetComponent<Image>();
-            bg.color = _cardBgColor;
-
-            Sprite pillSprite = FindSpriteInAssets("UI_BannerPill") ?? FindSpriteInAssets("UI_Pill");
-            if (pillSprite != null)
+            // Thẻ = ô phẳng đậm giống ô cột Team Blue/Red của How To Play, nền nhuộm theo loại gift
+            // (Blue xanh / Red đỏ / Special vàng / Like teal) + màu chữ cùng loại (GetTeamColor).
+            HudTheme theme = HudTheme.Current;
+            HudCategory category = GetCategory(mapping.action);
+            Sprite flat = theme.panelFlat != null ? theme.panelFlat : theme.panelDark;
+            if (flat != null)
             {
-                bg.sprite = pillSprite;
+                bg.sprite = flat;
                 bg.type = Image.Type.Sliced;
             }
+            // Viền sáng màu loại = Outline bám đúng hình lớp nền "Body" (thụt vào 3px, Outline nở ra lại 3px nên vừa khít ô),
+            // nên không còn viền lệch/bị nền đè như khi xếp 2 lớp chồng nhau. Image gốc của thẻ chỉ giữ để nhận raycast.
+            bg.color = Color.clear;
 
-            var outline = cardObj.GetComponent<Outline>();
-            if (outline == null) outline = cardObj.AddComponent<Outline>();
-            outline.effectColor = new Color(1f, 1f, 1f, 0.08f);
-            outline.effectDistance = new Vector2(1f, -1f);
+            GameObject bodyObj = new GameObject("Body", typeof(RectTransform), typeof(Image));
+            bodyObj.transform.SetParent(cardObj.transform, false);
+            RectTransform bodyRt = bodyObj.GetComponent<RectTransform>();
+            bodyRt.anchorMin = Vector2.zero;
+            bodyRt.anchorMax = Vector2.one;
+            bodyRt.offsetMin = new Vector2(4f, 4f);
+            bodyRt.offsetMax = new Vector2(-4f, -4f);
+            Image bodyImg = bodyObj.GetComponent<Image>();
+            if (flat != null)
+            {
+                bodyImg.sprite = flat;
+                bodyImg.type = Image.Type.Sliced;
+            }
+            Color fill = theme.CategoryFill(category);
+            fill.a = 1f; // đặc hoàn toàn để màu viền phía sau không lộ xuyên qua nền
+            bodyImg.color = fill;
+            bodyImg.raycastTarget = false;
+            Outline border = bodyObj.AddComponent<Outline>();
+            border.effectColor = theme.CategoryBorder(category);
+            border.effectDistance = new Vector2(4f, -4f);
+            border.useGraphicAlpha = false;
+            bodyObj.transform.SetAsFirstSibling();
 
             // 1. Ảnh Gift Chính Thức Của TikTok (Nằm nửa trên thẻ)
             GameObject iconObj = new GameObject("Icon", typeof(RectTransform), typeof(Image));
@@ -587,25 +607,31 @@ namespace SteamRush.Features.UI.Views
 
         public Color GetTeamColor(GiftActionType action)
         {
+            return HudTheme.Current.CategoryText(GetCategory(action));
+        }
+
+        // Phân loại gift để chọn màu nền/viền/chữ: Blue / Red / Like (trung tính) / còn lại là Special (vàng).
+        private static HudCategory GetCategory(GiftActionType action)
+        {
             switch (action)
             {
                 case GiftActionType.Blue_Shield:
                 case GiftActionType.Blue_SpeedBoost:
                 case GiftActionType.Blue_FreeControl:
                 case GiftActionType.Blue_EnergyBottle:
-                    return _blueTeamColor;
+                    return HudCategory.Blue;
 
                 case GiftActionType.Red_SpawnPickup:
                 case GiftActionType.Red_SpawnHeavyTruck:
                 case GiftActionType.Red_UnlimitedCars:
                 case GiftActionType.Red_EnergyBottle:
-                    return _redTeamColor;
+                    return HudCategory.Red;
 
                 case GiftActionType.Like_Energy:
-                    return Color.white;
+                    return HudCategory.Neutral;
 
                 default:
-                    return _specialColor;
+                    return HudCategory.Special;
             }
         }
 
@@ -764,22 +790,6 @@ namespace SteamRush.Features.UI.Views
             }
 
             card.localScale = origScale;
-        }
-
-        private Sprite FindSpriteInAssets(string spriteName)
-        {
-#if UNITY_EDITOR
-            string[] guids = UnityEditor.AssetDatabase.FindAssets($"{spriteName} t:Sprite");
-            foreach (var g in guids)
-            {
-                string p = UnityEditor.AssetDatabase.GUIDToAssetPath(g);
-                if (p.EndsWith($"{spriteName}.png") || p.Contains($"/{spriteName}.png"))
-                {
-                    return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(p);
-                }
-            }
-#endif
-            return null;
         }
     }
 }

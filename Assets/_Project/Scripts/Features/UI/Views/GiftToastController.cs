@@ -57,27 +57,29 @@ namespace SteamRush.Features.UI.Views
                 Color c = accentColor.Value;
                 bool isBlueTone = (c.b > c.r) || (c.g > c.r);
 
-                // Đồng bộ màu nền card theo phe (Xanh dương cho Blue Team, Đỏ đen cho Red Team)
+                // Donate/thông báo là phần "ăn mừng" nên dùng pill Blue/Red SÁNG của kit (viền + gradient bóng có sẵn trong sprite)
+                // cho vui mắt, khác với các khung thông tin (thanh, ô How To Play, ô gift) dùng nền đậm + viền sáng.
+                HudTheme theme = HudTheme.Current;
                 Image bgImage = GetComponent<Image>();
                 if (bgImage != null)
                 {
-                    bgImage.color = isBlueTone
-                        ? new Color(0.04f, 0.12f, 0.28f, 0.95f)
-                        : new Color(0.22f, 0.04f, 0.06f, 0.95f);
+                    Sprite pill = theme.FactionPill(isBlueTone);
+                    if (pill != null)
+                    {
+                        bgImage.sprite = pill;
+                        bgImage.type = Image.Type.Sliced;
+                    }
+                    bgImage.color = Color.white;
                 }
 
                 if (cardOutline != null)
                 {
-                    cardOutline.effectColor = isBlueTone
-                        ? new Color(0.25f, 0.72f, 1f, 0.95f)
-                        : new Color(1f, 0.28f, 0.22f, 0.95f);
+                    cardOutline.enabled = false;
                 }
 
                 if (itemNameText != null)
                 {
-                    itemNameText.color = isBlueTone
-                        ? new Color(0.88f, 0.96f, 1f, 1f)
-                        : new Color(1f, 0.92f, 0.92f, 1f);
+                    itemNameText.color = theme.textPrimary;
                 }
             }
 

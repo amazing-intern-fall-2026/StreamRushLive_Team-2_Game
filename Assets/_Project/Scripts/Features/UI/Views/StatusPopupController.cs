@@ -31,8 +31,8 @@ namespace SteamRush.Features.UI.Views
             System.Text.RegularExpressions.RegexOptions.Compiled);
 
         // Màu phân biệt Blue Team (xanh dương) / Red Team (đỏ).
-        private static readonly Color BuffColor = new Color(0.25f, 0.75f, 1f); // Xanh dương Blue Team
-        private static readonly Color DebuffColor = new Color(1f, 0.3f, 0.25f); // Đỏ Red Team
+        private static Color BuffColor => HudTheme.Current.blue;   // Xanh dương Blue Team
+        private static Color DebuffColor => HudTheme.Current.red;  // Đỏ Red Team
 
         // Vị trí gốc lấy từ template lúc spawn - không hardcode Vector2.zero vì template có thể đặt ở bất kỳ đâu phía trên đầu runner.
         private Vector2 startAnchoredPosition;
