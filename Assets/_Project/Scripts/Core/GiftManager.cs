@@ -100,10 +100,10 @@ namespace StreamRushLive.Features.Gifts
             reverseWorldDuration = 1.8f
         };
 
-        [Header("Hunting Beast (Tier 2)")]
+        [Header("Animals (Tier 2)")]
         [SerializeField] private AntiCarGiftConfig _pickupConfig = new AntiCarGiftConfig
         {
-            vehicleName = "Hunting Beast",
+            vehicleName = "Animals",
             energyCost = 100,
             knockbackDistance = 3.0f,
             knockbackDuration = 0.6f,
@@ -402,8 +402,8 @@ namespace StreamRushLive.Features.Gifts
             if (_obstacleSpawner != null)
             {
                 _obstacleSpawner.ActivatePickupTruckPhase();
-                _hudManager?.ShowAntiAction(sender, $"Hunting Beasts Phase ({_vehiclePhaseDuration:F0}s)");
-                _hudManager?.ShowStatusPopup($"[{sender}] Hunting Beasts Phase!", false);
+                _hudManager?.ShowAntiAction(sender, $"Animals Phase ({_vehiclePhaseDuration:F0}s)");
+                _hudManager?.ShowStatusPopup($"[{sender}] Animals Phase!", false);
                 AudioManager.Instance?.PlaySFX(SFXType.PickupHorn, 0.9f);
                 return true;
             }

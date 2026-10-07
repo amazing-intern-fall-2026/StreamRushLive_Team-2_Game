@@ -138,7 +138,7 @@ namespace StreamRushLive.Features.Spawning
                     break;
 
                 case VehicleTier.PickupTruck:
-                    obstacleName = "Hunting Beast";
+                    obstacleName = "Animals";
                     obstacleType = ObstacleType.LowBarrier;
                     energyPenaltyPercent = 40f;       // -40% energy penalty
                     distancePenaltyMeters = 200f;     // -200m distance penalty

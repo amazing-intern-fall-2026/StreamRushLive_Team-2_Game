@@ -718,7 +718,7 @@ namespace SteamRush.Features.UI.Views
                 GiftActionType.Blue_SpeedBoost => "Turbo Speed",
                 GiftActionType.Blue_FreeControl => "Free Controls",
                 GiftActionType.Blue_EnergyBottle => "+300 Energy",
-                GiftActionType.Red_SpawnPickup => "Hunting Beasts",
+                GiftActionType.Red_SpawnPickup => "Animals",
                 GiftActionType.Red_SpawnHeavyTruck => "Train",
                 GiftActionType.Red_UnlimitedCars => "Unlimited Cars",
                 GiftActionType.Red_EnergyBottle => "+500 Energy",

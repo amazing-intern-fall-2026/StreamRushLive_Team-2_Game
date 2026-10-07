@@ -225,7 +225,7 @@ namespace SteamRush.Features.UI.Views
             switch (phase)
             {
                 case VehicleTier.PickupTruck:
-                    iconText.text = "BEASTS";
+                    iconText.text = "ANIMALS";
                     iconText.color = HudTheme.Current.GetTimerSkin(TimerCircleKind.VehiclePickup).label;
                     break;
 
@@ -396,7 +396,7 @@ namespace SteamRush.Features.UI.Views
             iconRect.sizeDelta = new Vector2(80f, 22f);
 
             iconText = iconObj.GetComponent<TextMeshProUGUI>();
-            iconText.text = "PICKUP";
+            iconText.text = "ANIMALS";
             iconText.fontSize = 13;
             iconText.fontStyle = FontStyles.Bold;
             iconText.color = skin.label;

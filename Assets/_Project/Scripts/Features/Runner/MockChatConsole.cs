@@ -945,10 +945,10 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             hudManager?.ShowAntiAction(
                 sender,
-                $"Hunting Beasts Phase ({obstacleSpawner.VehiclePhaseDuration:F0}s)");
+                $"Animals Phase ({obstacleSpawner.VehiclePhaseDuration:F0}s)");
 
             hudManager?.ShowStatusPopup(
-                $"Hunting Beasts Phase Started ({obstacleSpawner.VehiclePhaseDuration:F0}s)",
+                $"Animals Phase Started ({obstacleSpawner.VehiclePhaseDuration:F0}s)",
                 false);
         }
 
