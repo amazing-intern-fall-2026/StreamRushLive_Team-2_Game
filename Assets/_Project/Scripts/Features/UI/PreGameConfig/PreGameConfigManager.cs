@@ -293,13 +293,14 @@ namespace SteamRush.Features.UI.PreGameConfig
             }
 
             // 3. GiftManager Buffs & Vehicle Penalties
-            if (GiftManager.Instance != null)
+            var gm = GiftManager.Instance ?? FindFirstObjectByType<GiftManager>();
+            if (gm != null)
             {
-                GiftManager.Instance.SetSprintDuration(CurrentConfig.sprintBuffDuration);
-                GiftManager.Instance.SetFreeControlDuration(CurrentConfig.freeControlDuration);
+                gm.SetSprintDuration(CurrentConfig.sprintBuffDuration);
+                gm.SetFreeControlDuration(CurrentConfig.freeControlDuration);
 
                 // Sedan
-                var sedan = GiftManager.Instance.SedanConfig;
+                var sedan = gm.SedanConfig;
                 if (sedan != null)
                 {
                     sedan.distancePenaltyMeters = CurrentConfig.distancePenaltyMeters;
@@ -307,7 +308,7 @@ namespace SteamRush.Features.UI.PreGameConfig
                 }
 
                 // Pickup
-                var pickup = GiftManager.Instance.PickupConfig;
+                var pickup = gm.PickupConfig;
                 if (pickup != null)
                 {
                     pickup.distancePenaltyMeters = CurrentConfig.distancePenaltyMeters * 1.5f;
@@ -315,7 +316,7 @@ namespace SteamRush.Features.UI.PreGameConfig
                 }
 
                 // Heavy Truck
-                var heavy = GiftManager.Instance.HeavyTruckConfig;
+                var heavy = gm.HeavyTruckConfig;
                 if (heavy != null)
                 {
                     heavy.distancePenaltyMeters = CurrentConfig.distancePenaltyMeters * 2.5f;

@@ -126,6 +126,15 @@ namespace SteamRush.Features.Runner
                 {
                     energy.AddEnergy(20f);
                 }
+                else
+                {
+                    var faction = FindFirstObjectByType<SteamRush.Features.StreamIntegration.FactionTugOfWarManager>();
+                    if (faction != null)
+                    {
+                        int bonus = Mathf.RoundToInt(0.2f * faction.GetFanEnergyMax());
+                        faction.AddLikes(SteamRush.Features.StreamIntegration.FactionType.Fan, bonus);
+                    }
+                }
 
                 HUDManager hud = FindFirstObjectByType<HUDManager>();
                 hud?.ShowStatusPopup("+20% Energy", true);
@@ -243,16 +252,15 @@ namespace SteamRush.Features.Runner
             EnergySystem energySystem = FindFirstObjectByType<EnergySystem>();
             if (energySystem != null && penalty > 0f)
             {
-                energySystem.AddEnergy(-penalty);
+                float deduction = (penalty / 100f) * energySystem.MaxEnergy;
+                energySystem.AddEnergy(-deduction);
             }
-            else
+
+            SteamRush.Features.StreamIntegration.FactionTugOfWarManager faction =
+                FindFirstObjectByType<SteamRush.Features.StreamIntegration.FactionTugOfWarManager>();
+            if (faction != null && penalty > 0f)
             {
-                SteamRush.Features.StreamIntegration.FactionTugOfWarManager faction =
-                    FindFirstObjectByType<SteamRush.Features.StreamIntegration.FactionTugOfWarManager>();
-                if (faction != null && penalty > 0f)
-                {
-                    faction.TryConsumeFanEnergy(Mathf.RoundToInt(penalty));
-                }
+                faction.TryConsumeFanEnergyPercent(penalty);
             }
 
             TrackProgressTracker tracker = FindFirstObjectByType<TrackProgressTracker>();

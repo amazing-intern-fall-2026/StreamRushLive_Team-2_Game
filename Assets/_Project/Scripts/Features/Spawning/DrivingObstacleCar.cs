@@ -102,9 +102,10 @@ namespace StreamRushLive.Features.Spawning
             _vehicleTier = tier;
 
             // Retrieve configuration directly from GiftManager if available
-            if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
+            var gm = StreamRushLive.Features.Gifts.GiftManager.Instance ?? FindFirstObjectByType<StreamRushLive.Features.Gifts.GiftManager>();
+            if (gm != null)
             {
-                var cfg = StreamRushLive.Features.Gifts.GiftManager.Instance.GetCarConfig(tier);
+                var cfg = gm.GetCarConfig(tier);
                 if (cfg != null)
                 {
                     obstacleName = cfg.vehicleName;

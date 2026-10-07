@@ -310,6 +310,18 @@ namespace SteamRush.Features.StreamIntegration
             return _fanLikes > 0;
         }
 
+        /// <summary>
+        /// Deducts a percentage of maximum Fan energy (0..100%).
+        /// E.g. 20% penalty on a 1000 max capacity deducts 200 points.
+        /// </summary>
+        public bool TryConsumeFanEnergyPercent(float percent)
+        {
+            if (percent <= 0f) return true;
+            int maxFan = GetFanEnergyMax();
+            int pointsToDeduct = Mathf.RoundToInt((percent / 100f) * maxFan);
+            return TryConsumeFanEnergy(pointsToDeduct);
+        }
+
         public bool TrySpendFanEnergy(int cost)
         {
             if (_fanLikes <= 0 || _fanLikes < cost)
