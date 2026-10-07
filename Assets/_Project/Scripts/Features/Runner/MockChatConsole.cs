@@ -316,6 +316,14 @@ namespace SteamRush.Features.Runner
 
             if (toggleDebugButton != null)
             {
+                bool allowDebug = isDebugUIVisible;
+                if (!isDebugUIVisible && SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance != null &&
+                    SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance.CurrentConfig != null)
+                {
+                    allowDebug = SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance.CurrentConfig.enableDebugUI;
+                }
+
+                toggleDebugButton.gameObject.SetActive(allowDebug);
                 RectTransform btnRect = toggleDebugButton.GetComponent<RectTransform>();
                 if (btnRect != null)
                 {

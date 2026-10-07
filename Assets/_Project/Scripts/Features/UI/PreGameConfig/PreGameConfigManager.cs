@@ -228,17 +228,20 @@ namespace SteamRush.Features.UI.PreGameConfig
                 );
             }
 
-            // Enable MockChatConsole for Streamer Sandbox testing
+            // Configure MockChatConsole visibility according to user config
             var mockConsole = FindFirstObjectByType<MockChatConsole>();
             if (mockConsole != null)
             {
-                mockConsole.SetDebugUIVisible(true);
+                mockConsole.SetDebugUIVisible(CurrentConfig.enableDebugUI);
             }
 
             var hud = FindFirstObjectByType<HUDManager>();
             string modeInfo = CurrentConfig.enableLiveDemoSimulation ? "Simulation [ON]" : "Sandbox [OFF]";
-            hud?.ShowStatusPopup($"[Test Mode] Sandbox active ({modeInfo})! Press [`] to toggle debug menu.", true);
-            Debug.Log($"<color=#00FFFF>[PreGameConfig] Started Sandbox Test Mode ({modeInfo}).</color>");
+            if (CurrentConfig.enableDebugUI)
+            {
+                hud?.ShowStatusPopup($"[Test Mode] Sandbox active ({modeInfo})! Press [`] to toggle debug menu.", true);
+            }
+            Debug.Log($"<color=#00FFFF>[PreGameConfig] Started Sandbox Test Mode ({modeInfo}, DebugUI: {CurrentConfig.enableDebugUI}).</color>");
         }
 
         public void StartGoLive()

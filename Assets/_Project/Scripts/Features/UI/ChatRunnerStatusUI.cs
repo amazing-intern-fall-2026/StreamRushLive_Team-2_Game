@@ -34,6 +34,14 @@ namespace SteamRush.Features.UI
             }
         }
 
+        private void Start()
+        {
+            if (PreGameConfig.PreGameConfigManager.Instance != null && PreGameConfig.PreGameConfigManager.Instance.CurrentConfig != null)
+            {
+                gameObject.SetActive(PreGameConfig.PreGameConfigManager.Instance.CurrentConfig.enableDebugUI);
+            }
+        }
+
         private void Update()
         {
             if (_queueManager == null)
