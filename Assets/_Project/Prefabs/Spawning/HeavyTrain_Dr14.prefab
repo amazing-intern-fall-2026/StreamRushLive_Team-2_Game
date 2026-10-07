@@ -1374,7 +1374,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8ee64798bd12ff540b9d53d0cd121774, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StreamRushLive.Features.Spawning.DrivingObstacleCar
-  obstacleName: Heavy Truck
+  obstacleName: "T\xE0u h\u1ECFa"
   obstacleType: 1
   energyPenaltyPercent: 60
   hitStopDuration: 0.25

@@ -137,7 +137,7 @@ namespace StreamRushLive.Features.Spawning
                     break;
 
                 case VehicleTier.PickupTruck:
-                    obstacleName = "Pickup Truck";
+                    obstacleName = "Thú săn";
                     obstacleType = ObstacleType.LowBarrier;
                     energyPenaltyPercent = 40f;       // -40% energy penalty
                     distancePenaltyMeters = 200f;     // -200m distance penalty
@@ -150,7 +150,7 @@ namespace StreamRushLive.Features.Spawning
                     break;
 
                 case VehicleTier.HeavyTruck:
-                    obstacleName = "Heavy Truck";
+                    obstacleName = "Tàu hỏa";
                     obstacleType = ObstacleType.HighBarrier;
                     energyPenaltyPercent = 60f;       // -60% energy penalty
                     distancePenaltyMeters = 400f;     // -400m distance penalty

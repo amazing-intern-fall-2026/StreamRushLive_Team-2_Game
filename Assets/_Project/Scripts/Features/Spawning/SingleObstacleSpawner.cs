@@ -17,14 +17,14 @@ namespace StreamRushLive.Features.Spawning
         [Tooltip("List of PolygonCity vehicle models (general fallback).")]
         [SerializeField] private List<GameObject> vehiclePrefabs = new List<GameObject>();
 
-        [Header("Categorized Tiered Vehicles (GDD v1.4)")]
+        [Header("Categorized Tiered Obstacles (GDD v1.4)")]
         [Tooltip("Sedan Car (Tier 1): -20% energy, -100m penalty")]
         [SerializeField] private List<GameObject> sedanCarPrefabs = new List<GameObject>();
 
-        [Tooltip("Pickup Truck (Tier 2): -40% energy, -200m penalty")]
+        [Tooltip("Thú săn (Tier 2): -40% energy, -200m penalty")]
         [SerializeField] private List<GameObject> pickupTruckPrefabs = new List<GameObject>();
 
-        [Tooltip("Heavy Truck (Tier 3): -60% energy, -400m penalty")]
+        [Tooltip("Tàu hỏa (Tier 3): -60% energy, -400m penalty")]
         [SerializeField] private List<GameObject> heavyTruckPrefabs = new List<GameObject>();
 
         [Tooltip("Autonomous vehicle drive speed added to world scroll speed (default: 6.5 m/s).")]

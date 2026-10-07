@@ -273,8 +273,8 @@ namespace SteamRush.Features.Runner
             {
                 string tierTitle = drivingCar.Tier switch
                 {
-                    StreamRushLive.Features.Spawning.VehicleTier.HeavyTruck => "Heavy Truck Hit!",
-                    StreamRushLive.Features.Spawning.VehicleTier.PickupTruck => "Pickup Hit!",
+                    StreamRushLive.Features.Spawning.VehicleTier.HeavyTruck => "Tàu hỏa Hit!",
+                    StreamRushLive.Features.Spawning.VehicleTier.PickupTruck => "Thú săn Hit!",
                     _ => "Car Hit!"
                 };
                 hud?.ShowStatusPopup($"{tierTitle} (-{finalDistancePenalty:F0}m, -{penalty:F0}% Energy)", false);

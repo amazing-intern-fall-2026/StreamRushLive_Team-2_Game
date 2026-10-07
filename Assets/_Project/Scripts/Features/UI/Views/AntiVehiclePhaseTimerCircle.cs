@@ -225,17 +225,17 @@ namespace SteamRush.Features.UI.Views
             switch (phase)
             {
                 case VehicleTier.PickupTruck:
-                    iconText.text = "PICKUP";
+                    iconText.text = "THÚ SĂN";
                     iconText.color = HudTheme.Current.GetTimerSkin(TimerCircleKind.VehiclePickup).label;
                     break;
 
                 case VehicleTier.HeavyTruck:
-                    iconText.text = "HEAVY";
+                    iconText.text = "TÀU HỎA";
                     iconText.color = HudTheme.Current.GetTimerSkin(TimerCircleKind.VehicleHeavy).label;
                     break;
 
                 default:
-                    iconText.text = "VEHICLE";
+                    iconText.text = "HAZARD";
                     iconText.color = HudTheme.Current.GetTimerSkin(TimerCircleKind.VehicleHeavy).label;
                     break;
             }

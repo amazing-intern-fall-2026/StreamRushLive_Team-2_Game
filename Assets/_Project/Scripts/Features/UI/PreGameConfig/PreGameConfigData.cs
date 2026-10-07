@@ -50,8 +50,8 @@ namespace SteamRush.Features.UI.PreGameConfig
                 case GiftActionType.Blue_SpeedBoost: return "Speed Boost (Turbo)";
                 case GiftActionType.Blue_FreeControl: return "Freedom Charm";
                 case GiftActionType.Blue_EnergyBottle: return "+300 Blue Energy";
-                case GiftActionType.Red_SpawnPickup: return "Spawn Pickup Truck";
-                case GiftActionType.Red_SpawnHeavyTruck: return "Spawn Heavy Truck";
+                case GiftActionType.Red_SpawnPickup: return "Spawn Thú săn";
+                case GiftActionType.Red_SpawnHeavyTruck: return "Spawn Tàu hỏa";
                 case GiftActionType.Red_UnlimitedCars: return "Car Storm (Unlimited)";
                 case GiftActionType.Red_EnergyBottle: return "+Red Energy";
                 case GiftActionType.Special_GiftDance: return "Meme Dance";
@@ -148,8 +148,8 @@ namespace SteamRush.Features.UI.PreGameConfig
                     new PreGameGiftItemConfig("Speed Boost (Turbo)", 5269, "TikTok", "Turbo Speed (20s)", GiftActionType.Blue_SpeedBoost, true),
                     new PreGameGiftItemConfig("Freedom Charm", 5879, "Cap", "Freedom Charm", GiftActionType.Blue_FreeControl, true),
                     new PreGameGiftItemConfig("+300 Blue Energy", 5338, "Donut", "+300 Blue Energy", GiftActionType.Blue_EnergyBottle, true),
-                    new PreGameGiftItemConfig("Spawn Pickup Truck", 5585, "Dumbbell", "Pickup Phase", GiftActionType.Red_SpawnPickup, true),
-                    new PreGameGiftItemConfig("Spawn Heavy Truck", 6001, "Lion", "Heavy Phase", GiftActionType.Red_SpawnHeavyTruck, true),
+                    new PreGameGiftItemConfig("Spawn Thú săn", 5585, "Dumbbell", "Thú săn", GiftActionType.Red_SpawnPickup, true),
+                    new PreGameGiftItemConfig("Spawn Tàu hỏa", 6001, "Lion", "Tàu hỏa", GiftActionType.Red_SpawnHeavyTruck, true),
                     new PreGameGiftItemConfig("Car Storm (Unlimited)", 5661, "Sunglasses", "Car Storm", GiftActionType.Red_UnlimitedCars, true),
                     new PreGameGiftItemConfig("+Red Energy", 5586, "Chili", "+Red Energy", GiftActionType.Red_EnergyBottle, true),
                     new PreGameGiftItemConfig("Meme Dance", 6037, "Meme Dance", "Meme Dance", GiftActionType.Special_GiftDance, true),

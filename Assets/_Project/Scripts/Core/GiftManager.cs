@@ -100,10 +100,10 @@ namespace StreamRushLive.Features.Gifts
             reverseWorldDuration = 1.8f
         };
 
-        [Header("Pickup Truck")]
+        [Header("Thú săn (Tier 2)")]
         [SerializeField] private AntiCarGiftConfig _pickupConfig = new AntiCarGiftConfig
         {
-            vehicleName = "Pickup Truck",
+            vehicleName = "Thú săn",
             energyCost = 100,
             knockbackDistance = 3.0f,
             knockbackDuration = 0.6f,
@@ -115,10 +115,10 @@ namespace StreamRushLive.Features.Gifts
             reverseWorldDuration = 2.4f
         };
 
-        [Header("Heavy Truck")]
+        [Header("Tàu hỏa (Tier 3)")]
         [SerializeField] private AntiCarGiftConfig _heavyTruckConfig = new AntiCarGiftConfig
         {
-            vehicleName = "Heavy Truck",
+            vehicleName = "Tàu hỏa",
             energyCost = 100,
             knockbackDistance = 4.2f,
             knockbackDuration = 0.7f,
@@ -402,17 +402,17 @@ namespace StreamRushLive.Features.Gifts
             if (_obstacleSpawner != null)
             {
                 _obstacleSpawner.ActivatePickupTruckPhase();
-                _hudManager?.ShowAntiAction(sender, $"Pickup Phase ({_vehiclePhaseDuration:F0}s)");
-                _hudManager?.ShowStatusPopup($"[{sender}] Pickup Phase!", false);
+                _hudManager?.ShowAntiAction(sender, $"Thú săn Phase ({_vehiclePhaseDuration:F0}s)");
+                _hudManager?.ShowStatusPopup($"[{sender}] Thú săn Phase!", false);
                 AudioManager.Instance?.PlaySFX(SFXType.PickupHorn, 0.9f);
                 return true;
             }
-            Debug.LogWarning("[GiftManager] SingleObstacleSpawner not found to activate Pickup Truck Phase!");
+            Debug.LogWarning("[GiftManager] SingleObstacleSpawner not found to activate Thú săn Phase!");
             return false;
         }
 
         /// <summary>
-        /// Activates Heavy Truck Phase.
+        /// Activates Tàu hỏa Phase.
         /// </summary>
         public bool ActivateHeavyTruckPhase(string sender = "Red Team")
         {
@@ -420,12 +420,12 @@ namespace StreamRushLive.Features.Gifts
             if (_obstacleSpawner != null)
             {
                 _obstacleSpawner.ActivateHeavyTruckPhase();
-                _hudManager?.ShowAntiAction(sender, $"Heavy Truck Phase ({_vehiclePhaseDuration:F0}s)");
-                _hudManager?.ShowStatusPopup($"[{sender}] Heavy Truck Phase!", false);
+                _hudManager?.ShowAntiAction(sender, $"Tàu hỏa Phase ({_vehiclePhaseDuration:F0}s)");
+                _hudManager?.ShowStatusPopup($"[{sender}] Tàu hỏa Phase!", false);
                 AudioManager.Instance?.PlaySFX(SFXType.HeavyTruckHorn, 1.0f);
                 return true;
             }
-            Debug.LogWarning("[GiftManager] SingleObstacleSpawner not found to activate Heavy Truck Phase!");
+            Debug.LogWarning("[GiftManager] SingleObstacleSpawner not found to activate Tàu hỏa Phase!");
             return false;
         }
 

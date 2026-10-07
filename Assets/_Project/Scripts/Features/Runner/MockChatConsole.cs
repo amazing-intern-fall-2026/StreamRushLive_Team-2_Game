@@ -937,10 +937,10 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             hudManager?.ShowAntiAction(
                 sender,
-                $"Pickup Truck Phase ({obstacleSpawner.VehiclePhaseDuration:F0}s)");
+                $"Thú săn Phase ({obstacleSpawner.VehiclePhaseDuration:F0}s)");
 
             hudManager?.ShowStatusPopup(
-                $"Pickup Truck Phase Started ({obstacleSpawner.VehiclePhaseDuration:F0}s)",
+                $"Thú săn Phase Started ({obstacleSpawner.VehiclePhaseDuration:F0}s)",
                 false);
         }
 
@@ -975,7 +975,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
                 bool success = obstacleSpawner.TriggerSpawnCarTier(StreamRushLive.Features.Spawning.VehicleTier.HeavyTruck);
                 if (success)
                 {
-                    hudManager?.ShowAntiAction(sender, "Spawned Heavy Truck");
+                    hudManager?.ShowAntiAction(sender, "Spawned Tàu hỏa");
                 }
                 else if (!isUnlimited && factionManager != null)
                 {
@@ -1012,10 +1012,10 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             hudManager?.ShowAntiAction(
                 sender,
-                $"Heavy Truck Phase ({obstacleSpawner.VehiclePhaseDuration:F0}s)");
+                $"Tàu hỏa Phase ({obstacleSpawner.VehiclePhaseDuration:F0}s)");
 
             hudManager?.ShowStatusPopup(
-                $"Heavy Truck Phase Started ({obstacleSpawner.VehiclePhaseDuration:F0}s)",
+                $"Tàu hỏa Phase Started ({obstacleSpawner.VehiclePhaseDuration:F0}s)",
                 false);
         }
 
