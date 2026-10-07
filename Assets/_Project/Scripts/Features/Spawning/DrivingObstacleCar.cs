@@ -55,6 +55,16 @@ namespace StreamRushLive.Features.Spawning
         [Tooltip("Duration of reverse world scroll impulse (seconds).")]
         [SerializeField] private float _reverseWorldDuration = 0.65f;
 
+        [Header("Audio & Sound Effects")]
+        [Tooltip("Optional custom SFX played on spawn/alert (overrides standard vehicle horn).")]
+        [SerializeField] private AudioClip _customSpawnSFX;
+
+        public AudioClip CustomSpawnSFX
+        {
+            get => _customSpawnSFX;
+            set => _customSpawnSFX = value;
+        }
+
         private WorldSpeedManager _speedManager;
         private readonly List<Transform> _wheelTransforms = new List<Transform>();
         private float _baseY;
@@ -161,9 +171,11 @@ namespace StreamRushLive.Features.Spawning
             _baseY = transform.position.y;
             _rumbleSeed = Random.Range(0f, 100f);
 
-            // Find all wheel transform hierarchies
-            foreach (Transform child in transform)
+            // Find all wheel transform hierarchies (supporting nested structures like trains)
+            Transform[] allChildren = GetComponentsInChildren<Transform>(true);
+            foreach (Transform child in allChildren)
             {
+                if (child == transform) continue;
                 string lowerName = child.name.ToLowerInvariant();
                 bool isWheel = (lowerName.Contains("wheel") || 
                                 lowerName.Contains("_fl") || lowerName.Contains("_fr") || 
@@ -186,19 +198,26 @@ namespace StreamRushLive.Features.Spawning
                 _speedManager = WorldSpeedManager.Instance ?? FindFirstObjectByType<WorldSpeedManager>();
             }
 
-            // Phat coi xe canh bao tuong ung voi tung loai xe
-            switch (_vehicleTier)
+            // Play custom spawn SFX or default vehicle horn
+            if (_customSpawnSFX != null)
             {
-                case VehicleTier.HeavyTruck:
-                    AudioManager.Instance?.PlaySFX(SFXType.HeavyTruckHorn, 1.0f);
-                    break;
-                case VehicleTier.PickupTruck:
-                    AudioManager.Instance?.PlaySFX(SFXType.PickupHorn, 0.85f);
-                    break;
-                case VehicleTier.SedanCar:
-                default:
-                    AudioManager.Instance?.PlaySFX(SFXType.CarHorn, 0.8f);
-                    break;
+                AudioManager.Instance?.PlaySFX(_customSpawnSFX, 1.0f);
+            }
+            else
+            {
+                switch (_vehicleTier)
+                {
+                    case VehicleTier.HeavyTruck:
+                        AudioManager.Instance?.PlaySFX(SFXType.HeavyTruckHorn, 1.0f);
+                        break;
+                    case VehicleTier.PickupTruck:
+                        AudioManager.Instance?.PlaySFX(SFXType.PickupHorn, 0.85f);
+                        break;
+                    case VehicleTier.SedanCar:
+                    default:
+                        AudioManager.Instance?.PlaySFX(SFXType.CarHorn, 0.8f);
+                        break;
+                }
             }
         }
 
