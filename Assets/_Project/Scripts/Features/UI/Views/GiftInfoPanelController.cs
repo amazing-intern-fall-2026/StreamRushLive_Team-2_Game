@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using SteamRush.Core;
 using SteamRush.Features.StreamIntegration;
 
 namespace SteamRush.Features.UI.Views
@@ -43,11 +44,13 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private TikTokLiveClient _liveClient;
 
         [Header("Layout & Sort")]
+
+
         [Tooltip("Number of rows to display gift cards (Default: 2 rows for balanced layout).")]
         [Range(1, 4)]
         [SerializeField] private int _rowCount = 2;
 
-        [Tooltip("Auto-sort mode for gift cards on UI (Mặc định: hiển thị theo đúng thứ tự từng Element từ trái qua phải, từ trên xuống dưới).")]
+        [Tooltip("Auto-sort mode for gift cards on UI (default: displays strictly in element order).")]
         [SerializeField] private GiftSortOption _sortOption = GiftSortOption.ByElementOrder;
 
         [Tooltip("Auto-arrange and re-align gift cards when modified in Inspector or Runtime.")]
@@ -55,12 +58,23 @@ namespace SteamRush.Features.UI.Views
 
         [Header("Card Configuration")]
         [SerializeField] private float _cardSpacing = 8f;
-        [SerializeField] private Color _cardBgColor = new Color(0.10f, 0.12f, 0.18f, 0.85f);
+        [Tooltip("Show or hide gift icons on cards")]
+        [SerializeField] private bool _showGiftIcons = true;
 
-        [Header("Team Colors")]
-        [SerializeField] private Color _blueTeamColor = new Color(0.0f, 0.90f, 1.0f, 1f);   // Neon Cyan Blue
-        [SerializeField] private Color _redTeamColor = new Color(1.0f, 0.22f, 0.28f, 1f);   // Neon Crimson Red
-        [SerializeField] private Color _specialColor = new Color(1.0f, 0.85f, 0.15f, 1f);   // Neon Gold Yellow
+        public bool ShowGiftIcons
+        {
+            get => _showGiftIcons;
+            set
+            {
+                if (_showGiftIcons != value)
+                {
+                    _showGiftIcons = value;
+                    BuildGiftDisplay();
+                }
+            }
+        }
+        // Card background/border sprites and text colors across the 4 categories (Blue/Red/Special/Like)
+        // are retrieved dynamically from shared HudTheme.Current.
 
         [Header("UI References")]
         [SerializeField] private RectTransform _contentContainer;
@@ -163,19 +177,19 @@ namespace SteamRush.Features.UI.Views
                 placeholder.gameObject.SetActive(false);
             }
 
-            // 1. TỰ ĐỘNG SẮP XẾP THỨ TỰ (SORT ORDER)
+            // 1. Sort order
             List<TikTokGiftMapping> sortedMappings = GetSortedMappings(rawMappings);
             int count = sortedMappings.Count;
 
-            // 2. CẤU HÌNH KHUNG NỀN NGUYÊN BẢN (KHÔNG CHỨA BẤT KỲ MẢNG TRẮNG NÀO)
+            // 2. Setup container
             SetupOriginalContainer(count);
 
             if (_contentContainer == null) return;
 
-            // 3. XÓA SẠCH CÁC THẺ CŨ
+            // 3. Clear existing cards
             ClearAllCards();
 
-            // 4. TÍNH TOÁN KÍCH THƯỚC ĐỂ VỪA KHÍT 100% KHUNG THEO SỐ HÀNG
+            // 4. Calculate card dimensions to fit grid rows/columns
             int rows = Mathf.Max(1, _rowCount);
             int cols = Mathf.Max(1, Mathf.CeilToInt(count / (float)rows));
 
@@ -194,7 +208,7 @@ namespace SteamRush.Features.UI.Views
             GridLayoutGroup glg = _contentContainer.GetComponent<GridLayoutGroup>();
             if (glg != null)
             {
-                // Đảm bảo hiển thị chuẩn từ trái qua phải, từ trên xuống dưới
+                // Display from left to right, top to bottom
                 glg.startCorner = GridLayoutGroup.Corner.UpperLeft;
                 glg.startAxis = GridLayoutGroup.Axis.Horizontal;
                 glg.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
@@ -205,7 +219,7 @@ namespace SteamRush.Features.UI.Views
                 glg.padding = new RectOffset((int)padX, (int)padX, (int)padY, (int)padY);
             }
 
-            // 5. SINH TỪNG THẺ QUÀ
+            // 5. Instantiate gift cards
             foreach (var item in sortedMappings)
             {
                 CreateOriginalCard(item, cardW, cardH);
@@ -244,7 +258,7 @@ namespace SteamRush.Features.UI.Views
             {
                 case GiftSortOption.ByElementOrder:
                 case GiftSortOption.None:
-                    // Giữ nguyên 100% thứ tự từng Element như khai báo trong Gift Mappings (trái qua phải, trên xuống dưới)
+                    // Preserve 100% element order as declared in Gift Mappings (left to right, top to bottom)
                     break;
 
                 case GiftSortOption.ByTeam_BlueRedSpecial:
@@ -304,6 +318,7 @@ namespace SteamRush.Features.UI.Views
 
                 GiftActionType.Special_GiftDance => specialBase + 1,
                 GiftActionType.Special_RainHazard => specialBase + 2,
+                GiftActionType.Follow_Runner => specialBase + 3,
                 GiftActionType.Special_VIPRelayTicket => specialBase + 3,
                 GiftActionType.Like_Energy => specialBase + 4,
 
@@ -345,39 +360,24 @@ namespace SteamRush.Features.UI.Views
             return 240f;
         }
 
+
         /// <summary>
         /// Configures the panel, viewport, and grid container.
         /// </summary>
         private void SetupOriginalContainer(int itemCount)
         {
-            RectTransform panelRt = GetComponent<RectTransform>();
-            if (panelRt != null)
-            {
-                if (_rowCount >= 2)
-                {
-                    // Multi-row: expanded height positioned comfortably above the debug bar
-                    panelRt.anchorMin = new Vector2(0f, 0.102f);
-                    panelRt.anchorMax = new Vector2(1f, 0.238f);
-                    panelRt.offsetMin = new Vector2(20f, 4f);
-                    panelRt.offsetMax = new Vector2(-20f, -4f);
-                }
-                else
-                {
-                    panelRt.anchorMin = new Vector2(0f, 0.10f);
-                    panelRt.anchorMax = new Vector2(1f, 0.20f);
-                    panelRt.offsetMin = new Vector2(20f, 8f);
-                    panelRt.offsetMax = new Vector2(-20f, -8f);
-                }
-                panelRt.pivot = new Vector2(0.5f, 0.5f);
-            }
 
             Image panelImg = GetComponent<Image>();
             if (panelImg != null)
             {
-                Sprite pill = FindSpriteInAssets("UI_BannerPill");
-                if (pill != null) panelImg.sprite = pill;
-                panelImg.type = Image.Type.Sliced;
-                panelImg.color = new Color(0.07f, 0.07f, 0.10f, 0.55f);
+                // Only assign default frame sprite if none is assigned in the Scene/Inspector
+                if (panelImg.sprite == null)
+                {
+                    Sprite frame = HudTheme.Current.panelFrame;
+                    if (frame != null) panelImg.sprite = frame;
+                    panelImg.type = Image.Type.Sliced;
+                    panelImg.pixelsPerUnitMultiplier = 0.6f;
+                }
             }
 
             if (_scrollRect == null)
@@ -395,8 +395,9 @@ namespace SteamRush.Features.UI.Views
             RectTransform scrollRt = _scrollRect.GetComponent<RectTransform>();
             scrollRt.anchorMin = Vector2.zero;
             scrollRt.anchorMax = Vector2.one;
-            scrollRt.offsetMin = new Vector2(8f, 6f);
-            scrollRt.offsetMax = new Vector2(-8f, -6f);
+            // Inset scroll rect to leave room for outer frame border
+            scrollRt.offsetMin = new Vector2(20f, 18f);
+            scrollRt.offsetMax = new Vector2(-20f, -18f);
 
             _scrollRect.horizontal = false;
             _scrollRect.vertical = false;
@@ -484,52 +485,85 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Creates an individual gift card item.
+        /// Creates an individual gift card item with interactive Button support.
         /// </summary>
         private void CreateOriginalCard(TikTokGiftMapping mapping, float cardWidth, float cardHeight)
         {
-            GameObject cardObj = new GameObject($"Card_{mapping.giftName}", typeof(RectTransform), typeof(Image));
+            GameObject cardObj = new GameObject($"Card_{mapping.giftName}", typeof(RectTransform), typeof(Image), typeof(Button));
             cardObj.transform.SetParent(_contentContainer, false);
             RectTransform cardRt = cardObj.GetComponent<RectTransform>();
 
             Image bg = cardObj.GetComponent<Image>();
-            bg.color = _cardBgColor;
-
-            Sprite pillSprite = FindSpriteInAssets("UI_BannerPill") ?? FindSpriteInAssets("UI_Pill");
-            if (pillSprite != null)
+            // Card cell styled with dark panel from HudTheme tinted by gift category (Blue/Red/Special/Like).
+            HudTheme theme = HudTheme.Current;
+            HudCategory category = GetCategory(mapping.action);
+            Sprite flat = theme.panelFlat != null ? theme.panelFlat : theme.panelDark;
+            if (flat != null)
             {
-                bg.sprite = pillSprite;
+                bg.sprite = flat;
                 bg.type = Image.Type.Sliced;
             }
+            // Outline border attached to the Body layer; base card Image kept clear for raycasts.
+            bg.color = Color.clear;
 
-            var outline = cardObj.GetComponent<Outline>();
-            if (outline == null) outline = cardObj.AddComponent<Outline>();
-            outline.effectColor = new Color(1f, 1f, 1f, 0.08f);
-            outline.effectDistance = new Vector2(1f, -1f);
+            GameObject bodyObj = new GameObject("Body", typeof(RectTransform), typeof(Image));
+            bodyObj.transform.SetParent(cardObj.transform, false);
+            RectTransform bodyRt = bodyObj.GetComponent<RectTransform>();
+            bodyRt.anchorMin = Vector2.zero;
+            bodyRt.anchorMax = Vector2.one;
+            bodyRt.offsetMin = new Vector2(4f, 4f);
+            bodyRt.offsetMax = new Vector2(-4f, -4f);
+            Image bodyImg = bodyObj.GetComponent<Image>();
+            if (flat != null)
+            {
+                bodyImg.sprite = flat;
+                bodyImg.type = Image.Type.Sliced;
+            }
+            Color fill = theme.CategoryFill(category);
+            fill.a = 1f; // Fully opaque so rear outline color does not bleed through
+            bodyImg.color = fill;
+            bodyImg.raycastTarget = false;
+            Outline border = bodyObj.AddComponent<Outline>();
+            border.effectColor = theme.CategoryBorder(category);
+            border.effectDistance = new Vector2(4f, -4f);
+            border.useGraphicAlpha = false;
+            bodyObj.transform.SetAsFirstSibling();
 
-            // 1. Ảnh Gift Chính Thức Của TikTok (Nằm nửa trên thẻ)
-            GameObject iconObj = new GameObject("Icon", typeof(RectTransform), typeof(Image));
-            iconObj.transform.SetParent(cardObj.transform, false);
-            RectTransform iconRt = iconObj.GetComponent<RectTransform>();
-            iconRt.anchorMin = new Vector2(0.5f, 0.65f);
-            iconRt.anchorMax = new Vector2(0.5f, 0.65f);
-            iconRt.pivot = new Vector2(0.5f, 0.5f);
-            iconRt.anchoredPosition = Vector2.zero;
+            // 1. TikTok Gift Icon (top half of card if enabled)
+            if (_showGiftIcons)
+            {
+                GameObject iconObj = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+                iconObj.transform.SetParent(cardObj.transform, false);
+                RectTransform iconRt = iconObj.GetComponent<RectTransform>();
+                iconRt.anchorMin = new Vector2(0.5f, 0.65f);
+                iconRt.anchorMax = new Vector2(0.5f, 0.65f);
+                iconRt.pivot = new Vector2(0.5f, 0.5f);
+                iconRt.anchoredPosition = Vector2.zero;
 
-            float iconSize = Mathf.Clamp(cardHeight * 0.46f, 38f, 52f);
-            iconRt.sizeDelta = new Vector2(iconSize, iconSize);
+                float iconSize = Mathf.Clamp(cardHeight * 0.46f, 38f, 52f);
+                iconRt.sizeDelta = new Vector2(iconSize, iconSize);
 
-            Image iconImg = iconObj.GetComponent<Image>();
-            iconImg.preserveAspect = true;
-            Sprite resolvedIcon = mapping.giftIcon != null ? mapping.giftIcon : GetOfficialTikTokGiftIcon(mapping.giftId, mapping.giftName);
-            iconImg.sprite = resolvedIcon != null ? resolvedIcon : _fallbackIcon;
+                Image iconImg = iconObj.GetComponent<Image>();
+                iconImg.preserveAspect = true;
+                iconImg.raycastTarget = false; // Do not block button click events
+                Sprite resolvedIcon = mapping.giftIcon != null ? mapping.giftIcon : GetOfficialTikTokGiftIcon(mapping.giftId, mapping.giftName);
+                iconImg.sprite = resolvedIcon != null ? resolvedIcon : _fallbackIcon;
+            }
 
-            // 2. Dòng Mô Tả Ngắn Gọn Dễ Hiểu (Nằm nửa dưới thẻ, Chữ To, Đậm, Đúng Màu Phe)
+            // 2. Description Label (fills entire card if icons hidden, or bottom half if icons shown)
             GameObject descObj = new GameObject("DescLabel", typeof(RectTransform), typeof(TextMeshProUGUI));
             descObj.transform.SetParent(cardObj.transform, false);
             RectTransform descRt = descObj.GetComponent<RectTransform>();
-            descRt.anchorMin = new Vector2(0.04f, 0.05f);
-            descRt.anchorMax = new Vector2(0.96f, 0.38f);
+            if (_showGiftIcons)
+            {
+                descRt.anchorMin = new Vector2(0.04f, 0.05f);
+                descRt.anchorMax = new Vector2(0.96f, 0.38f);
+            }
+            else
+            {
+                descRt.anchorMin = new Vector2(0.06f, 0.06f);
+                descRt.anchorMax = new Vector2(0.94f, 0.94f);
+            }
             descRt.offsetMin = Vector2.zero;
             descRt.offsetMax = Vector2.zero;
             descRt.anchoredPosition = Vector2.zero;
@@ -543,8 +577,60 @@ namespace SteamRush.Features.UI.Views
             descTxt.lineSpacing = -8f;
             descTxt.enableAutoSizing = true;
             descTxt.fontSizeMin = 8.5f;
-            descTxt.fontSizeMax = 13.5f;
+            descTxt.fontSizeMax = _showGiftIcons ? 13.5f : 16f;
+            descTxt.raycastTarget = false; // Do not block button click events
 
+            // 3. Configure interactive Button for gift card
+            Button cardBtn = cardObj.GetComponent<Button>();
+            cardBtn.targetGraphic = bg;
+            ColorBlock colors = cardBtn.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1.35f, 1.35f, 1.35f, 1f);
+            colors.pressedColor = new Color(0.7f, 0.7f, 0.7f, 1f);
+            colors.selectedColor = Color.white;
+            colors.fadeDuration = 0.08f;
+            cardBtn.colors = colors;
+
+            TikTokGiftMapping capturedMapping = mapping;
+            cardBtn.onClick.RemoveAllListeners();
+            cardBtn.onClick.AddListener(() =>
+            {
+                TriggerGiftEvent(capturedMapping);
+            });
+
+            RegisterCardMaps(mapping, cardRt);
+        }
+
+        /// <summary>
+        /// Directly executes gift action when user clicks the gift card button on UI.
+        /// </summary>
+        public void TriggerGiftEvent(TikTokGiftMapping mapping)
+        {
+            if (mapping == null) return;
+
+            // 1. Gift card bounce animation
+            HighlightGift(mapping.giftId, mapping.giftName);
+
+            // 2. Directly trigger gift action via TikTokGiftRouter
+            var router = FindFirstObjectByType<TikTokGiftRouter>();
+            if (router != null)
+            {
+                router.TriggerGiftMappingDirect(mapping, "Streamer");
+            }
+            else
+            {
+                // Fallback to EventBus if router is unassigned
+                EventBus.Publish(new TikTokGiftEvent(
+                    userId: "streamer_tester",
+                    displayName: "Streamer",
+                    giftId: mapping.giftId,
+                    giftName: mapping.giftName,
+                    giftIconUrl: null,
+                    coins: 10,
+                    repeatCount: 1,
+                    totalCoins: 10
+                ));
+            }
         }
 
         private void RegisterCardMaps(TikTokGiftMapping mapping, RectTransform cardRt)
@@ -560,7 +646,7 @@ namespace SteamRush.Features.UI.Views
             }
         }
 
-        [ContextMenu("Hiển Thị Theo Thứ Tự Element (Trái -> Phải, Trên -> Dưới)")]
+        [ContextMenu("Display in Element Order (Left -> Right, Top -> Bottom)")]
         public void SetToElementOrder()
         {
             _sortOption = GiftSortOption.ByElementOrder;
@@ -568,10 +654,10 @@ namespace SteamRush.Features.UI.Views
             UnityEditor.EditorUtility.SetDirty(this);
 #endif
             BuildGiftDisplay();
-            Debug.Log("<color=#00FF88>[GiftInfoPanel] Đã chuyển sang hiển thị theo đúng thứ tự Element (trái qua phải, trên xuống dưới).</color>");
+            Debug.Log("<color=#00FF88>[GiftInfoPanel] Switched to element order display (left to right, top to bottom).</color>");
         }
 
-        [ContextMenu("Đồng Bộ Thứ Tự Quà Vào TikTokLiveClient")]
+        [ContextMenu("Sync Gift Order to TikTokLiveClient")]
         public void SyncSortedOrderToClient()
         {
             if (_liveClient == null || _liveClient.GiftMappings == null) return;
@@ -582,10 +668,16 @@ namespace SteamRush.Features.UI.Views
             UnityEditor.EditorUtility.SetDirty(_liveClient);
 #endif
             BuildGiftDisplay();
-            Debug.Log("<color=#00FF88>[GiftInfoPanel] Đã đồng bộ thứ tự quà tặng theo phe vào TikTokLiveClient.</color>");
+            Debug.Log("<color=#00FF88>[GiftInfoPanel] Synchronized faction gift order to TikTokLiveClient.</color>");
         }
 
         public Color GetTeamColor(GiftActionType action)
+        {
+            return HudTheme.Current.CategoryText(GetCategory(action));
+        }
+
+        // Categorize gift to determine background/border/text colors: Blue / Red / Like (neutral) / Special (gold).
+        private static HudCategory GetCategory(GiftActionType action)
         {
             switch (action)
             {
@@ -593,19 +685,19 @@ namespace SteamRush.Features.UI.Views
                 case GiftActionType.Blue_SpeedBoost:
                 case GiftActionType.Blue_FreeControl:
                 case GiftActionType.Blue_EnergyBottle:
-                    return _blueTeamColor;
+                    return HudCategory.Blue;
 
                 case GiftActionType.Red_SpawnPickup:
                 case GiftActionType.Red_SpawnHeavyTruck:
                 case GiftActionType.Red_UnlimitedCars:
                 case GiftActionType.Red_EnergyBottle:
-                    return _redTeamColor;
+                    return HudCategory.Red;
 
                 case GiftActionType.Like_Energy:
-                    return Color.white;
+                    return HudCategory.Neutral;
 
                 default:
-                    return _specialColor;
+                    return HudCategory.Special;
             }
         }
 
@@ -624,13 +716,14 @@ namespace SteamRush.Features.UI.Views
                 GiftActionType.Blue_SpeedBoost => "Turbo Speed",
                 GiftActionType.Blue_FreeControl => "Free Controls",
                 GiftActionType.Blue_EnergyBottle => "+300 Energy",
-                GiftActionType.Red_SpawnPickup => "Pickup Truck",
-                GiftActionType.Red_SpawnHeavyTruck => "Heavy Truck",
+                GiftActionType.Red_SpawnPickup => "Animals",
+                GiftActionType.Red_SpawnHeavyTruck => "Train",
                 GiftActionType.Red_UnlimitedCars => "Unlimited Cars",
                 GiftActionType.Red_EnergyBottle => "+500 Energy",
                 GiftActionType.Special_GiftDance => "Meme Dance",
                 GiftActionType.Special_RainHazard => "Rain Hazard",
-                GiftActionType.Special_VIPRelayTicket => "VIP Runner",
+                GiftActionType.Follow_Runner => "Runner",
+                GiftActionType.Special_VIPRelayTicket => "Runner",
                 GiftActionType.Like_Energy => "Like: +Energy",
                 _ => "Support"
             };
@@ -649,23 +742,30 @@ namespace SteamRush.Features.UI.Views
             }
 
             string lower = (giftName ?? "").ToLowerInvariant();
-            if (lower.Contains("like") || lower.Contains("tap") || lower.Contains("heart") || lower.Contains("tim")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/heart.png");
-            if (lower.Contains("rose") || lower.Contains("hoa")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/rose.png");
+            if (lower.Contains("follow") || lower.Contains("runner") || lower.Contains("friend"))
+            {
+                Sprite addFriend = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Violet Theme Ui/White Icons/White AddFriend.png");
+                if (addFriend != null) return addFriend;
+                if (HudTheme.Current != null && HudTheme.Current.iconUser != null) return HudTheme.Current.iconUser;
+                return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/vip.png");
+            }
+            if (lower.Contains("like") || lower.Contains("tap") || lower.Contains("heart")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/heart.png");
+            if (lower.Contains("rose")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/rose.png");
             if (lower.Contains("tiktok")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/tiktok.png");
-            if (lower.Contains("heart") || lower.Contains("tim")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/heart.png");
-            if (lower.Contains("dumbbell") || lower.Contains("tạ") || lower.Contains("weight")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/dumbbell.png");
-            if (lower.Contains("donut") || lower.Contains("bánh")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/donut.png");
-            if (lower.Contains("cap") || lower.Contains("mũ")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/cap.png");
-            if (lower.Contains("lion") || lower.Contains("sư tử")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/lion.png");
-            if (lower.Contains("dance") || lower.Contains("nhảy")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/dance.png");
-            if (lower.Contains("vip") || lower.Contains("vé") || lower.Contains("star")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/vip.png");
-            if (lower.Contains("rain") || lower.Contains("mưa")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/rain.png");
+            if (lower.Contains("heart")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/heart.png");
+            if (lower.Contains("dumbbell") || lower.Contains("weight")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/dumbbell.png");
+            if (lower.Contains("donut")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/donut.png");
+            if (lower.Contains("cap") || lower.Contains("hat")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/cap.png");
+            if (lower.Contains("lion")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/lion.png");
+            if (lower.Contains("dance")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/dance.png");
+            if (lower.Contains("vip") || lower.Contains("ticket") || lower.Contains("star")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/vip.png");
+            if (lower.Contains("rain") || lower.Contains("umbrella")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/rain.png");
 #endif
             return _fallbackIcon;
         }
 
         /// <summary>
-        /// Tự động cập nhật ảnh món quà trực tiếp từ phòng Live theo Gift ID và iconUrl
+        /// Automatically downloads and updates live stream gift icon by Gift ID and iconUrl.
         /// </summary>
         public void UpdateGiftIconFromLive(int giftId, string giftName, string iconUrl)
         {
@@ -713,12 +813,12 @@ namespace SteamRush.Features.UI.Views
                                     importer.alphaIsTransparency = true;
                                     importer.SaveAndReimport();
                                 }
-                                Debug.Log($"<color=#00FF88>[GiftInfoPanel] Đã tự động lưu ảnh món quà mới theo Gift ID {giftId} -> {savePath}</color>");
+                                Debug.Log($"<color=#00FF88>[GiftInfoPanel] Cached live stream gift icon for ID {giftId} -> {savePath}</color>");
                             }
                         }
                         catch (System.Exception ex)
                         {
-                            Debug.LogWarning($"[GiftInfoPanel] Lỗi lưu cache icon quà {giftId}: {ex.Message}");
+                            Debug.LogWarning($"[GiftInfoPanel] Error caching gift icon {giftId}: {ex.Message}");
                         }
 #endif
                     }
@@ -764,22 +864,6 @@ namespace SteamRush.Features.UI.Views
             }
 
             card.localScale = origScale;
-        }
-
-        private Sprite FindSpriteInAssets(string spriteName)
-        {
-#if UNITY_EDITOR
-            string[] guids = UnityEditor.AssetDatabase.FindAssets($"{spriteName} t:Sprite");
-            foreach (var g in guids)
-            {
-                string p = UnityEditor.AssetDatabase.GUIDToAssetPath(g);
-                if (p.EndsWith($"{spriteName}.png") || p.Contains($"/{spriteName}.png"))
-                {
-                    return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(p);
-                }
-            }
-#endif
-            return null;
         }
     }
 }

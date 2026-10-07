@@ -36,7 +36,7 @@ namespace SteamRush.Features.Runner
         [SerializeField] private GameObject debugPanelContainer;
         [SerializeField] private Button toggleDebugButton;
         [SerializeField] private TMP_Text toggleButtonText;
-        [SerializeField] private bool isDebugUIVisible = true;
+        [SerializeField] private bool isDebugUIVisible = false;
 
         public static MockChatConsole Instance { get; private set; }
 
@@ -95,7 +95,7 @@ namespace SteamRush.Features.Runner
             }
             else
             {
-                Debug.LogWarning("[MockChatConsole] Chưa gán Chat Input Field!");
+                Debug.LogWarning("[MockChatConsole] Chat Input Field not assigned!");
             }
 
             SetupVerticalDebugUI();
@@ -176,6 +176,12 @@ namespace SteamRush.Features.Runner
                 toggleDebugButton.onClick.AddListener(ToggleDebugUI);
             }
 
+            if (SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance != null &&
+                SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance.CurrentConfig != null)
+            {
+                isDebugUIVisible = SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance.CurrentConfig.enableDebugUI;
+            }
+
             UpdateDebugUIVisibility();
         }
 
@@ -202,8 +208,9 @@ namespace SteamRush.Features.Runner
             CreateDebugButton(_energyDebugPanelObj.transform, "Btn_FanMinus", "Blue -1% [Shift+F6]", new Color(0.08f, 0.25f, 0.55f, 0.95f), () => DebugDecreaseFanEnergy(10));
             CreateDebugButton(_energyDebugPanelObj.transform, "Btn_AntiPlus", "Red +1% [F11]", new Color(0.85f, 0.28f, 0.15f, 0.95f), () => DebugIncreaseAntiEnergy(10));
             CreateDebugButton(_energyDebugPanelObj.transform, "Btn_AntiMinus", "Red -1% [Shift+F11]", new Color(0.55f, 0.15f, 0.08f, 0.95f), () => DebugDecreaseAntiEnergy(10));
-            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_FreeControl", "⚡ Free 30s [Shift+F1]", new Color(0.08f, 0.65f, 0.72f, 0.95f), () => MockActivateFreeControl());
-            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_Finish", "🏁 Finish [F12]", new Color(0.92f, 0.65f, 0.1f, 0.95f), () => MockTriggerFinishLineApproach(50f));
+            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_FreeControl", "Free 30s [Shift+F1]", new Color(0.08f, 0.65f, 0.72f, 0.95f), () => MockActivateFreeControl());
+            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_LiveDemo", "Bot Demo [L]", new Color(0.15f, 0.55f, 0.6f, 0.95f), () => ToggleLiveDemoSimulation());
+            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_Finish", "Finish [F12]", new Color(0.92f, 0.65f, 0.1f, 0.95f), () => MockTriggerFinishLineApproach(50f));
         }
 
         private void CreateDebugButton(Transform parent, string name, string label, Color bgColor, UnityEngine.Events.UnityAction action)
@@ -267,7 +274,7 @@ namespace SteamRush.Features.Runner
             textRect.sizeDelta = Vector2.zero;
 
             toggleButtonText = textObj.GetComponent<TextMeshProUGUI>();
-            toggleButtonText.text = "💬 Debug [F12]";
+            toggleButtonText.text = "Debug [F12]";
             toggleButtonText.fontSize = 14;
             toggleButtonText.alignment = TextAlignmentOptions.Center;
             toggleButtonText.color = new Color(0.5f, 0.85f, 1f, 1f);
@@ -276,6 +283,12 @@ namespace SteamRush.Features.Runner
         public void ToggleDebugUI()
         {
             isDebugUIVisible = !isDebugUIVisible;
+            UpdateDebugUIVisibility();
+        }
+
+        public void SetDebugUIVisible(bool visible)
+        {
+            isDebugUIVisible = visible;
             UpdateDebugUIVisibility();
         }
 
@@ -303,6 +316,14 @@ namespace SteamRush.Features.Runner
 
             if (toggleDebugButton != null)
             {
+                bool allowDebug = isDebugUIVisible;
+                if (!isDebugUIVisible && SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance != null &&
+                    SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance.CurrentConfig != null)
+                {
+                    allowDebug = SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance.CurrentConfig.enableDebugUI;
+                }
+
+                toggleDebugButton.gameObject.SetActive(allowDebug);
                 RectTransform btnRect = toggleDebugButton.GetComponent<RectTransform>();
                 if (btnRect != null)
                 {
@@ -312,7 +333,7 @@ namespace SteamRush.Features.Runner
 
             if (toggleButtonText != null)
             {
-                toggleButtonText.text = isDebugUIVisible ? "❌ Hide Debug" : "💬 Debug [~]";
+                toggleButtonText.text = isDebugUIVisible ? "Hide Debug" : "Debug [~]";
             }
         }
 
@@ -334,6 +355,22 @@ namespace SteamRush.Features.Runner
             if (Keyboard.current == null)
                 return;
 
+            // When user is typing inside any InputField, ignore all debug hotkeys
+            if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null)
+            {
+                var selected = UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject;
+                if (selected.GetComponent<TMP_InputField>() != null || selected.GetComponent<UnityEngine.UI.InputField>() != null)
+                {
+                    return;
+                }
+            }
+
+            // Also ignore all debug hotkeys when PreGameConfig setup modal is open
+            if (SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance != null && SteamRush.Features.UI.PreGameConfig.PreGameConfigManager.Instance.IsOpen)
+            {
+                return;
+            }
+
             bool isShift = Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed;
 
             if (Keyboard.current.backquoteKey.wasPressedThisFrame)
@@ -346,7 +383,7 @@ namespace SteamRush.Features.Runner
                 MockTriggerFinishLineApproach(50f);
             }
 
-            // F1: Spawn Khiên Bảo Vệ. Shift+F1: Bình Thao Tác Tự Do (Free-Control Buff 30s, GDD v1.4.1 mục 3).
+            // F1: Shield buff. Shift+F1: Free-Control Buff (30s).
             if (Keyboard.current.f1Key.wasPressedThisFrame)
             {
                 if (isShift) MockActivateFreeControl();
@@ -662,14 +699,14 @@ namespace SteamRush.Features.Runner
                 }
                 else
                 {
-                    Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatLaneRunnerController để thực thi lệnh!");
+                    Debug.LogWarning("[MockChatConsole] ChatLaneRunnerController not found to execute command!");
                 }
             }
 
             ClearInputField();
         }
 
-        public void MockDonateShield(string sender = "Khán Giả")
+        public void MockDonateShield(string sender = "Viewer")
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
             {
@@ -702,15 +739,15 @@ namespace SteamRush.Features.Runner
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
                 hudManager?.ShowFanAction(sender, $"Shield ({duration:F0}s)");
                 hudManager?.ShowStatusPopup($"Shield Activated ({duration:F0}s)!", true);
-                Debug.Log($"[MockChatConsole] F1 -> {sender} tặng Khiên: Kích hoạt trực tiếp Khiên bảo vệ {duration:F0}s cho Runner.");
+                Debug.Log($"[MockChatConsole] F1 -> {sender} gifted Shield ({duration:F0}s).");
             }
             else
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy RunnerItemEffects để kích hoạt Khiên!");
+                Debug.LogWarning("[MockChatConsole] RunnerItemEffects not found to activate Shield!");
             }
         }
 
-        // Quà Bình Tăng Tốc (Sprint Buff - Blue Team, F2): Chạy nhanh 30s không tốn năng lượng
+        // Sprint Buff (Blue Team, F2): 30s sprint without energy drain
         public void MockActivateFanSprintBuff(string sender = "Blue Team")
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
@@ -726,7 +763,7 @@ namespace SteamRush.Features.Runner
 
             if (chatLaneRunner == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatLaneRunnerController.");
+                Debug.LogWarning("[MockChatConsole] ChatLaneRunnerController not found.");
                 return;
             }
 
@@ -738,8 +775,8 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        // Quà Bình Thao Tác Tự Do (Free-Control Buff - Blue Team, Shift+F1, GDD v1.4.1 mục 3):
-        // Đổi Làn và Nhảy tiêu tốn 0% năng lượng trong 30s, kể cả khi Blue Team đang ở mức 0%.
+        // Free-Control Buff (Blue Team, Shift+F1, GDD v1.4.1 Section 3):
+        // Lane switches and jumps cost 0% energy for 30s even if Blue Team energy is 0%.
         public void MockActivateFreeControl(string sender = "Blue Team")
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
@@ -755,7 +792,7 @@ namespace SteamRush.Features.Runner
 
             if (chatLaneRunner == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatLaneRunnerController.");
+                Debug.LogWarning("[MockChatConsole] ChatLaneRunnerController not found.");
                 return;
             }
 
@@ -763,10 +800,22 @@ namespace SteamRush.Features.Runner
             if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
             hudManager?.ShowFanAction(sender, "Free Control (30s)");
             hudManager?.ShowStatusPopup("Free Control Active (30s)!", true);
-            Debug.Log($"[MockChatConsole] {sender} kích hoạt Bình Thao Tác Tự Do (Free-Control Buff) 30s.");
+            Debug.Log($"[MockChatConsole] {sender} activated Free-Control Buff (30s).");
         }
 
-        // Phím 9 hoặc Shift+F2: Toggle Sprint Buff tự do để QA test
+        public void ToggleLiveDemoSimulation()
+        {
+            var demo = LiveSessionDemoRunner.Instance ?? FindFirstObjectByType<LiveSessionDemoRunner>();
+            if (demo != null)
+            {
+                demo.ToggleLiveDemo();
+                if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
+                string stateText = demo.IsRunning ? "ON" : "OFF";
+                hudManager?.ShowStatusPopup($"[Live Demo] Bot Simulation: {stateText}", demo.IsRunning);
+            }
+        }
+
+        // Key 9 or Shift+F2: Toggle sprint buff for testing
         private void MockToggleSprintBuffDebug()
         {
             if (chatLaneRunner == null)
@@ -776,7 +825,7 @@ namespace SteamRush.Features.Runner
 
             if (chatLaneRunner == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatLaneRunnerController.");
+                Debug.LogWarning("[MockChatConsole] ChatLaneRunnerController not found.");
                 return;
             }
 
@@ -822,7 +871,7 @@ namespace SteamRush.Features.Runner
                 }
                 else if (!isUnlimited && factionManager != null)
                 {
-                    // Hoàn lại năng lượng nếu không spawn được (kẹt làn hoặc max 2 xe)
+                    // Refund energy if spawn failed (lane blocked or max cars)
                     factionManager.AddAntiEnergy(cost);
                 }
             }
@@ -883,7 +932,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             if (obstacleSpawner == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy SingleObstacleSpawner.");
+                Debug.LogWarning("[MockChatConsole] SingleObstacleSpawner not found.");
                 return;
             }
 
@@ -896,10 +945,10 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             hudManager?.ShowAntiAction(
                 sender,
-                $"Pickup Truck Phase ({obstacleSpawner.VehiclePhaseDuration:F0}s)");
+                $"Animals Phase ({obstacleSpawner.VehiclePhaseDuration:F0}s)");
 
             hudManager?.ShowStatusPopup(
-                $"Pickup Truck Phase Started ({obstacleSpawner.VehiclePhaseDuration:F0}s)",
+                $"Animals Phase Started ({obstacleSpawner.VehiclePhaseDuration:F0}s)",
                 false);
         }
 
@@ -934,7 +983,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
                 bool success = obstacleSpawner.TriggerSpawnCarTier(StreamRushLive.Features.Spawning.VehicleTier.HeavyTruck);
                 if (success)
                 {
-                    hudManager?.ShowAntiAction(sender, "Spawned Heavy Truck");
+                    hudManager?.ShowAntiAction(sender, "Spawned Train");
                 }
                 else if (!isUnlimited && factionManager != null)
                 {
@@ -958,7 +1007,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             if (obstacleSpawner == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy SingleObstacleSpawner.");
+                Debug.LogWarning("[MockChatConsole] SingleObstacleSpawner not found.");
                 return;
             }
 
@@ -971,10 +1020,10 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             hudManager?.ShowAntiAction(
                 sender,
-                $"Heavy Truck Phase ({obstacleSpawner.VehiclePhaseDuration:F0}s)");
+                $"Train Phase ({obstacleSpawner.VehiclePhaseDuration:F0}s)");
 
             hudManager?.ShowStatusPopup(
-                $"Heavy Truck Phase Started ({obstacleSpawner.VehiclePhaseDuration:F0}s)",
+                $"Train Phase Started ({obstacleSpawner.VehiclePhaseDuration:F0}s)",
                 false);
         }
 
@@ -996,11 +1045,11 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
                 hudManager?.ShowFanAction(sender, $"+{amount} Energy");
                 hudManager?.ShowStatusPopup($"+{amount} Blue Energy", true);
                 AudioManager.Instance?.PlaySFX(SFXType.CollectEnergy, 1.0f);
-                Debug.Log($"[MockChatConsole] {sender} tặng Bình Năng Lượng Blue Team +{amount}. (Total: {factionManager.FanLikes})");
+                Debug.Log($"[MockChatConsole] {sender} gifted Blue Energy Bottle +{amount}. (Total: {factionManager.FanLikes})");
             }
             else
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy FactionTugOfWarManager.");
+                Debug.LogWarning("[MockChatConsole] FactionTugOfWarManager not found.");
             }
         }
 
@@ -1022,11 +1071,11 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
                 hudManager?.ShowAntiAction(sender, $"+{amount} Energy");
                 hudManager?.ShowStatusPopup($"+{amount} Red Energy", false);
                 AudioManager.Instance?.PlaySFX(SFXType.CollectEnergy, 1.0f);
-                Debug.Log($"[MockChatConsole] {sender} tặng Bình Năng Lượng Red Team +{amount}. (Total: {factionManager.AntiLikes})");
+                Debug.Log($"[MockChatConsole] {sender} gifted Red Energy Bottle +{amount}. (Total: {factionManager.AntiLikes})");
             }
             else
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy FactionTugOfWarManager.");
+                Debug.LogWarning("[MockChatConsole] FactionTugOfWarManager not found.");
             }
         }
 
@@ -1038,15 +1087,15 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
             if (queueManager != null)
             {
                 string newId = string.IsNullOrEmpty(customUserId) ? ("Follower_" + Random.Range(100, 999)) : customUserId;
-                queueManager.TryEnqueueFollower(newId);
+                queueManager.EnqueueFollowerAsRunner(newId);
                 AudioManager.Instance?.PlaySFX(SFXType.StreamNewFollower);
                 if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-                hudManager?.ShowFanAction(newId, "Followed & Queued");
-                Debug.Log($"[MockChatConsole] F5 -> Enqueued new follower: {newId}");
+                hudManager?.ShowFanAction(newId, "Followed -> Next Runner!");
+                Debug.Log($"[MockChatConsole] Shift+F5 -> Follower set as next runner: {newId}");
             }
             else
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatRunnerQueueManager.");
+                Debug.LogWarning("[MockChatConsole] ChatRunnerQueueManager not found.");
             }
         }
 
@@ -1065,7 +1114,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             if (obstacleSpawner == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy SingleObstacleSpawner.");
+                Debug.LogWarning("[MockChatConsole] SingleObstacleSpawner not found.");
                 return;
             }
 
@@ -1082,7 +1131,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
             }
         }
 
-        public void MockGiftDance(string sender = "Khán Giả")
+        public void MockGiftDance(string sender = "Viewer")
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
             {
@@ -1099,7 +1148,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             if (giftDance == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy GiftDanceController.");
+                Debug.LogWarning("[MockChatConsole] GiftDanceController not found.");
                 return;
             }
 
@@ -1136,15 +1185,15 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             if (queueManager == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy ChatRunnerQueueManager.");
+                Debug.LogWarning("[MockChatConsole] ChatRunnerQueueManager not found.");
                 return;
             }
 
-            string newId = string.IsNullOrEmpty(customUserId) ? ("VIP_" + Random.Range(100, 999)) : customUserId;
-            queueManager.TryEnqueuePriorityFollower(newId);
+            string newId = string.IsNullOrEmpty(customUserId) ? ("Follower_" + Random.Range(100, 999)) : customUserId;
+            queueManager.EnqueueFollowerAsRunner(newId);
 
             if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
-            hudManager?.ShowFanAction(newId, "VIP Baton Pass");
+            hudManager?.ShowFanAction(newId, "Followed -> Next Runner!");
         }
 
         private void MockToggleUnlimitedModeDebug()
@@ -1156,7 +1205,7 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             if (obstacleSpawner == null)
             {
-                Debug.LogWarning("[MockChatConsole] Không tìm thấy SingleObstacleSpawner.");
+                Debug.LogWarning("[MockChatConsole] SingleObstacleSpawner not found.");
                 return;
             }
 

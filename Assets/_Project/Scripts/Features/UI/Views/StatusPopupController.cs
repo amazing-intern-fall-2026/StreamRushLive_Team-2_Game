@@ -5,36 +5,36 @@ using UnityEngine;
 
 namespace SteamRush.Features.UI.Views
 {
-    // View: 1 popup buff/debuff nổi lên rồi mờ dần, tự huỷ khi xong - không truy cập module khác (SRP).
+    // View: floating status popup tweening upward and fading out adhering to SRP.
     public class StatusPopupController : MonoBehaviour
     {
         [SerializeField] private TMP_Text label;
         [SerializeField] private UnityEngine.UI.Image iconImage;
         [SerializeField] private CanvasGroup canvasGroup;
-        // Hiệu ứng "pop" từng ký tự khi chữ xuất hiện (asset Easy Text Effects, free/MIT) - bổ sung cho tween nổi lên + mờ dần bên dưới.
+        // Optional character pop animation support
         [SerializeField] private TextEffect textEffect;
         [SerializeField] private float floatDistance = 50f;
-        [Tooltip("Tổng thời gian tồn tại của popup (giây). Mặc định 3.5s để người xem đọc rõ thông báo.")]
+        [Tooltip("Total popup duration in seconds (default: 3.5s).")]
         [SerializeField] private float duration = 3.5f;
-        [Tooltip("Thời gian giữ nguyên độ rõ nét 100% trước khi bắt đầu mờ dần (giây). Mặc định 2.5s.")]
+        [Tooltip("Opaque hold duration prior to fadeout (default: 2.5s).")]
         [SerializeField] private float holdDuration = 2.5f;
 
         [Header("Text Settings")]
-        [Tooltip("Bật No Wrap để chữ luôn nằm trên 1 dòng duy nhất, không tự động xuống dòng.")]
+        [Tooltip("Prevent word wrapping, keeping text on a single line.")]
         [SerializeField] private bool noWrap = true;
-        [Tooltip("Bật để hiển thị ô icon bên cạnh chữ. Tắt để ẩn hoàn toàn các icon.")]
+        [Tooltip("Display optional icon alongside text.")]
         [SerializeField] private bool showIcon = false;
 
-        // Regex lọc sạch các ký tự emoji/icon unicode khỏi chuỗi text tránh lỗi font TextMeshPro
+        // Strips unicode emojis to avoid TextMeshPro font missing glyph warnings
         private static readonly System.Text.RegularExpressions.Regex EmojiRegex = new System.Text.RegularExpressions.Regex(
             @"[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF\u2300-\u23FF\u2B50-\u2B55\uFE0F]",
             System.Text.RegularExpressions.RegexOptions.Compiled);
 
-        // Màu phân biệt Blue Team (xanh dương) / Red Team (đỏ).
-        private static readonly Color BuffColor = new Color(0.25f, 0.75f, 1f); // Xanh dương Blue Team
-        private static readonly Color DebuffColor = new Color(1f, 0.3f, 0.25f); // Đỏ Red Team
+        // Faction color coding: Blue Team (buff) / Red Team (debuff) mapped from HudTheme.
+        private static Color BuffColor => HudTheme.Current.blue;
+        private static Color DebuffColor => HudTheme.Current.red;
 
-        // Vị trí gốc lấy từ template lúc spawn - không hardcode Vector2.zero vì template có thể đặt ở bất kỳ đâu phía trên đầu runner.
+        // Inherit base position from template at spawn time
         private Vector2 startAnchoredPosition;
 
         private void Awake()
@@ -52,7 +52,7 @@ namespace SteamRush.Features.UI.Views
             }
         }
 
-        // Viền đen đậm quanh chữ cho cảm giác cartoon/game-UI (kiểu Geometry Dash), không phải đổi font.
+        // Black outline styling for stylized game UI text
         private void ApplyCartoonOutline()
         {
             if (label == null)
@@ -65,7 +65,7 @@ namespace SteamRush.Features.UI.Views
             material.SetColor(ShaderUtilities.ID_OutlineColor, Color.black);
         }
 
-        // icon: null khi chưa có icon phù hợp (vd. debuff đang chờ bổ sung icon riêng) - ẩn hẳn ô icon thay vì để trống.
+        // Hide icon element when no icon sprite is supplied
         public void Play(
             string message,
             bool isBuff,
@@ -82,7 +82,7 @@ namespace SteamRush.Features.UI.Views
             float activeHold = customHold > 0f ? customHold : holdDuration;
             activeHold = Mathf.Min(activeHold, activeDuration * 0.8f);
 
-            // Xóa mọi emoji/icon còn sót lại trong chữ để văn bản luôn sạch đẹp
+            // Cleanse residual emojis from string
             if (!string.IsNullOrEmpty(message))
             {
                 message = EmojiRegex.Replace(message, "").Trim();
@@ -101,7 +101,7 @@ namespace SteamRush.Features.UI.Views
                     isBlue = false;
                 }
 
-                // Loại bỏ hoàn toàn tiền tố [Red Team] và [Blue Team]
+                // Strip [Red Team] and [Blue Team] prefixes
                 message = System.Text.RegularExpressions.Regex.Replace(message, @"\[(Blue|Red)\s*Team\]\s*:?\s*", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
             }
 
@@ -138,8 +138,7 @@ namespace SteamRush.Features.UI.Views
 
             DOTween.Kill(rect);
 
-            // Append tween đầu tiên, các tween sau mới Join - Join làm tween đầu tiên trên Sequence rỗng
-            // khiến DOTween tính sai tổng thời lượng, OnComplete bắn gần như ngay lập tức (popup huỷ trong 1 frame).
+            // Sequence setup: Append initial tween then Join subsequent animations
             Sequence sequence = DOTween.Sequence().SetTarget(rect);
             sequence.Append(rect.DOAnchorPosY(startAnchoredPosition.y + floatDistance, activeDuration).SetEase(Ease.OutCubic));
             if (canvasGroup != null)

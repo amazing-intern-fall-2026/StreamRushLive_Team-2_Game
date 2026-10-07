@@ -4,8 +4,8 @@ using UnityEngine;
 namespace SteamRush.Relay
 {
     /// <summary>
-    /// Quản lý hiển thị thông tin người chơi tiếp theo trên nhân vật Proxy chờ tại mốc chuyển gậy.
-    /// Hỗ trợ Billboard xoay nameplate mượt mà hướng về Main Camera.
+    /// Displays next player info on the handover proxy character at relay milestones.
+    /// Billboard behavior aligns the nameplate towards Main Camera.
     /// </summary>
     public class HandoverProxyController : MonoBehaviour
     {
@@ -65,7 +65,7 @@ namespace SteamRush.Relay
                 if (_cachedCamera == null) return;
             }
 
-            // Billboard: Luôn hướng Nameplate về phía camera chính để không bị xoay lệch
+            // Billboard: Keep nameplate oriented toward main camera
             nameplateTransform.rotation = _cachedCamera.transform.rotation;
         }
     }

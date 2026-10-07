@@ -25,7 +25,7 @@ namespace SteamRush.Track
         }
 
         /// <summary>
-        /// Hàm xử lý gán tốc độ di chuyển riêng cho tòa nhà (chuyển sang chế độ Custom Speed).
+        /// Assigns custom movement speed to building (switches to Custom Speed mode).
         /// </summary>
         public void SetCustomSpeed(float speed)
         {
@@ -34,7 +34,7 @@ namespace SteamRush.Track
         }
 
         /// <summary>
-        /// Chuyển về chế độ sử dụng tốc độ chung của thế giới (WorldSpeed).
+        /// Switches to global WorldSpeed mode.
         /// </summary>
         public void EnableWorldSpeed()
         {
@@ -42,9 +42,7 @@ namespace SteamRush.Track
         }
 
         /// <summary>
-        /// Hàm xử lý và tính toán tốc độ hiện tại:
-        /// - Nếu dùng WorldSpeed: lấy từ Spawner (WorldSpeedManager)
-        /// - Nếu không: lấy CustomSpeed riêng
+        /// Calculates current speed based on active mode (WorldSpeed vs CustomSpeed).
         /// </summary>
         public float GetCurrentSpeed()
         {

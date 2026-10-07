@@ -14,20 +14,20 @@ namespace StreamRushLive.Features.Spawning
         [Tooltip("Prefab xe Urban Street Car (fallback).")]
         [SerializeField] private GameObject urbanCarPrefab;
 
-        [Tooltip("Danh sách các model xe PolygonCity (fallback chung).")]
+        [Tooltip("List of PolygonCity vehicle models (general fallback).")]
         [SerializeField] private List<GameObject> vehiclePrefabs = new List<GameObject>();
 
-        [Header("Categorized Tiered Vehicles (GDD v1.4)")]
-        [Tooltip("Xe Con (Tier 1): Giảm 20% năng lượng, đẩy lùi 100m")]
+        [Header("Categorized Tiered Obstacles (GDD v1.4)")]
+        [Tooltip("Sedan Car (Tier 1): -20% energy, -100m penalty")]
         [SerializeField] private List<GameObject> sedanCarPrefabs = new List<GameObject>();
 
-        [Tooltip("Xe Bán Tải (Tier 2): Giảm 40% năng lượng, đẩy lùi 200m")]
+        [Tooltip("Hunting Beasts (Tier 2): -40% energy, -200m penalty")]
         [SerializeField] private List<GameObject> pickupTruckPrefabs = new List<GameObject>();
 
-        [Tooltip("Xe Tải Hạng Nặng (Tier 3): Giảm 60% năng lượng, đẩy lùi 400m")]
+        [Tooltip("Train (Tier 3): -60% energy, -400m penalty")]
         [SerializeField] private List<GameObject> heavyTruckPrefabs = new List<GameObject>();
 
-        [Tooltip("Tốc độ xe tự chạy trên mặt đường (m/s) bổ sung vào tốc độ cuộn của thế giới. Mặc định = 6.5 m/s.")]
+        [Tooltip("Autonomous vehicle drive speed added to world scroll speed (default: 6.5 m/s).")]
         [SerializeField] private float carDrivingSpeed = 6.5f;
 
         public float CarDrivingSpeed
@@ -38,42 +38,34 @@ namespace StreamRushLive.Features.Spawning
 
         [HideInInspector] [SerializeField] private GameObject shieldItemPrefab;
         [HideInInspector] [SerializeField] private GameObject energyBuffItemPrefab;
+        [HideInInspector] [SerializeField] private GameObject laserIndicatorPrefab;
 
-        [Tooltip("Prefab hiệu ứng tia laser đỏ nhấp nháy.")]
-        [SerializeField] private GameObject laserIndicatorPrefab;
-
-        [Tooltip("Tham chiếu vị trí Player để tính điểm spawn.")]
+        [Tooltip("Player transform reference for spawn calculation.")]
         [SerializeField] private Transform playerReference;
 
-        [Tooltip("Quản lý tốc độ cuộn của thế giới; tự tìm nếu để trống.")]
+        [Tooltip("WorldSpeedManager reference; automatically resolved if null.")]
         [SerializeField] private WorldSpeedManager worldSpeedManager;
 
         [Header("Lane Settings")]
-        [Tooltip("Tọa độ Z của làn bên trái (+Z theo hướng nhìn camera).")]
+        [Tooltip("Z coordinate of left lane (+Z looking toward camera).")]
         [SerializeField] private float laneOffsetLeft = 3.0f;
 
-        [Tooltip("Tọa độ Z của làn giữa.")]
+        [Tooltip("Z coordinate of middle lane.")]
         [SerializeField] private float laneOffsetCenter = 0.0f;
 
-        [Tooltip("Tọa độ Z của làn bên phải (-Z theo hướng nhìn camera).")]
+        [Tooltip("Z coordinate of right lane (-Z looking toward camera).")]
         [SerializeField] private float laneOffsetRight = -3.0f;
 
-        [Header("Spawn Distance & Warning")]
-        [Tooltip("Khoảng cách X phía trước Player nơi xe xuất hiện.")]
+        [Header("Spawn Distance")]
+        [Tooltip("Spawn distance ahead of player in meters.")]
         [SerializeField] private float spawnDistanceAhead = 35f;
 
-        [Tooltip("Thời gian cảnh báo laser trước khi xe xuất hiện.")]
-        [SerializeField] private float laserWarningDuration = 2.0f;
-
-        [Tooltip("Khoảng thời gian bật/tắt laser.")]
-        [SerializeField] private float laserBlinkInterval = 0.15f;
-
         [Header("Obstacle Concurrency Limit")]
-        [Tooltip("Số lượng chướng ngại vật (laser cảnh báo + xe) tối đa cùng lúc trên đường chạy. Mặc định là 2 để luôn đảm bảo có ít nhất 1 làn trống cho Runner né.")]
+        [Tooltip("Maximum concurrent active obstacles to ensure at least one open lane for runner.")]
         [SerializeField] private int maxConcurrentObstacles = 2;
 
         [Header("Unlimited Mode (Anti Faction Gift - F7)")]
-        [Tooltip("Thời lượng chế độ thả xe không giới hạn khi kích hoạt (giây).")]
+        [Tooltip("Unlimited Cars mode duration in seconds.")]
         [SerializeField] private float unlimitedModeDuration = 60f;
 
         private bool _isUnlimitedModeActive;
@@ -82,31 +74,29 @@ namespace StreamRushLive.Features.Spawning
         public bool IsUnlimitedModeActive => _isUnlimitedModeActive;
 
         [Header("Vehicle Special Phase (Anti Faction Gifts - F4/F5)")]
-        [Tooltip("Thời lượng Giai đoạn Xe Bán Tải / Xe Tải Hạng Nặng.")]
+        [Tooltip("Pickup Truck / Heavy Truck Phase duration in seconds.")]
         [SerializeField] private float vehiclePhaseDuration = 60f;
 
         private VehicleTier? _activeVehiclePhase;
         private float _vehiclePhaseRemainingTime;
         private Coroutine _vehiclePhaseCoroutine;
 
-        /// Phase xe đặc biệt hiện tại.
-        /// null = không có phase, spawn mặc định Sedan.
+        /// <summary>Current active special vehicle phase (null = default Sedan).</summary>
         public VehicleTier? ActiveVehiclePhase => _activeVehiclePhase;
 
-        /// Phase xe đặc biệt có đang hoạt động hay không.
+        /// <summary>Indicates if a special vehicle phase is currently active.</summary>
         public bool IsVehiclePhaseActive => _activeVehiclePhase.HasValue;
 
-        /// Thời lượng phase được cấu hình (ưu tiên lấy từ GiftManager nếu có).
+        /// <summary>Configured phase duration.</summary>
         public float VehiclePhaseDuration => StreamRushLive.Features.Gifts.GiftManager.Instance != null 
             ? StreamRushLive.Features.Gifts.GiftManager.Instance.VehiclePhaseDuration 
             : vehiclePhaseDuration;
 
-        /// Thời gian còn lại của phase hiện tại.
-        /// Dùng cho Timer UI ở bước sau.
+        /// <summary>Remaining seconds of active vehicle phase.</summary>
         public float VehiclePhaseRemainingTime => _vehiclePhaseRemainingTime;
 
-        // Khoa toan bo spawn (GDD v1.4.1 - Victory Celebration): goi khi Runner bang qua Cong Ve
-        // Dich, khong con xe/item nao duoc sinh them du chat con gui lenh gi di nua.
+        // Spawning lock (GDD v1.4.1 - Victory Celebration): called when Runner crosses finish line archway;
+        // completely halts all subsequent obstacle and vehicle spawning requests.
         private bool _spawningLocked;
         public bool IsSpawningLocked => _spawningLocked;
 
@@ -122,15 +112,17 @@ namespace StreamRushLive.Features.Spawning
             public GameObject LaserInstance;
             public GameObject CarInstance;
             public Transform PlayerRef;
+            public bool IsPendingSpawn;
 
             public bool IsActive
             {
                 get
                 {
+                    if (IsPendingSpawn) return true;
                     if (LaserInstance != null) return true;
                     if (CarInstance != null)
                     {
-                        // Nếu xe chưa vượt qua phía sau người chơi (hoặc cách sau người chơi dưới 1.5m) thì vẫn là vật cản đang cản đường
+                        // Vehicle remains an active obstacle until passing behind player
                         float playerX = PlayerRef != null ? PlayerRef.position.x : 0f;
                         return CarInstance.transform.position.x > playerX - 1.5f;
                     }
@@ -195,17 +187,14 @@ namespace StreamRushLive.Features.Spawning
 
         public float GetLaneOffsetZ(int laneIndex)
         {
-            if (laneIndex == 1) return laneOffsetLeft;       // +3.0f (Làn trái)
-            if (laneIndex == 3) return laneOffsetRight;      // -3.0f (Làn phải)
-            return laneOffsetCenter;                         //  0.0f (Làn giữa)
+            if (laneIndex == 1) return laneOffsetLeft;       // +3.0f (Left lane)
+            if (laneIndex == 3) return laneOffsetRight;      // -3.0f (Right lane)
+            return laneOffsetCenter;                         //  0.0f (Middle lane)
         }
 
         /// <summary>
-        /// Sinh xe theo phân cấp cụ thể (GDD v1.4):
-        /// - SedanCar (Xe Con Húc): -20% NL, -100m cự ly
-        /// - PickupTruck (Xe Bán Tải): -40% NL, -200m cự ly
-        /// - HeavyTruck (Xe Tải Hạng Nặng): -60% NL, -400m cự ly
-        /// Nếu không chỉ định làn (laneIndex <= 0), tự động chọn ngẫu nhiên 1 làn hợp lệ.
+        /// Spawns vehicle of specified tier (SedanCar, PickupTruck, HeavyTruck).
+        /// Randomizes lane if laneIndex <= 0.
         /// </summary>
         public bool TriggerSpawnCarTier(VehicleTier tier, int laneIndex = -1)
         {
@@ -215,7 +204,7 @@ namespace StreamRushLive.Features.Spawning
 
             if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
             {
-                Debug.LogWarning($"[SingleObstacleSpawner] Đã đạt giới hạn tối đa {maxConcurrentObstacles} chướng ngại vật cùng lúc! Bỏ qua yêu cầu spawn {tier}.");
+                Debug.LogWarning($"[SingleObstacleSpawner] Max concurrent obstacles reached ({maxConcurrentObstacles})! Dropped spawn request for {tier}.");
                 return false;
             }
 
@@ -229,14 +218,14 @@ namespace StreamRushLive.Features.Spawning
                 }
                 if (availableLanes.Count == 0)
                 {
-                    Debug.LogWarning($"[SingleObstacleSpawner] Không còn làn trống để spawn {tier}.");
+                    Debug.LogWarning($"[SingleObstacleSpawner] No open lane available to spawn {tier}.");
                     return false;
                 }
                 targetLane = availableLanes[Random.Range(0, availableLanes.Count)];
             }
             else if (!CanSpawnObstacleOnLane(targetLane))
             {
-                Debug.LogWarning($"[SingleObstacleSpawner] Làn {targetLane} hiện đang có vật cản! Bỏ qua spawn trùng làn.");
+                Debug.LogWarning($"[SingleObstacleSpawner] Lane {targetLane} already has an active obstacle! Skipped duplicate spawn.");
                 return false;
             }
 
@@ -253,16 +242,16 @@ namespace StreamRushLive.Features.Spawning
 
             if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
             {
-                Debug.LogWarning($"[SingleObstacleSpawner] Đã đạt giới hạn tối đa {maxConcurrentObstacles} chướng ngại vật cùng lúc! Bỏ qua yêu cầu spawn Làn {laneIndex}.");
+                Debug.LogWarning($"[SingleObstacleSpawner] Max concurrent obstacles reached ({maxConcurrentObstacles})! Dropped spawn request for Lane {laneIndex}.");
                 return false;
             }
 
-            // Kiểm tra làn đã có chướng ngại vật chưa
+            // Check if target lane is already occupied
             foreach (var obs in _activeObstacles)
             {
                 if (obs.LaneIndex == laneIndex && obs.IsActive)
                 {
-                    Debug.LogWarning($"[SingleObstacleSpawner] Làn {laneIndex} hiện đã có chướng ngại vật đang hoạt động. Bỏ qua yêu cầu spawn trùng làn.");
+                    Debug.LogWarning($"[SingleObstacleSpawner] Lane {laneIndex} already has an active obstacle. Dropped duplicate spawn request.");
                     return false;
                 }
             }
@@ -280,7 +269,7 @@ namespace StreamRushLive.Features.Spawning
 
             if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
             {
-                Debug.LogWarning($"[SingleObstacleSpawner] Đã đạt giới hạn {maxConcurrentObstacles} chướng ngại vật cùng lúc! Bỏ qua yêu cầu từ Anti-Like.");
+                Debug.LogWarning($"[SingleObstacleSpawner] Max concurrent obstacles reached ({maxConcurrentObstacles})! Dropped Anti-Like spawn request.");
                 return false;
             }
 
@@ -295,7 +284,7 @@ namespace StreamRushLive.Features.Spawning
 
             if (availableLanes.Count == 0)
             {
-                Debug.LogWarning("[SingleObstacleSpawner] Không còn làn trống để spawn xe từ Anti-Like.");
+                Debug.LogWarning("[SingleObstacleSpawner] No open lane available to spawn vehicle from Anti-Like.");
                 return false;
             }
 
@@ -304,8 +293,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Kích hoạt chế độ thả xe không giới hạn trong unlimitedModeDuration giây:
-        /// bỏ qua giới hạn số xe tối đa cùng lúc (maxConcurrentObstacles).
+        /// Activates Unlimited Cars mode, bypassing maxConcurrentObstacles limit.
         /// </summary>
         public void ActivateUnlimitedMode()
         {
@@ -319,7 +307,7 @@ namespace StreamRushLive.Features.Spawning
         private IEnumerator UnlimitedModeRoutine()
         {
             _isUnlimitedModeActive = true;
-            Debug.Log($"[SingleObstacleSpawner] Unlimited Mode kích hoạt trong {unlimitedModeDuration}s.");
+            Debug.Log($"[SingleObstacleSpawner] Unlimited Mode activated for {unlimitedModeDuration}s.");
             AntiUnlimitedTimerCircle.Instance?.ActivateTimer(unlimitedModeDuration);
             AudioManager.Instance?.PlaySFX(SFXType.WarningSiren);
 
@@ -328,7 +316,7 @@ namespace StreamRushLive.Features.Spawning
             _isUnlimitedModeActive = false;
             _unlimitedModeCoroutine = null;
             AntiUnlimitedTimerCircle.Instance?.DeactivateTimer();
-            Debug.Log("[SingleObstacleSpawner] Unlimited Mode kết thúc.");
+            Debug.Log("[SingleObstacleSpawner] Unlimited Mode finished.");
         }
 
         // ============================================================
@@ -336,9 +324,7 @@ namespace StreamRushLive.Features.Spawning
         // ============================================================
 
         /// <summary>
-        /// Kích hoạt Giai đoạn Xe Bán Tải trong 60 giây.
-        /// Không spawn xe ngay tại thời điểm kích hoạt.
-        /// Chỉ những xe được spawn mới trong phase mới chuyển thành Pickup.
+        /// Activates Pickup Truck Phase. Future spawned vehicles during this phase spawn as Pickup.
         /// </summary>
         public void ActivatePickupTruckPhase()
         {
@@ -346,9 +332,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Kích hoạt Giai đoạn Xe Tải Hạng Nặng trong 60 giây.
-        /// Không spawn xe ngay tại thời điểm kích hoạt.
-        /// Chỉ những xe được spawn mới trong phase mới chuyển thành Heavy.
+        /// Activates Heavy Truck Phase. Future spawned vehicles during this phase spawn as Heavy Truck.
         /// </summary>
         public void ActivateHeavyTruckPhase()
         {
@@ -356,8 +340,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Kích hoạt hoặc chuyển đổi Vehicle Phase.
-        /// Nếu một phase khác đang chạy thì phase cũ bị hủy và timer reset về 60 giây.
+        /// Activates or transitions vehicle phase. Resets phase duration timer.
         /// </summary>
         private void ActivateVehiclePhase(VehicleTier phase)
         {
@@ -378,8 +361,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Đếm ngược thời gian Vehicle Phase.
-        /// Hết thời gian sẽ tự động trở về Sedan mặc định.
+        /// Vehicle phase countdown coroutine. Returns to default Sedan upon completion.
         /// </summary>
         private IEnumerator VehiclePhaseRoutine(VehicleTier phase)
         {
@@ -400,17 +382,13 @@ namespace StreamRushLive.Features.Spawning
                 _vehiclePhaseRemainingTime = 0f;
                 _vehiclePhaseCoroutine = null;
 
-                Debug.Log(
-                    $"[SingleObstacleSpawner] Vehicle Phase {phase} kết thúc. " +
-                    "Các xe spawn tiếp theo sẽ trở về Sedan.");
+                Debug.Log($"[SingleObstacleSpawner] Vehicle Phase {phase} ended. Returning to default Sedan.");
             }
         }
 
-        // ===== [Dhuy] BEGIN - Debug phím "0": bật/tắt Unlimited Mode tự do để QA test,
-        // KHÔNG dùng Coroutine 60s như ActivateUnlimitedMode() (dành cho gameplay F7 thật). =====
+        // Debug toggle for Unlimited Cars mode
         /// <summary>
-        /// [DEBUG] Bật/tắt Unlimited Mode ngay lập tức, không giới hạn thời gian.
-        /// Dùng riêng cho phím tắt test (phím "0"), không phải luồng gameplay chính thức.
+        /// [DEBUG] Toggles Unlimited Mode without time limit for QA testing.
         /// </summary>
         public void SetUnlimitedModeDebug(bool isActive)
         {
@@ -429,9 +407,32 @@ namespace StreamRushLive.Features.Spawning
             {
                 AntiUnlimitedTimerCircle.Instance?.DeactivateTimer();
             }
-            Debug.Log($"[SingleObstacleSpawner] [DEBUG] Unlimited Mode = {isActive} (phím 0, không giới hạn thời gian).");
+            Debug.Log($"[SingleObstacleSpawner] [DEBUG] Unlimited Mode = {isActive} (test key 0).");
         }
         // ===== [Dhuy] END =====
+
+        /// <summary>
+        /// Checks whether the rain weather hazard / environment gift is currently active.
+        /// </summary>
+        public bool IsRainHazardActive()
+        {
+            var wm = SteamRush.Features.Environment.WeatherHazardManager.Instance;
+            if (wm == null)
+            {
+                wm = FindFirstObjectByType<SteamRush.Features.Environment.WeatherHazardManager>();
+            }
+
+            if (wm != null)
+            {
+                return wm.IsHazardActive;
+            }
+
+            // Fallback for isolated test environments without WeatherHazardManager
+            var rainObj = GameObject.Find("FX_Rain");
+            if (rainObj != null && rainObj.activeInHierarchy) return true;
+
+            return false;
+        }
 
         private void SpawnCarOnSelectedLane(int laneIndex, float selectedLane, VehicleTier? tier = null)
         {
@@ -441,50 +442,28 @@ namespace StreamRushLive.Features.Spawning
                 if (runner != null) playerReference = runner.transform;
             }
 
-            if (playerReference == null || laserIndicatorPrefab == null)
+            if (playerReference == null)
             {
-                Debug.LogWarning("[SingleObstacleSpawner] Thiếu Player reference hoặc prefab laser.");
+                Debug.LogWarning("[SingleObstacleSpawner] Missing Player reference.");
                 return;
             }
-
-            // Đặt laser cảnh báo trên làn được chọn phía trước Runner
-            Vector3 warningPosition = new Vector3(
-                playerReference.position.x + (spawnDistanceAhead * 0.5f),
-                0.05f,
-                selectedLane);
-
-            GameObject laserInstance = Instantiate(
-                laserIndicatorPrefab,
-                warningPosition,
-                Quaternion.identity);
-
-            // Scale laser dài ra dọc theo trục chạy X để làm dải cảnh báo rõ ràng trên làn
-            laserInstance.transform.localScale = new Vector3(spawnDistanceAhead, 0.05f, 2.2f);
 
             var obstacle = new ActiveObstacle
             {
                 LaneIndex = laneIndex,
                 LaneZ = selectedLane,
-                LaserInstance = laserInstance,
+                LaserInstance = null,
                 CarInstance = null,
-                PlayerRef = playerReference
+                PlayerRef = playerReference,
+                IsPendingSpawn = false
             };
             _activeObstacles.Add(obstacle);
 
-            // Chạy cảnh báo nhấp nháy 3.5s trước khi sinh xe ở vị trí cách Runner 25m
-            StartCoroutine(BlinkLaserThenSpawnCar(obstacle, laserInstance, selectedLane, tier));
+            InstantiateCar(obstacle, selectedLane, tier);
         }
 
         /// <summary>
-        /// Xác định Tier của xe tự động spawn.
-        ///
-        /// - Nếu request đã chỉ định Tier cụ thể -> giữ nguyên Tier đó.
-        ///   Ví dụ lệnh debug/chat pickup hoặc heavy trực tiếp.
-        ///
-        /// - Nếu request không chỉ định Tier:
-        ///     Không có phase  -> Sedan
-        ///     Pickup phase    -> Pickup
-        ///     Heavy phase     -> Heavy
+        /// Resolves obstacle vehicle tier based on active phase and request parameters.
         /// </summary>
         private VehicleTier GetVehicleTierForSpawn(VehicleTier? requestedTier)
         {
@@ -501,55 +480,24 @@ namespace StreamRushLive.Features.Spawning
             return VehicleTier.SedanCar;
         }
 
-        private IEnumerator BlinkLaserThenSpawnCar(ActiveObstacle obstacle, GameObject laserInstance, float selectedLane, VehicleTier? requestedTier)
+        private GameObject InstantiateCar(ActiveObstacle obstacle, float selectedLane, VehicleTier? requestedTier)
         {
-            Renderer[] renderers = laserInstance != null ? laserInstance.GetComponentsInChildren<Renderer>(true) : new Renderer[0];
-            float elapsed = 0f;
-            bool isVisible = true;
-            float blinkInterval = Mathf.Max(0.01f, laserBlinkInterval);
-
-            // Nhấp nháy renderer trong đúng thời lượng cảnh báo 3.5s, bám vị trí trước mặt người chơi
-            while (elapsed < laserWarningDuration)
+            if (playerReference == null)
             {
-                if (laserInstance == null) yield break;
-
-                if (playerReference != null)
-                {
-                    laserInstance.transform.position = new Vector3(
-                        playerReference.position.x + (spawnDistanceAhead * 0.5f),
-                        0.05f,
-                        selectedLane);
-                }
-
-                SetRenderersEnabled(renderers, isVisible);
-                isVisible = !isVisible;
-
-                float waitTime = Mathf.Min(blinkInterval, laserWarningDuration - elapsed);
-                yield return new WaitForSeconds(waitTime);
-                elapsed += waitTime;
-            }
-
-            if (laserInstance != null)
-            {
-                Destroy(laserInstance);
-            }
-
-            if (obstacle != null)
-            {
-                obstacle.LaserInstance = null;
+                var runner = FindFirstObjectByType<ChatLaneRunnerController>();
+                if (runner != null) playerReference = runner.transform;
             }
 
             if (playerReference == null)
             {
-                yield break;
+                if (obstacle != null) obstacle.IsPendingSpawn = false;
+                return null;
             }
 
-            // Chỉ quyết định Tier tại thời điểm xe thật sự spawn.
-            // Nhờ vậy nếu Phase hết trong lúc laser đang cảnh báo,
-            // xe sẽ quay về Sedan đúng theo trạng thái tại thời điểm Instantiate.
+            // Resolve tier at actual instantiation time
             VehicleTier chosenTier = GetVehicleTierForSpawn(requestedTier);
 
-            // Sinh xe ở đúng khoảng cách spawnDistanceAhead (25m) phía trước mặt Player tại thời điểm cảnh báo kết thúc
+            // Instantiate vehicle at spawnDistanceAhead ahead of player
             Vector3 carSpawnPosition = new Vector3(
                 playerReference.position.x + spawnDistanceAhead,
                 0.05f,
@@ -558,11 +506,12 @@ namespace StreamRushLive.Features.Spawning
             GameObject prefabToSpawn = GetCarPrefab(chosenTier);
             if (prefabToSpawn == null)
             {
-                Debug.LogWarning("[SingleObstacleSpawner] Không tìm thấy prefab xe nào để sinh!");
-                yield break;
+                Debug.LogWarning("[SingleObstacleSpawner] No vehicle prefabs available to spawn!");
+                if (obstacle != null) obstacle.IsPendingSpawn = false;
+                return null;
             }
 
-            // Xoay đầu xe hướng về phía Runner đang chạy tới (-X)
+            // Rotate vehicle facing incoming runner (-X)
             Quaternion spawnRot = Quaternion.Euler(0f, -90f, 0f);
 
             GameObject carInstance = Instantiate(
@@ -610,12 +559,13 @@ namespace StreamRushLive.Features.Spawning
 
             if (obstacle != null)
             {
+                obstacle.IsPendingSpawn = false;
                 obstacle.CarInstance = carInstance;
                 obstacle.PlayerRef = playerReference;
             }
 
             InitializeCarMovement(carInstance, chosenTier);
-            Debug.Log($"[SingleObstacleSpawner] Đã sinh [{chosenTier}] '{prefabToSpawn.name}' trên làn Z={selectedLane:F1} cách Player {spawnDistanceAhead}m.");
+            return carInstance;
         }
 
         public GameObject GetCarPrefab(VehicleTier tier)
@@ -653,7 +603,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Kích hoạt quà tặng (Khiên / Bình Năng Lượng) trực tiếp cho Runner / Phe Fan thay vì sinh item vật lý rơi trên làn.
+        /// Activates direct gift actions on Runner/Fan team.
         /// </summary>
         public bool TriggerActivateFanGift(int laneIndex = 0, bool isShield = false)
         {
@@ -677,7 +627,7 @@ namespace StreamRushLive.Features.Spawning
                 {
                     var effects = runner.GetComponent<RunnerGiftEffects>() ?? runner.GetComponentInChildren<RunnerGiftEffects>();
                     effects?.ActivateShield(15f);
-                    Debug.Log("[SingleObstacleSpawner] Kích hoạt Khiên bảo vệ trực tiếp cho Runner (15s).");
+                    Debug.Log("[SingleObstacleSpawner] Activated protective Shield on Runner (15s).");
                 }
                 return true;
             }
@@ -686,7 +636,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Alias tương thích ngược trước khi refactor sang cơ chế kích hoạt Gift trực tiếp.
+        /// Backward compatibility alias.
         /// </summary>
         public bool TriggerSpawnFanItem(int laneIndex, bool isShield = false)
             => TriggerActivateFanGift(laneIndex, isShield);
@@ -712,14 +662,6 @@ namespace StreamRushLive.Features.Spawning
             }
 
             movingObject.Initialize(worldSpeedManager);
-        }
-
-        private static void SetRenderersEnabled(Renderer[] renderers, bool isEnabled)
-        {
-            for (int i = 0; i < renderers.Length; i++)
-            {
-                renderers[i].enabled = isEnabled;
-            }
         }
     }
 }

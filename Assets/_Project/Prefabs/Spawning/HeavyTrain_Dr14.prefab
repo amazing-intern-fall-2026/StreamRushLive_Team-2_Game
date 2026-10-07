@@ -1316,6 +1316,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4113191025450684348}
+  - component: {fileID: 7844936802320478323}
+  - component: {fileID: 7034674997002310577}
   m_Layer: 0
   m_Name: HeavyTrain_Dr14
   m_TagString: Untagged
@@ -1339,6 +1341,57 @@ Transform:
   - {fileID: 8489900079624414157}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &7844936802320478323
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5496137347064624847}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &7034674997002310577
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5496137347064624847}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8ee64798bd12ff540b9d53d0cd121774, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StreamRushLive.Features.Spawning.DrivingObstacleCar
+  obstacleName: "T\xE0u h\u1ECFa"
+  obstacleType: 1
+  energyPenaltyPercent: 60
+  hitStopDuration: 0.25
+  distancePenaltyMeters: 400
+  _vehicleTier: 2
+  _knockbackDistance: 4.2
+  _knockbackDuration: 0.7
+  _drivingSpeed: 5.2
+  _despawnXThreshold: -15
+  _enableWheelSpin: 1
+  _wheelRadius: 0.36
+  _enableEngineRumble: 1
+  _rumbleFrequency: 30
+  _rumbleAmplitude: 0.008
+  _reverseWorldPeakSpeed: -196
+  _reverseWorldDuration: 3.2
+  _customSpawnSFX: {fileID: 8300000, guid: 1eb03e28fa5104398806d75015da234a, type: 3}
 --- !u!1 &5878526849140968152
 GameObject:
   m_ObjectHideFlags: 0

@@ -5,13 +5,13 @@ using SteamRush.Relay;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Xử lý các phím test trong quá trình phát triển (hỗ trợ cả New Input System và Direct Keyboard).
-    /// Sử dụng trực tiếp cấu hình vị trí spawn từ Spawner.
+    /// Handles test keys during development (supports New Input System and Direct Keyboard).
+    /// Uses spawn position configurations from Spawner.
     ///
-    /// 1 - Spawn Obstacle ngẫu nhiên (Low Barrier / High Barrier)
-    /// 2 - Spawn Item ngẫu nhiên (Energy Buff / Shield / High Jump / Hyper Dash)
-    /// 3 - Thả tim (Add Energy +20)
-    /// 4 - Thêm Follower vào hàng đợi tiếp sức
+    /// 1 - Spawn random obstacle (Low Barrier / High Barrier)
+    /// 2 - Spawn random item (Energy Buff / Shield / High Jump / Hyper Dash)
+    /// 3 - Add Energy (+20)
+    /// 4 - Add Follower to relay queue
     /// </summary>
     public class MockInput : MonoBehaviour
     {
@@ -36,55 +36,65 @@ namespace StreamRushLive.Features.Spawning
         {
             if (Keyboard.current == null) return;
 
-            // Phím 1: Spawn Obstacle ngẫu nhiên
+            // When user is typing inside any InputField, ignore debug hotkeys
+            if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null)
+            {
+                var selected = UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject;
+                if (selected.GetComponent<TMPro.TMP_InputField>() != null || selected.GetComponent<UnityEngine.UI.InputField>() != null)
+                {
+                    return;
+                }
+            }
+
+            // Key 1: Spawn random obstacle
             if (Keyboard.current.digit1Key.wasPressedThisFrame || Keyboard.current.numpad1Key.wasPressedThisFrame)
             {
                 SpawnRandomObstacle();
             }
 
-            // Phím 2: Spawn Item ngẫu nhiên
+            // Key 2: Spawn random item
             if (Keyboard.current.digit2Key.wasPressedThisFrame || Keyboard.current.numpad2Key.wasPressedThisFrame)
             {
                 SpawnRandomItem();
             }
 
-            // Phím 3: Thả tim / Add Energy
+            // Key 3: Add Energy
             if (Keyboard.current.digit3Key.wasPressedThisFrame || Keyboard.current.numpad3Key.wasPressedThisFrame)
             {
                 AddEnergy();
             }
 
-            // Phím 4: Add Follower
+            // Key 4: Add Follower
             if (Keyboard.current.digit4Key.wasPressedThisFrame || Keyboard.current.numpad4Key.wasPressedThisFrame)
             {
                 AddMockFollower();
             }
 
-            // Phím 6: Stop Sign (NguyenHuy)
+            // Key 6: Stop Sign
             if (Keyboard.current.digit6Key.wasPressedThisFrame || Keyboard.current.numpad6Key.wasPressedThisFrame)
             {
                 SpawnStopSign();
             }
 
-            // Phím 7: Traffic Light + Crossing Car (NguyenHuy)
+            // Key 7: Traffic Light + Crossing Car
             if (Keyboard.current.digit7Key.wasPressedThisFrame || Keyboard.current.numpad7Key.wasPressedThisFrame)
             {
                 SpawnTrafficLight();
             }
 
-            // Phím 8: Falling Hazard (NguyenHuy)
+            // Key 8: Falling Hazard
             if (Keyboard.current.digit8Key.wasPressedThisFrame || Keyboard.current.numpad8Key.wasPressedThisFrame)
             {
                 SpawnFallingHazard();
             }
 
-            // Phím 9: Bouncing Boulder (NguyenHuy)
+            // Key 9: Bouncing Boulder
             if (Keyboard.current.digit9Key.wasPressedThisFrame || Keyboard.current.numpad9Key.wasPressedThisFrame)
             {
                 SpawnBouncingBoulder();
             }
 
-            // Phím 0: Test Queue Safe Distance 15m (NguyenHuy)
+            // Key 0: Test Queue Safe Distance 15m
             if (Keyboard.current.digit0Key.wasPressedThisFrame || Keyboard.current.numpad0Key.wasPressedThisFrame)
             {
                 EnqueueSafeDistanceBatch();
@@ -177,7 +187,7 @@ namespace StreamRushLive.Features.Spawning
 
         public void AddEnergy()
         {
-            Debug.Log("[MockInput] Phím 3 - Thả tim / Add Energy");
+            Debug.Log("[MockInput] Key 3 - Add Energy");
             if (energySystem != null)
             {
                 energySystem.AddLike(energyAmount);
@@ -187,7 +197,7 @@ namespace StreamRushLive.Features.Spawning
         public void AddMockFollower()
         {
             string newFollower = $"Follower_{followerCounter++}";
-            Debug.Log($"[MockInput] Phím 4 - Add Follower: {newFollower}");
+            Debug.Log($"[MockInput] Key 4 - Add Follower: {newFollower}");
 
             if (relayQueue != null)
             {

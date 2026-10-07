@@ -21,12 +21,12 @@ namespace SteamRush.Features.Runner
 
         [Header("Initial Queue Mock")]
         [SerializeField] private string _initialRunnerId = "Streamer_Alex";
-        [Tooltip("Bật/tắt nạp danh sách follower giả lập mẫu vào hàng đợi ban đầu.")]
+        [Tooltip("Enable/disable loading initial mock followers into the queue.")]
         [SerializeField] private bool _enableMockFollowers = false;
         [SerializeField] private List<string> _initialFollowers = new List<string> { "Viewer_Bao", "Viewer_Chi", "Top1_Dung", "Mod_Giang", "Gamer_Huy" };
-        [Tooltip("Tu dong sinh them Follower khi hang doi het de test lien tuc ma khong bi dung.")]
+        [Tooltip("Automatically replenish mock followers when queue is empty for continuous testing.")]
         [SerializeField] private bool _autoReplenishMockQueue = false;
-        [Tooltip("Nếu true: Dừng Runner chờ follower khi hết hàng đợi. Nếu false: Runner hiện tại tiếp tục chạy chặng tiếp theo.")]
+        [Tooltip("If true, stop runner when queue is empty; if false, current runner continues to the next leg.")]
         [SerializeField] private bool _pauseWhenQueueEmpty = false;
 
         [Header("HUD Reference")]
@@ -37,28 +37,39 @@ namespace SteamRush.Features.Runner
         public Sprite CurrentRunnerAvatar => _currentRunnerAvatar != null ? _currentRunnerAvatar : _defaultAvatar;
 
         [Header("Roadside Character Handover")]
-        [Tooltip("Bật cơ chế nhân vật tiếp theo đứng chờ sẵn bên lề đường để chuyển gậy.")]
+        [Tooltip("Enable roadside waiting character for baton pass handover.")]
         [SerializeField] private bool _enableRoadsideHandover = true;
-        [Tooltip("Khoảng cách mét phía trước Runner xuất hiện nhân vật đứng chờ.")]
+        [Tooltip("Distance in meters ahead of the runner to spawn the roadside waiting proxy.")]
         [SerializeField] private float _spawnAheadMeters = 35f;
-        [Tooltip("Prefab đại diện người đứng chờ chuyển gậy (chứa Trigger 12m và ModelAnchor).")]
+        [Tooltip("Prefab representing the roadside waiting handover proxy.")]
         [SerializeField] private GameObject _roadsideProxyPrefab;
-        [Tooltip("Vị trí Z của vỉa hè bên trái.")]
+        [Tooltip("Z position of the left sidewalk.")]
         [SerializeField] private float _leftSidewalkZ = -5.8f;
-        [Tooltip("Vị trí Z của vỉa hè bên phải.")]
+        [Tooltip("Y rotation angle for character on left sidewalk (facing oncoming runner and road).")]
+        [SerializeField] private float _leftSidewalkRotY = -60f;
+        [Tooltip("Z position of the right sidewalk.")]
         [SerializeField] private float _rightSidewalkZ = 5.8f;
-        [Tooltip("Cao độ Y của vỉa hè.")]
+        [Tooltip("Y rotation angle for character on right sidewalk (facing oncoming runner and road).")]
+        [SerializeField] private float _rightSidewalkRotY = -120f;
+        [Tooltip("Y elevation of the sidewalk.")]
         [SerializeField] private float _sidewalkY = 0.2f;
-        [Tooltip("Prefab Nameplate hiển thị tên Viewer nổi trên đầu nhân vật đứng chờ.")]
+        [Tooltip("Nameplate prefab displaying the viewer name above the waiting character.")]
         [SerializeField] private GameObject _nameplatePrefab;
-        [Tooltip("Danh sách Model Prefab nhân vật từ PolygonCity.")]
+        [Tooltip("List of character model prefabs from PolygonCity.")]
         [SerializeField] private List<GameObject> _outfitVariants = new List<GameObject>();
 
         [Header("VIP Ticket (F10) - Nameplate Color")]
-        [Tooltip("Màu tên mặc định trên Nameplate của nhân vật đứng chờ.")]
+        [Tooltip("Default name color on the roadside character nameplate.")]
         [SerializeField] private Color _normalNameColor = Color.white;
-        [Tooltip("Màu tên khi người được chọn đứng chờ là chủ Vé VIP (F10).")]
+        [Tooltip("Name color when the roadside character is a VIP ticket holder.")]
         [SerializeField] private Color _vipNameColor = Color.yellow;
+
+        [Header("Roadside Visual Highlight")]
+        [Tooltip("Material used for roadside waiting character outline (e.g. Cyan/Blue).")]
+        [SerializeField] private Material _roadsideOutlineMaterial;
+        [Tooltip("Outline color for roadside character.")]
+        [SerializeField] private Color _roadsideOutlineColor = new Color(0.15f, 0.75f, 1f, 1f); // Electric Cyan Blue
+        [SerializeField] private float _roadsideOutlineWidth = 0.015f;
 
         private readonly HashSet<string> _vipFollowerIds = new HashSet<string>();
 
@@ -90,8 +101,8 @@ namespace SteamRush.Features.Runner
         public float LegDistanceMeters => _legDistanceMeters;
 
         /// <summary>
-        /// Xem trước Runner kế tiếp trong hàng đợi hoặc Runner đang đứng chờ bên đường.
-        /// Ưu tiên hiển thị VIP proxy hoặc người đầu tiên trong Hàng Chờ VIP.
+        /// Peeks the next runner in queue or the roadside waiting runner.
+        /// Prioritizes VIP proxy or the first person in VIP queue.
         /// </summary>
         public (string name, bool isVip)? PeekNextRunner()
         {
@@ -139,7 +150,7 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Xóa hàng đợi follower / VIP và hủy nhân vật proxy đứng chờ bên lề đường (nếu có).
+        /// Clears follower and VIP queues and destroys any active roadside proxy.
         /// </summary>
         public void ClearQueue(bool clearActiveRoadsideProxy = true)
         {
@@ -156,7 +167,7 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Bật hoặc tắt tính năng giả lập follower tự động.
+        /// Enables or disables automatic mock follower generation.
         /// </summary>
         public void SetMockFollowersEnabled(bool enabled, bool clearExistingQueue = true)
         {
@@ -168,8 +179,8 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Cập nhật thông tin Runner đang chạy hiện tại (Tên hiển thị + Avatar Sprite).
-        /// Thường được gọi bởi TikTokLiveClient khi đồng bộ thông tin chủ kênh Live.
+        /// Updates current runner display info (Display Name + Avatar Sprite).
+        /// Typically called by stream integration when syncing host channel profile.
         /// </summary>
         public void SetCurrentRunner(string runnerId, Sprite avatarSprite = null, bool isVip = false)
         {
@@ -275,7 +286,7 @@ namespace SteamRush.Features.Runner
             OnRunnerChanged?.Invoke(CurrentRunnerId, _followerQueue.Count);
         }
 
-        // Gọi từ StreamIntegration khi có sự kiện Follow mới - chỉ nhận nếu qua được FollowerGate.
+        // Called from StreamIntegration on new follow events if allowed by FollowerGate.
         public void TryEnqueueFollower(string userId)
         {
             if (!_followerGate.CanJoinQueue(userId))
@@ -293,12 +304,11 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        // ===== [VIP Baton Pass] BEGIN - Hàng chờ VIP & Chuyền gậy tức thì =====
+        // ===== [VIP Baton Pass] VIP Queue & Instant Baton Pass =====
         /// <summary>
-        /// Vé VIP (F10): Xuất hiện người đứng chờ chuyển gậy NGAY LẬP TỨC bên đường
-        /// phía trước Runner mà không cần phải chờ đủ số mét quy định.
-        /// Nếu đang có proxy thường -> VIP thay thế ngay lập tức.
-        /// Nếu đang có một proxy VIP khác đang tiếp cận -> chèn vào Hàng Chờ VIP để tiếp tục chuyền gậy ngay sau đó.
+        /// VIP Ticket: Spawns roadside handover proxy immediately ahead of runner without waiting for leg distance.
+        /// If a regular proxy is present, replaces it with VIP immediately.
+        /// If another VIP proxy is already active, enqueues into VIP queue.
         /// </summary>
         public void TryEnqueuePriorityFollower(string userId)
         {
@@ -311,12 +321,12 @@ namespace SteamRush.Features.Runner
             {
                 if (_activeProxy == null)
                 {
-                    // Chưa có ai đứng chờ -> Xuất hiện ngay nhân vật VIP đứng chờ chuyển gậy phía trước Runner!
+                    // No active proxy -> Spawn VIP proxy immediately ahead of runner
                     SpawnRoadsideProxyInternal(userId, true);
                 }
                 else if (!_pendingNextRunnerIsVip)
                 {
-                    // Đang có proxy người thường đứng chờ -> VIP chen ngang lập tức, thay thế proxy thường bằng proxy VIP!
+                    // Existing normal proxy -> Replace with VIP proxy immediately
                     if (!string.IsNullOrEmpty(_pendingNextRunnerId))
                     {
                         List<(string userId, bool isVip)> tempQueue = new List<(string, bool)>(_followerQueue);
@@ -328,7 +338,7 @@ namespace SteamRush.Features.Runner
                 }
                 else
                 {
-                    // Đang có một proxy VIP khác đang tiếp cận phía trước -> Chèn vào Hàng Chờ VIP
+                    // Another VIP proxy active -> Enqueue into VIP queue
                     _vipQueue.Enqueue(userId);
                 }
             }
@@ -340,6 +350,47 @@ namespace SteamRush.Features.Runner
                 PickPendingNextOutfit();
                 SwapRunnerOutfit(_pendingNextOutfit != null ? _pendingNextOutfit.name : "");
                 UpdateRunnerHud();
+            }
+
+            UpdateNextRunnerHud();
+            OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
+
+            if (_isWaitingForFollower)
+            {
+                ResumeFromWaiting();
+            }
+        }
+
+        /// <summary>
+        /// When a viewer follows, they immediately get queued or spawned ahead as the next roadside handover runner.
+        /// Replaces the former VIP ticket gift mechanism so following is all that is required to become runner.
+        /// </summary>
+        public void EnqueueFollowerAsRunner(string userId)
+        {
+            if (string.IsNullOrEmpty(userId)) return;
+
+            AudioManager.Instance?.PlaySFX(SFXType.StreamNewFollower);
+
+            if (_enableRoadsideHandover)
+            {
+                if (_activeProxy == null)
+                {
+                    // No proxy currently waiting -> spawn roadside waiting character immediately ahead of runner
+                    SpawnRoadsideProxyInternal(userId, false);
+                }
+                else
+                {
+                    // A proxy is already standing on the sidewalk -> queue this follower as the next runner
+                    _followerQueue.Enqueue((userId, false));
+                }
+            }
+            else
+            {
+                _followerQueue.Enqueue((userId, false));
+                if (_distanceSinceLastLeg >= _legDistanceMeters)
+                {
+                    AdvanceToNextRunner();
+                }
             }
 
             UpdateNextRunnerHud();
@@ -377,21 +428,21 @@ namespace SteamRush.Features.Runner
 
         private void UpdateRoadsideHandover()
         {
-            // 1. Ưu tiên Hàng Chờ VIP: Nếu chưa có proxy và có VIP đang đợi trong queue -> Xuất hiện ngay lập tức mà không cần chờ đủ mét!
+            // 1. Prioritize VIP queue: Spawn immediately if VIP waiting in queue
             if (_activeProxy == null && _vipQueue.Count > 0)
             {
                 string nextVip = _vipQueue.Dequeue();
                 SpawnRoadsideProxyInternal(nextVip, true);
             }
 
-            // 2. Chặng thông thường: Chỉ kiểm tra khi không có ai trong Hàng Chờ VIP
+            // 2. Regular leg: Spawn proxy when reaching designated leg threshold
             float triggerDistance = Mathf.Max(0f, _legDistanceMeters - _spawnAheadMeters);
             if (_distanceSinceLastLeg >= triggerDistance && !_proxySpawnedForCurrentLeg && _activeProxy == null && _vipQueue.Count == 0)
             {
                 TrySpawnRoadsideProxy();
             }
 
-            // 3. Hoàn tất chuyển gậy khi Runner tiếp cận hoặc vượt qua vị trí proxy
+            // 3. Complete handover when runner reaches or passes proxy position
             if (_activeProxy != null && _runnerTransform != null && _activeProxy.transform.position.x < _runnerTransform.position.x - 2f)
             {
                 ExecuteRoadsideHandover();
@@ -411,7 +462,7 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Được gọi bởi RoadsideHandoverTrigger khi Runner thực sự chạm proxy.
+        /// Called by RoadsideHandoverTrigger when the runner contacts the proxy.
         /// </summary>
         public void NotifyRunnerReachedProxy()
         {
@@ -475,7 +526,7 @@ namespace SteamRush.Features.Runner
 
             bool isLeft = UnityEngine.Random.value > 0.5f;
             float targetZ = isLeft ? _leftSidewalkZ : _rightSidewalkZ;
-            Quaternion spawnRot = isLeft ? Quaternion.Euler(0f, 65f, 0f) : Quaternion.Euler(0f, -65f, 0f);
+            Quaternion spawnRot = isLeft ? Quaternion.Euler(0f, _leftSidewalkRotY, 0f) : Quaternion.Euler(0f, _rightSidewalkRotY, 0f);
 
             Vector3 rootPos = new Vector3(_runnerTransform.position.x + _spawnAheadMeters, 0f, 0f);
 
@@ -544,8 +595,29 @@ namespace SteamRush.Features.Runner
 
             AttachNameplateToProxy(characterInstance, _pendingNextRunnerId, _pendingNextRunnerIsVip);
 
+            AttachRoadsideOutline(characterInstance);
+
             UpdateNextRunnerHud();
             OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
+        }
+
+        private void AttachRoadsideOutline(GameObject proxyObj)
+        {
+            if (proxyObj == null) return;
+            var outline = proxyObj.GetComponent<CharacterVisualOutline>();
+            if (outline == null)
+            {
+                outline = proxyObj.AddComponent<CharacterVisualOutline>();
+            }
+
+            if (_roadsideOutlineMaterial == null)
+            {
+#if UNITY_EDITOR
+                _roadsideOutlineMaterial = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Materials/Roadside_Outline_Mat.mat");
+#endif
+            }
+
+            outline.ConfigureOutline(_roadsideOutlineMaterial, _roadsideOutlineColor, _roadsideOutlineWidth);
         }
 
         private void ExecuteRoadsideHandover()
@@ -572,9 +644,9 @@ namespace SteamRush.Features.Runner
             }
 
             OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
-            Debug.Log($"[ChatRunnerQueueManager] Chuyển gậy thành công cho: {CurrentRunnerId} (VIP={CurrentRunnerIsVip})!");
+            Debug.Log($"[ChatRunnerQueueManager] Baton handover completed for: {CurrentRunnerId} (VIP={CurrentRunnerIsVip})!");
 
-            // Nếu trong Hàng Chờ VIP có người, xuất hiện NGAY LẬP TỨC proxy cho người VIP tiếp theo mà không cần chờ đủ mét!
+            // If VIP queue has waiting members, spawn next VIP proxy immediately
             if (_enableRoadsideHandover && _vipQueue.Count > 0)
             {
                 string nextVip = _vipQueue.Dequeue();
@@ -598,6 +670,12 @@ namespace SteamRush.Features.Runner
                         _currentOutfitName = child.name;
                     }
                 }
+            }
+
+            var runnerOutline = _runnerTransform.GetComponent<CharacterVisualOutline>();
+            if (runnerOutline != null)
+            {
+                runnerOutline.RefreshOutline();
             }
 
             _pendingNextOutfit = null;
@@ -719,7 +797,7 @@ namespace SteamRush.Features.Runner
             OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
         }
 
-        // Gắn tên/avatar/trạng thái VIP lên bảng tên của Runner hiện tại qua facade HUDManager có sẵn.
+        // Apply name/avatar/VIP status to runner nameplate via HUDManager facade
         private void UpdateRunnerHud()
         {
             if (_hudManager == null)
@@ -750,7 +828,7 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        // Empty Queue Hold: dừng thế giới + báo UI hiện bảng chờ.
+        // Empty Queue Hold: pauses world speed and notifies UI
         private void EnterWaitingState()
         {
             _isWaitingForFollower = true;
@@ -765,7 +843,7 @@ namespace SteamRush.Features.Runner
             OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
         }
 
-        // Có Follower mới vào lúc đang chờ: khôi phục tốc độ, ẩn bảng, chọn Runner kế tiếp.
+        // New follower arrived while waiting: resume speed, hide panel, pick next runner
         private void ResumeFromWaiting()
         {
             _isWaitingForFollower = false;

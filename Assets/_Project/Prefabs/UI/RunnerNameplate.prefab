@@ -90,7 +90,7 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
-  m_PresetInfoIsWorld: 1
+  m_PresetInfoIsWorld: 0
 --- !u!114 &2171043586333845017
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -122,6 +122,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.UI.Views.RunnerNameplateController
   avatar: {fileID: 6742477058682024480}
   runnerName: {fileID: 5109298028195542883}
+  normalColor: {r: 1, g: 1, b: 1, a: 1}
+  vipColor: {r: 1, g: 0.85, b: 0.1, a: 1}
   offsetX: 0
   extraPadding: 0.35
   offsetZ: 0
@@ -170,7 +172,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c4090c6aabcae264cb5705791698c5d4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.UI.Views.StatusPopupSpawner
+  _popupsEnabled: 0
   popupTemplate: {fileID: 3591653674969557234}
+  normalDuration: 3
+  normalHoldDuration: 2.2
+  fastDuration: 1.8
+  fastHoldDuration: 1.2
+  interPopupDelay: 0.15
+  maxQueueSize: 25
 --- !u!1 &2279203138196186877
 GameObject:
   m_ObjectHideFlags: 0

@@ -26,11 +26,11 @@ namespace SteamRush.EditorTools
 
             if (canvas == null)
             {
-                Debug.LogError("[DualWingActionFeedsBuilder] Không tìm thấy Canvas Screen Space trong scene!");
+                Debug.LogError("[DualWingActionFeedsBuilder] Screen Space Canvas not found in scene!");
                 return;
             }
 
-            // Dọn sạch mọi container bị gắn nhầm ở các GameObject khác
+            // Clean up any improperly parented containers
             var wrongFans = Object.FindObjectsByType<GiftToastQueue>(FindObjectsSortMode.None);
             foreach (var w in wrongFans)
             {
@@ -138,7 +138,7 @@ namespace SteamRush.EditorTools
             fanActionTxt.fontSize = 15f;
             fanActionTxt.color = new Color(0.22f, 0.88f, 1.0f, 1f);
             fanActionTxt.fontStyle = FontStyles.Bold;
-            fanActionTxt.text = "Làn 2 (Giữa)";
+            fanActionTxt.text = "Lane 2 (Middle)";
             fanActionTxt.alignment = TextAlignmentOptions.MidlineLeft;
             fanActionTxt.overflowMode = TextOverflowModes.Overflow;
             LayoutElement fanActionLe = fanActionGo.GetComponent<LayoutElement>();
@@ -259,7 +259,7 @@ namespace SteamRush.EditorTools
             antiActionTxt.fontSize = 15f;
             antiActionTxt.color = new Color(1.0f, 0.38f, 0.44f, 1f);
             antiActionTxt.fontStyle = FontStyles.Bold;
-            antiActionTxt.text = "Thả Xe Làn 1";
+            antiActionTxt.text = "Spawn Car Lane 1";
             antiActionTxt.alignment = TextAlignmentOptions.MidlineLeft;
             antiActionTxt.overflowMode = TextOverflowModes.Overflow;
             LayoutElement antiActionLe = antiActionGo.GetComponent<LayoutElement>();
@@ -297,17 +297,17 @@ namespace SteamRush.EditorTools
                 hudSo.FindProperty("antiFeedQueue").objectReferenceValue = antiQueue;
                 hudSo.ApplyModifiedProperties();
                 EditorUtility.SetDirty(hud);
-                Debug.Log("[DualWingActionFeedsBuilder] Đã gán fanFeedQueue và antiFeedQueue vào HUDManager thành công!");
+                Debug.Log("[DualWingActionFeedsBuilder] Assigned fanFeedQueue and antiFeedQueue to HUDManager successfully!");
             }
             else
             {
-                Debug.LogWarning("[DualWingActionFeedsBuilder] Không tìm thấy HUDManager trong scene!");
+                Debug.LogWarning("[DualWingActionFeedsBuilder] HUDManager not found in scene!");
             }
 
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene());
             UnityEditor.SceneManagement.EditorSceneManager.SaveScene(UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene());
 
-            Debug.Log("<color=#00FF88>[DualWingActionFeedsBuilder] KHỞI TẠO BẢNG THÔNG BÁO 2 CÁNH (DUAL-WING ACTION FEEDS) THÀNH CÔNG!</color>");
+            Debug.Log("<color=#00FF88>[DualWingActionFeedsBuilder] INITIALIZED DUAL-WING ACTION FEEDS SUCCESSFULLY!</color>");
         }
 
         [MenuItem("Tools/StreamRush/Test Show Action Feeds")]
@@ -316,7 +316,7 @@ namespace SteamRush.EditorTools
             HUDManager hud = Object.FindFirstObjectByType<HUDManager>();
             if (hud == null)
             {
-                Debug.LogWarning("[DualWingActionFeedsBuilder] Không tìm thấy HUDManager!");
+                Debug.LogWarning("[DualWingActionFeedsBuilder] HUDManager not found in scene!");
                 return;
             }
 
@@ -328,7 +328,7 @@ namespace SteamRush.EditorTools
             hud.ShowAntiAction("Binh", "Spawned Pickup");
             hud.ShowAntiAction("Tuan", "Car Storm");
 
-            Debug.Log("[DualWingActionFeedsBuilder] Đã bắn thông báo test vào cả 2 cánh Fan & Anti!");
+            Debug.Log("[DualWingActionFeedsBuilder] Sent test notifications to both Fan and Anti feeds.");
         }
 
         [MenuItem("Tools/StreamRush/Test Show Action Feeds Long")]
@@ -354,7 +354,7 @@ namespace SteamRush.EditorTools
             hud.ShowAntiAction("Binh", "Spawned Pickup");
             hud.ShowAntiAction("Tuan", "Car Storm");
 
-            Debug.Log("[DualWingActionFeedsBuilder] Đã bắn thông báo test (8s) vào cả 2 cánh Fan & Anti!");
+            Debug.Log("[DualWingActionFeedsBuilder] Sent test notifications (8s) to both Fan and Anti feeds.");
         }
     }
 }

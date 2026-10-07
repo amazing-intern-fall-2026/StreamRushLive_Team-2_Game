@@ -13,30 +13,42 @@ namespace SteamRush.Features.Runner
     public class ChatLaneRunnerController : MonoBehaviour
     {
         [Header("Lane Settings")]
-        [Tooltip("Vị trí trục Z của 3 làn: Trái (+3.0) / Giữa (0.0) / Phải (-3.0) theo hướng camera nhìn +X.")]
+        [Tooltip("Z positions of the 3 lanes: Left (+3.0) / Middle (0.0) / Right (-3.0) looking toward +X.")]
         [SerializeField] private float[] _laneZPositions = { 3f, 0f, -3f };
-        [Tooltip("Thời gian lách làn mượt mà. GDD v1.3 = 0.2s, dùng Mathf.SmoothDamp.")]
+        [Tooltip("Lane change transition duration (default: 0.2s). Uses Mathf.SmoothDamp.")]
         [SerializeField] private float _laneChangeSmoothTime = 0.2f;
 
         [Header("Command Queue")]
-        [Tooltip("Số lệnh tối đa được nhận từ 1 lần gọi ExecuteCommands (1 comment chat).")]
+        [Tooltip("Maximum commands accepted per comment.")]
         [SerializeField] private int _maxCommandsPerBatch = 3;
-        [Tooltip("Thời gian chờ tối thiểu giữa 2 lệnh fast/slow liên tiếp trong queue (giây).")]
+        [Tooltip("Minimum interval between consecutive fast/slow queue commands.")]
         [SerializeField] private float _nonLaneCommandDelay = 0.1f;
 
         [Header("Speed Commands (fast)")]
-        [Tooltip("Tốc độ cuộn thế giới khi nhận lệnh fast (bứt tốc turbo). Mặc định = 18.0 m/s để tạo cảm giác bứt phá xé gió rõ rệt.")]
+        [Tooltip("World scroll speed on fast command (default: 18.0 m/s).")]
         [SerializeField] private float _fastTargetSpeed = 18f;
-        [Tooltip("Tham chiếu FactionTugOfWarManager để kiểm tra và trừ năng lượng Fan.")]
+        [Tooltip("FactionTugOfWarManager reference for Fan energy costs.")]
         [SerializeField] private FactionTugOfWarManager _factionManager;
-        [Tooltip("Tham chiếu EnergySystem (nếu có trong scene) để đồng bộ trừ năng lượng khi đổi làn.")]
+        [Tooltip("EnergySystem reference for syncing lane change costs.")]
         [SerializeField] private StreamRushLive.Features.Spawning.EnergySystem _energySystem;
 
-        [Header("Control Energy Costs (GDD v1.4.1 mục 2.2)")]
-        [Tooltip("Chi phí năng lượng Fan khi đổi làn 1 lần. GDD v1.4.1 = -1% (-10 điểm trên thang 1000).")]
+        [Header("Control Energy Costs (GDD v1.4.1 Section 2.2)")]
+        [Tooltip("Fan energy cost per lane change (default: 10 points).")]
         [SerializeField] private int _laneChangeEnergyCost = 10;
-        [Tooltip("Chi phí năng lượng Fan khi nhảy 1 lần. GDD v1.4.1 = -2% (-20 điểm trên thang 1000).")]
+        [Tooltip("Fan energy cost per jump (default: 20 points).")]
         [SerializeField] private int _jumpEnergyCost = 20;
+
+        public int LaneChangeEnergyCost
+        {
+            get => _laneChangeEnergyCost;
+            set => _laneChangeEnergyCost = Mathf.Max(0, value);
+        }
+
+        public int JumpEnergyCost
+        {
+            get => _jumpEnergyCost;
+            set => _jumpEnergyCost = Mathf.Max(0, value);
+        }
 
         // Buff durations are managed exclusively via GiftManager
         private float _freeControlBuffDuration = 30f;
@@ -58,9 +70,9 @@ namespace SteamRush.Features.Runner
             : _sprintBuffDuration;
 
         [Header("Knockback Settings (GDD v1.2)")]
-        [Tooltip("Khoảng cách đẩy lùi Runner (mét) khi va chạm chướng ngại vật theo GDD v1.2.")]
+        [Tooltip("Runner knockback push distance in meters on obstacle collision.")]
         [SerializeField] private float _knockbackDistance = 1.8f;
-        [Tooltip("Thời gian hồi phục lại vị trí gốc sau khi bị đẩy lùi (giây).")]
+        [Tooltip("Recovery duration to return to base position after knockback.")]
         [SerializeField] private float _knockbackDuration = 0.45f;
 
         private float _knockbackOffsetX;
@@ -77,7 +89,7 @@ namespace SteamRush.Features.Runner
         private float _controlLockTimer = 0f;
 
         /// <summary>
-        /// Runner có đang bị khóa điều khiển (do va chạm bị đẩy lùi, choáng, về đích hoặc thế giới đang cuộn ngược) không.
+        /// Indicates if runner controls are currently locked (knockdown, finish line, or reverse knockback).
         /// </summary>
         public bool IsControlLocked
         {
@@ -145,7 +157,7 @@ namespace SteamRush.Features.Runner
             {
                 _knockbackTimer += dt;
                 float progress = Mathf.Clamp01(_knockbackTimer / _knockbackTotalDuration);
-                // Ease Out Quad cho cảm giác bật lùi dứt khoát rồi từ từ lấy lại đà chạy
+                // EaseOutQuad for snappy initial knockback followed by gradual recovery
                 float ease = 1f - (1f - progress) * (1f - progress);
                 _knockbackOffsetX = Mathf.Lerp(_knockbackStartOffset, 0f, ease);
             }
@@ -174,8 +186,8 @@ namespace SteamRush.Features.Runner
         private bool _isFastRunning;
         private float _fastTimer;
 
-        // Khoa dieu khien (GDD v1.4.1 - Victory Celebration): goi khi Runner bang qua Cong Ve Dich,
-        // khong con nhan lenh chat nao nua (doi lan/nhay/fast deu bi chan).
+        // Controls lock (GDD v1.4.1 - Victory Celebration): called when Runner crosses finish line archway,
+        // ignoring any further chat commands (lane switch, jump, fast are blocked).
         private bool _controlsLocked;
         public bool IsControlsLocked => _controlsLocked;
 
@@ -206,6 +218,8 @@ namespace SteamRush.Features.Runner
                 _baseFov = _mainCamera.fieldOfView;
             }
             _baseX = transform.position.x;
+            var col = GetComponent<Collider>();
+            if (col != null) col.isTrigger = false;
 
             if (_factionManager == null)
             {
@@ -257,10 +271,8 @@ namespace SteamRush.Features.Runner
 
             if (_animator != null)
             {
-                // Victory (GDD v1.4.1): Animator.speed la toc do phat CHUNG cho moi layer, khong
-                // rieng Base Layer - neu de "<=0.2f -> speed=0" ap dung luc World dung han sau khi
-                // ve dich se dong bang luon ca layer Dance dang chay, gay hien tuong "nhay 1 lan roi
-                // dung yen" thay vi loop. Ep speed=1 binh thuong de Dance van chay tiep du World=0.
+                // Victory (GDD v1.4.1): Animator.speed affects all layers.
+                // Keep speed at 1f during victory stop so Dance animation continues looping even when World speed is 0.
                 if (_speedManager != null && _speedManager.IsVictoryStopped)
                 {
                     _animator.speed = 1f;
@@ -350,7 +362,7 @@ namespace SteamRush.Features.Runner
 
             if (_commandQueue.Count >= _maxCommandsPerBatch)
             {
-                Debug.LogWarning($"[ChatLaneRunner] Queue đầy, huỷ lệnh dư: {normalized}");
+                Debug.LogWarning($"[ChatLaneRunner] Queue full, dropped command: {normalized}");
                 return;
             }
 
@@ -408,15 +420,13 @@ namespace SteamRush.Features.Runner
                     break;
 
                 default:
-                    Debug.LogWarning($"[ChatLaneRunner] Lệnh không hợp lệ, bỏ qua: {command}");
+                    Debug.LogWarning($"[ChatLaneRunner] Invalid command skipped: {command}");
                     break;
             }
         }
 
-        // GDD v1.4.1 muc 2.2: kiem tra + tru nang luong Fan cho 1 thao tac dieu khien (doi lan/
-        // nhay). Trong luc Free-Control Buff dang bat, moi thao tac mien phi 100% va bo qua khoa
-        // (duoc phep ngay ca khi Fan = 0%). Goi ham nay TRUOC khi thuc hien hanh dong - neu tra
-        // ve false thi KHONG duoc thuc hien hanh dong (khoa doi lan / khoa nhay).
+        // Validates and deducts Fan control energy for lane switch or jump (GDD v1.4.1 Section 2.2).
+        // During active Free-Control Buff, all actions are 100% free and bypass locks.
         private bool TryPayControlEnergy(int cost)
         {
             if (_isFreeControlActive)
@@ -436,8 +446,7 @@ namespace SteamRush.Features.Runner
 
             if (_factionManager == null && _energySystem == null)
             {
-                // Chưa nối FactionTugOfWarManager hoặc EnergySystem trong scene (vd. scene test riêng) — không khoá,
-                // cho phép thao tác như cũ để không chặn việc test các phần khác.
+                // If FactionTugOfWarManager or EnergySystem is unassigned, permit actions for test scenes.
                 return true;
             }
 
@@ -452,7 +461,7 @@ namespace SteamRush.Features.Runner
                 canPay = _energySystem.TryConsumeLaneChangeEnergy(cost);
             }
 
-            // Nếu cả hai cùng có mặt trong scene, đồng bộ trừ luôn cả EnergySystem
+            // Sync deduction with EnergySystem if present
             if (canPay && _factionManager != null && _energySystem != null)
             {
                 _energySystem.ConsumeLaneChangeEnergy(cost);
@@ -466,8 +475,8 @@ namespace SteamRush.Features.Runner
             if (Time.time - _lastEnergyWarningTime >= 1.2f)
             {
                 _lastEnergyWarningTime = Time.time;
+                Debug.LogWarning($"[ChatLaneRunner] Fan energy depleted — locked {actionName}.");
             }
-            Debug.LogWarning($"[ChatLaneRunner] Hết năng lượng Fan/Blue Team — khoá {actionName}.");
         }
 
         public bool TriggerJump()
@@ -479,18 +488,16 @@ namespace SteamRush.Features.Runner
                 return false;
             }
 
-            // Kiểm tra + trừ năng lượng TRƯỚC khi nhảy thật sự xảy ra: không đủ (hoặc hết) năng
-            // lượng Fan thì khoá nhảy, Runner buộc phải chịu va chạm nếu phía trước có chướng ngại.
+            // Validate and deduct energy before jump: lock jump if Fan energy is depleted
             if (!TryPayControlEnergy(_jumpEnergyCost))
             {
-                NotifyEnergyDepleted("nhảy");
+                NotifyEnergyDepleted("Jump");
                 return false;
             }
 
             _runnerController.PerformJump();
             AudioManager.Instance?.PlaySFX(SFXType.RunnerJump);
-            // Không tự SetTrigger("Jump") ở đây nữa — RunnerController.PerformJump() đã tự bắn
-            // Trigger "Jump" cho Animator, gọi lại ở đây sẽ set trigger 2 lần thừa mỗi lần nhảy.
+            // Jump trigger is handled by RunnerController.PerformJump()
             return true;
         }
 
@@ -504,10 +511,10 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            // Chỉ trừ năng lượng khi lane đích THỰC SỰ khác lane hiện tại (đã check ở trên).
+            // Deduct energy only when target lane differs from current lane
             if (!TryPayControlEnergy(_laneChangeEnergyCost))
             {
-                NotifyEnergyDepleted("đổi làn");
+                NotifyEnergyDepleted("Lane Switch");
                 return;
             }
 
@@ -527,7 +534,7 @@ namespace SteamRush.Features.Runner
 
             if (!TryPayControlEnergy(_laneChangeEnergyCost))
             {
-                NotifyEnergyDepleted("đổi làn");
+                NotifyEnergyDepleted("Lane Switch");
                 return;
             }
 
@@ -539,9 +546,8 @@ namespace SteamRush.Features.Runner
         {
             if (IsControlLocked) return;
 
-            // GDD v1.4.1 muc 2.2: bang tieu hao nang luong Fan chi con Doi Lan va Nhay. Chay Fast
-            // la mien phi (0% nang luong), nen KHONG con kiem tra FanLikes <= 0 truoc khi cho fast
-            // chay nua — chi con logic khoi dong toc do.
+            // GDD v1.4.1 Section 2.2: Fan energy costs only apply to Lane Switch and Jump.
+            // Fast running is free (0% energy cost), so we don't check Fan energy here.
             if (_speedManager == null)
             {
                 _speedManager = WorldSpeedManager.Instance ?? FindFirstObjectByType<WorldSpeedManager>();
@@ -554,17 +560,16 @@ namespace SteamRush.Features.Runner
             AudioManager.Instance?.PlaySFX(SFXType.RunnerSpeedBoost, 0.75f);
         }
 
-        // Da go bo phan tru nang luong Fan theo thoi gian (GDD v1.4.1: fast mien phi). Ham nay chi
-        // con giu 2 viec: (1) huy fast ngay khi Runner dang bi va cham / knockback / recovering,
-        // tru khi dang co Sprint Buff; (2) duy tri toc do fast khi dang co Sprint Buff dang chay.
+        // Time-based Fan energy drain removed (Fast running is free).
+        // This method handles: (1) cancel fast on collision / knockback / recovery unless Sprint Buff is active;
+        // (2) maintain fast speed while Sprint Buff is running.
         private void UpdateFastEnergyDrain()
         {
             if (_isSprintBuffActive)
             {
                 _isFastRunning = true;
 
-                // Nếu đang bị giật lùi (ReverseKnockback), tạm thời để WorldSpeedManager xử lý hiệu ứng giật lùi.
-                // Ngay khi thoát giật lùi và pha dừng va chạm, lập tức tái kích hoạt CommandSpeed 18 m/s!
+                // If in reverse knockback, defer command speed until recovery completes
                 if (_speedManager != null &&
                     !_speedManager.IsReverseKnockingBack &&
                     !_speedManager.IsCommandOverrideActive)
@@ -663,10 +668,8 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Kích hoạt quà Bình Thao Tác Tự Do (Free-Control Buff) cho phe Fan trong duration giây
-        /// (mặc định 30s, GDD v1.4.1 mục 3). Trong lúc hiệu lực: Đổi Làn và Nhảy tiêu tốn 0% năng
-        /// lượng Fan, kể cả khi Fan đang ở mức 0% (bỏ qua khoá thao tác — xem TryPayControlEnergy).
-        /// Bấm lại trong lúc buff đang chạy sẽ reset lại đủ duration giây (không cộng dồn).
+        /// Activates Free Control buff for Fan team (0% energy cost for jump and lane switches).
+        /// Re-activating refreshes duration.
         /// </summary>
         public void ActivateFreeControl(float duration = 30f)
         {

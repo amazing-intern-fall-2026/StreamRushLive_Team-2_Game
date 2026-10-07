@@ -5,11 +5,8 @@ using SteamRush.Track;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Lớp trừu tượng (Abstract Class) cơ sở cho toàn bộ chướng ngại vật (Obstacles) trong game:
-    /// - Quản lý tên, loại ObstacleType.
-    /// - Cấu hình mức độ phạt riêng biệt cho từng loại: trừ năng lượng, khựng hình, trừ quãng đường.
-    /// - Không có lực đẩy lùi knockback (Runner luôn cố định tọa độ X).
-    /// - Cung cấp hàm abstract OnHitPlayer() để các lớp con tự định nghĩa hành vi phụ (ví dụ trừ quãng đường, xoay vòng, văng mảnh vỡ,...).
+    /// Abstract base class for all obstacle hazards in the game.
+    /// Configures penalty multipliers, hit-stop, and provides OnHitPlayer() hook.
     /// </summary>
     [RequireComponent(typeof(BoxCollider))]
     public abstract class ObstacleBase : MonoBehaviour
@@ -64,13 +61,13 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Kích hoạt chuỗi xử lý va chạm với Player.
+        /// Resolves collision interaction with player.
         /// </summary>
         public void TriggerHit(GameObject player)
         {
             if (_hasCollided || _isShieldDeflected) return;
 
-            // Kiểm tra nếu Runner đang có Khiên bảo vệ: Chặn hoàn toàn va chạm và đẩy xe văng ra 2 bên!
+            // If runner is shielded, block impact completely and deflect obstacle
             SteamRush.Features.Runner.RunnerCollisionHandler collisionHandler = player != null
                 ? (player.GetComponentInParent<SteamRush.Features.Runner.RunnerCollisionHandler>() ?? player.GetComponent<SteamRush.Features.Runner.RunnerCollisionHandler>())
                 : null;
@@ -85,7 +82,7 @@ namespace StreamRushLive.Features.Spawning
 
             _hasCollided = true;
 
-            // 1. Áp dụng trừ quãng đường nếu có cấu hình
+            // 1. Apply distance penalty if configured
             if (distancePenaltyMeters > 0f)
             {
                 TrackProgressTracker tracker = FindFirstObjectByType<TrackProgressTracker>();
@@ -95,10 +92,10 @@ namespace StreamRushLive.Features.Spawning
                 }
             }
 
-            // 2. Gọi hàm thực thi riêng của từng loại chướng ngại vật con
+            // 2. Invoke obstacle-specific hit hook
             OnHitPlayer(player);
 
-            // 3. Báo cho bộ xử lý va chạm trên Player nếu có
+            // 3. Notify Player collision handler
             if (collisionHandler != null)
             {
                 collisionHandler.HandleObstacleHitFromSource(this);
@@ -106,7 +103,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Hàm trừu tượng: Cho phép từng loại vật cản cụ thể mở rộng logic phụ khi đâm trúng Player.
+        /// Abstract hook allowing concrete obstacles to implement custom hit logic.
         /// </summary>
         public abstract void OnHitPlayer(GameObject player);
 

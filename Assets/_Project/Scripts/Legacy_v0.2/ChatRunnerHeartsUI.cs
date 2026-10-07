@@ -5,7 +5,7 @@ using SteamRush.Features.Runner;
 namespace SteamRush.Features.UI
 {
     /// <summary>
-    /// Hiển thị 3 Tim Máu của Runner trên màn hình theo GDD ChatLand.
+    /// Displays 3 runner hearts on screen according to legacy GDD specification.
     /// </summary>
     public class ChatRunnerHeartsUI : MonoBehaviour
     {
@@ -14,8 +14,8 @@ namespace SteamRush.Features.UI
         [SerializeField] private Image[] _heartImages;
 
         [Header("Colors")]
-        [SerializeField] private Color _activeHeartColor = new Color(1f, 0.2f, 0.3f, 1f); // Đỏ tươi
-        [SerializeField] private Color _emptyHeartColor = new Color(0.2f, 0.2f, 0.2f, 0.4f); // Xám mờ
+        [SerializeField] private Color _activeHeartColor = new Color(1f, 0.2f, 0.3f, 1f); // Vibrant Red
+        [SerializeField] private Color _emptyHeartColor = new Color(0.2f, 0.2f, 0.2f, 0.4f); // Dimmed Gray
 
         private void Awake()
         {

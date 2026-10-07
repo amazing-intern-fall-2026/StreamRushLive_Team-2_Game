@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 namespace SteamRush.Features.UI.Views
 {
-    // View: 1 toast báo quà tặng (icon + tên viewer + tên vật thể trong game), tự huỷ khi xong - không truy cập module khác (SRP).
+    // View: displays single gift toast notification adhering to SRP.
     public class GiftToastController : MonoBehaviour
     {
         [SerializeField] private Image iconImage;
@@ -23,16 +23,18 @@ namespace SteamRush.Features.UI.Views
             if (animDur > 0f) animDuration = animDur;
         }
 
-        // GiftToastQueue lang nghe de tu go khoi danh sach dang hien thi khi toast bien mat
-        // (ca truong hop tu het gio lan bi ep dismiss som de nhuong cho toast moi - xem ForceDismiss).
+        // Strips unicode emojis to avoid TextMeshPro font missing glyph warnings
+        private static readonly System.Text.RegularExpressions.Regex EmojiRegex = new System.Text.RegularExpressions.Regex(
+            @"[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF\u2300-\u23FF\u2B50-\u2B55\uFE0F]",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        // Subscribed by GiftToastQueue to remove from active list upon dismiss
+        // (both on natural expiry and force dismiss).
         public event System.Action<GiftToastController> Dismissed;
         private bool _dismissed;
 
-        // accentColor: mau chu de canh bao/su kien (vd. do = nguy hiem, xanh = tich cuc) - to vien the (cardOutline)
-        // va mac dinh cho icon neu iconColor khong truyen rieng. null = giu nguyen mau mac dinh tren template
-        // (dung cho khu Gift: moi qua co mau icon rieng, khong can vien doi mau).
-        // showItemName=false danh cho khu Gift (chi hien Icon + ten nguoi donate, GDD moi) -
-        // Top Banner van dung itemName lam noi dung thong bao chinh nen giu mac dinh true.
+        // accentColor: theme color for event/warning (blue = positive, red = hazard).
+        // showItemName: set to false for compact gift notifications (icon + viewer name only).
         public void Play(string viewerName, string itemName, Sprite icon, Color? iconColor = null, Color? accentColor = null, bool showItemName = true)
         {
             Color? resolvedIconColor = iconColor ?? accentColor;
@@ -43,7 +45,7 @@ namespace SteamRush.Features.UI.Views
                 {
                     iconImage.gameObject.SetActive(true);
                     iconImage.sprite = icon;
-                    // Icon nguồn là hình trắng/nền trong suốt (game-icons.net) - cần tint màu để có màu sắc phù hợp vật phẩm.
+                    // Tint monochrome icon sprite to match item theme
                     iconImage.color = resolvedIconColor ?? Color.white;
                 }
                 else if (hideIconIfNull)
@@ -57,43 +59,43 @@ namespace SteamRush.Features.UI.Views
                 Color c = accentColor.Value;
                 bool isBlueTone = (c.b > c.r) || (c.g > c.r);
 
-                // Đồng bộ màu nền card theo phe (Xanh dương cho Blue Team, Đỏ đen cho Red Team)
+                // Donation and celebration toasts use bright blue/red pill skins from the theme kit.
+                HudTheme theme = HudTheme.Current;
                 Image bgImage = GetComponent<Image>();
                 if (bgImage != null)
                 {
-                    bgImage.color = isBlueTone
-                        ? new Color(0.04f, 0.12f, 0.28f, 0.95f)
-                        : new Color(0.22f, 0.04f, 0.06f, 0.95f);
+                    Sprite pill = theme.FactionPill(isBlueTone);
+                    if (pill != null)
+                    {
+                        bgImage.sprite = pill;
+                        bgImage.type = Image.Type.Sliced;
+                    }
+                    bgImage.color = Color.white;
                 }
 
                 if (cardOutline != null)
                 {
-                    cardOutline.effectColor = isBlueTone
-                        ? new Color(0.25f, 0.72f, 1f, 0.95f)
-                        : new Color(1f, 0.28f, 0.22f, 0.95f);
+                    cardOutline.enabled = false;
                 }
 
                 if (itemNameText != null)
                 {
-                    itemNameText.color = isBlueTone
-                        ? new Color(0.88f, 0.96f, 1f, 1f)
-                        : new Color(1f, 0.92f, 0.92f, 1f);
+                    itemNameText.color = theme.textPrimary;
                 }
             }
 
             if (viewerNameText != null)
             {
-                viewerNameText.text = viewerName;
+                viewerNameText.text = string.IsNullOrEmpty(viewerName) ? viewerName : EmojiRegex.Replace(viewerName, "").Trim();
             }
 
             if (itemNameText != null)
             {
                 itemNameText.gameObject.SetActive(showItemName);
-                itemNameText.text = itemName;
+                itemNameText.text = string.IsNullOrEmpty(itemName) ? itemName : EmojiRegex.Replace(itemName, "").Trim();
             }
 
-            // Dùng scale + fade thay vì di chuyển RectTransform vì toast nằm trong VerticalLayoutGroup
-            // (layout tự set anchoredPosition/sizeDelta mỗi frame - animate 2 giá trị đó sẽ bị layout ghi đè).
+            // Use scale + fade animations inside VerticalLayoutGroup to avoid layout conflicts
             transform.localScale = Vector3.one * 0.85f;
             canvasGroup.alpha = 0f;
             _dismissed = false;
@@ -109,10 +111,8 @@ namespace SteamRush.Features.UI.Views
             sequence.OnComplete(() => Dismiss());
         }
 
-        // GiftToastQueue goi khi so toast dang hien vuot qua gioi han (spam donate) - ep bien mat
-        // ngay lap tuc de nhuong cho toast moi nhat. Fade + scale tai cho, van nam trong
-        // VerticalLayoutGroup cua GiftContainer nen khi thu nho/mo dan se duoc layout day len
-        // roi bien mat - dung y nguoi dung (giu hieu ung "day len roi bien mat" thay vi truot ngang).
+        // Called by GiftToastQueue when active toasts exceed max limit (donation spam)
+        // to immediately fade out and make room for newer toasts.
         public void ForceDismiss()
         {
             if (this == null || _dismissed) return;
@@ -134,7 +134,7 @@ namespace SteamRush.Features.UI.Views
             }
             catch (System.Exception)
             {
-                // Đối tượng đã bị huỷ bởi Unity
+                // Target object already destroyed
             }
 
             Dismiss();

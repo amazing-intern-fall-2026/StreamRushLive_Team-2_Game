@@ -8,9 +8,8 @@ using StreamRushLive.Features.Spawning;
 namespace SteamRush.Features.UI.Views
 {
     /// <summary>
-    /// Vòng tròn đếm ngược thời gian tác dụng của 'Thả Xe Không Giới Hạn' (F7)
-    /// nằm ngay phía trên thanh năng lượng Anti (Phe Đỏ).
-    /// Có hiệu ứng Radial Fill 360 độ quét dần theo thời gian thực và đếm ngược số giây.
+    /// Countdown timer circle for Unlimited Cars hazard mode (Anti / Red Team).
+    /// Displays 360-degree radial fill sweep and remaining seconds countdown.
     /// </summary>
     public class AntiUnlimitedTimerCircle : MonoBehaviour
     {
@@ -31,7 +30,6 @@ namespace SteamRush.Features.UI.Views
         private static void ResetStatics()
         {
             _instance = null;
-            _circleSprite = null;
         }
 
         [Header("References")]
@@ -43,18 +41,13 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private TMP_Text iconText;
         [SerializeField] private CanvasGroup canvasGroup;
 
-        [Header("Colors & Timing")]
-        [SerializeField] private Color activeRingColor = new Color(1f, 0.2f, 0.1f, 1f);
-        [SerializeField] private Color warningRingColor = new Color(1f, 0.8f, 0.1f, 1f);
-        [SerializeField] private Color bgColor = new Color(0.08f, 0.04f, 0.06f, 0.92f);
+        // Circle sprite and label colors are retrieved from HudTheme (HudTheme.GetTimerSkin).
 
         private float _totalDuration = 60f;
         private float _remainingTime = 0f;
         private bool _isActive = false;
 
         public bool IsActive => _isActive;
-
-        private static Sprite _circleSprite;
 
         private void Awake()
         {
@@ -83,7 +76,7 @@ namespace SteamRush.Features.UI.Views
 
         private void Start()
         {
-            // Mặc định ẩn khi chưa kích hoạt Unlimited Mode
+            // Initially hidden until Unlimited Mode activates
             if (!_isActive && canvasGroup != null)
             {
                 canvasGroup.alpha = 0f;
@@ -92,7 +85,7 @@ namespace SteamRush.Features.UI.Views
 
         private void Update()
         {
-            // Theo dõi trạng thái từ SingleObstacleSpawner
+            // Track active state from SingleObstacleSpawner
             if (obstacleSpawner != null)
             {
                 if (obstacleSpawner.IsUnlimitedModeActive && !_isActive)
@@ -115,14 +108,13 @@ namespace SteamRush.Features.UI.Views
                 return;
             }
 
-            // Cập nhật Radial Fill Ring (0..1)
+            // Update Radial Fill Ring (0..1)
             if (radialFillRing != null && _totalDuration > 0f)
             {
                 radialFillRing.fillAmount = Mathf.Clamp01(_remainingTime / _totalDuration);
-                radialFillRing.color = activeRingColor;
             }
 
-            // Cập nhật số giây còn lại
+            // Update remaining seconds
             if (timerText != null)
             {
                 timerText.text = $"{Mathf.CeilToInt(_remainingTime)}s";
@@ -130,7 +122,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Kích hoạt vòng tròn đếm ngược
+        /// Activates countdown circle.
         /// </summary>
         public void ActivateTimer(float duration)
         {
@@ -163,7 +155,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Tắt vòng tròn đếm ngược
+        /// Deactivates countdown circle.
         /// </summary>
         public void DeactivateTimer()
         {
@@ -224,7 +216,7 @@ namespace SteamRush.Features.UI.Views
                 if (canvas != null) parentTransform = canvas.transform;
             }
 
-            if (parentTransform != null && transform.parent != parentTransform)
+            if (transform.parent == null && parentTransform != null)
             {
                 transform.SetParent(parentTransform, false);
             }
@@ -232,16 +224,10 @@ namespace SteamRush.Features.UI.Views
             containerRect = GetComponent<RectTransform>();
             if (containerRect == null) containerRect = gameObject.AddComponent<RectTransform>();
 
-            containerRect.anchorMin = new Vector2(1f, 0.80f);
-            containerRect.anchorMax = new Vector2(1f, 0.80f);
-            containerRect.pivot = new Vector2(1f, 0.5f);
-            containerRect.anchoredPosition = new Vector2(-52f, 0f);
-            containerRect.sizeDelta = new Vector2(116f, 116f);
-
             canvasGroup = GetComponent<CanvasGroup>();
             if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
 
-            Sprite circleSp = GetOrCreateCircleSprite();
+            TimerCircleSkin skin = HudTheme.Current.GetTimerSkin(TimerCircleKind.AntiUnlimited);
 
             GameObject bgObj = new GameObject("Circle_Bg", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             bgObj.transform.SetParent(containerRect, false);
@@ -250,8 +236,8 @@ namespace SteamRush.Features.UI.Views
             bgRect.anchorMax = Vector2.one;
             bgRect.sizeDelta = Vector2.zero;
             bgCircleImage = bgObj.GetComponent<Image>();
-            bgCircleImage.sprite = circleSp;
-            bgCircleImage.color = bgColor;
+            bgCircleImage.sprite = skin.disc;
+            bgCircleImage.color = skin.bgTint;
 
             GameObject ringObj = new GameObject("Circle_RadialFill", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             ringObj.transform.SetParent(containerRect, false);
@@ -260,13 +246,13 @@ namespace SteamRush.Features.UI.Views
             ringRect.anchorMax = Vector2.one;
             ringRect.sizeDelta = Vector2.zero;
             radialFillRing = ringObj.GetComponent<Image>();
-            radialFillRing.sprite = circleSp;
+            radialFillRing.sprite = skin.ring;
             radialFillRing.type = Image.Type.Filled;
             radialFillRing.fillMethod = Image.FillMethod.Radial360;
             radialFillRing.fillOrigin = (int)Image.Origin360.Top;
             radialFillRing.fillClockwise = true;
             radialFillRing.fillAmount = 1f;
-            radialFillRing.color = activeRingColor;
+            radialFillRing.color = Color.white;
 
             GameObject innerHole = new GameObject("Circle_Inner", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             innerHole.transform.SetParent(containerRect, false);
@@ -276,8 +262,8 @@ namespace SteamRush.Features.UI.Views
             innerRect.pivot = new Vector2(0.5f, 0.5f);
             innerRect.sizeDelta = new Vector2(88f, 88f);
             Image innerImg = innerHole.GetComponent<Image>();
-            innerImg.sprite = circleSp;
-            innerImg.color = new Color(0.10f, 0.03f, 0.05f, 0.98f);
+            innerImg.sprite = skin.disc;
+            innerImg.color = skin.innerTint;
 
             GameObject iconObj = new GameObject("Label_Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
             iconObj.transform.SetParent(innerHole.transform, false);
@@ -291,8 +277,9 @@ namespace SteamRush.Features.UI.Views
             iconText.text = "STORM";
             iconText.fontSize = 13;
             iconText.fontStyle = FontStyles.Bold;
-            iconText.color = new Color(1f, 0.42f, 0.35f, 1f);
+            iconText.color = skin.label;
             iconText.alignment = TextAlignmentOptions.Center;
+            if (skin.font != null) iconText.font = skin.font;
 
             GameObject textObj = new GameObject("Timer_Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
             textObj.transform.SetParent(innerHole.transform, false);
@@ -308,35 +295,8 @@ namespace SteamRush.Features.UI.Views
             timerText.fontStyle = FontStyles.Bold;
             timerText.alignment = TextAlignmentOptions.Center;
             timerText.color = Color.white;
+            if (skin.font != null) timerText.font = skin.font;
         }
 
-        private static Sprite GetOrCreateCircleSprite()
-        {
-            if (_circleSprite != null) return _circleSprite;
-
-            int res = 256;
-            Texture2D tex = new Texture2D(res, res, TextureFormat.RGBA32, false);
-            tex.wrapMode = TextureWrapMode.Clamp;
-            tex.filterMode = FilterMode.Bilinear;
-
-            float radius = (res - 4) * 0.5f;
-            Vector2 center = new Vector2(res * 0.5f, res * 0.5f);
-
-            Color[] colors = new Color[res * res];
-            for (int y = 0; y < res; y++)
-            {
-                for (int x = 0; x < res; x++)
-                {
-                    float dist = Vector2.Distance(new Vector2(x, y), center);
-                    float alpha = Mathf.Clamp01(radius - dist + 1.5f);
-                    colors[y * res + x] = new Color(1f, 1f, 1f, alpha);
-                }
-            }
-            tex.SetPixels(colors);
-            tex.Apply();
-
-            _circleSprite = Sprite.Create(tex, new Rect(0, 0, res, res), new Vector2(0.5f, 0.5f), 100f);
-            return _circleSprite;
-        }
     }
 }

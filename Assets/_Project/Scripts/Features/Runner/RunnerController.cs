@@ -4,30 +4,21 @@ namespace SteamRush.Features.Runner
     using StreamRushLive.Features.Spawning;
 
     /// <summary>
-    /// "Bộ não" vật lý của Runner: xử lý nhảy, cúi, rơi nhanh, ground-check.
-    /// Nhân vật ĐỨNG YÊN theo trục ngang (mô hình treadmill) — không có
-    /// hàm di chuyển ngang. Không đọc Input trực tiếp — RunnerInputHandler gọi các hàm public ở
-    /// đây (Single Responsibility: Controller chỉ lo vật lý, không lo phím bấm).
-    ///
-    /// Nhảy khớp đúng GDD v1.2 mục 1 (hàng "Nhảy"): vận tốc +6.5 m/s, trọng lực tách riêng lúc
-    /// lên/rơi để đỉnh nhảy ra đúng 2.2m và rơi đúng -18.0 m/s².
-    ///
-    /// THÊM MỚI: Forgiving Hitbox (GDD v1.2 mục 4.1) — Collider tự động được tính lại nhỏ hơn
-    /// bounds thật của 3D Mesh 15% ngay lúc Awake, dựa trên Renderer thật của model thay vì phải
-    /// tự đo tay trong Inspector. Việc này giúp tránh va chạm oan khi rìa model chưa thực sự chạm
-    /// vật cản mà mắt người xem đã tưởng là chạm.
+    /// Physics controller for Runner: handles jumping, ducking, fast fall, and ground check.
+    /// Runner remains stationary on horizontal axes (treadmill paradigm).
+    /// Features forgiving hitboxes scaled from 3D mesh bounds (GDD v1.2).
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
     public class RunnerController : MonoBehaviour
     {
         [Header("Jump")]
-        [Tooltip("Vận tốc nhảy trục Y. GDD v1.2 = +6.5 m/s.")]
+        [Tooltip("Vertical jump velocity (default: +6.5 m/s).")]
         [SerializeField] private float _jumpVelocity = 6.5f;
 
         [Header("Gravity")]
-        [Tooltip("Trọng lực áp dụng lúc đang đi LÊN (m/s², giá trị dương). Tính ngược từ h = v²/(2g) để đỉnh nhảy = 2.2m với vận tốc nhảy 6.5 m/s.")]
+        [Tooltip("Upward gravity rate in m/s² (positive value).")]
         [SerializeField] private float _risingGravity = 9.6f;
-        [Tooltip("Trọng lực áp dụng lúc đang RƠI (m/s², giá trị dương). GDD v1.2 = 18.0 m/s².")]
+        [Tooltip("Downward gravity rate during fall in m/s² (positive value).")]
         [SerializeField] private float _fallingGravity = 18f;
 
         [Header("Crouch / Duck")]
@@ -45,9 +36,9 @@ namespace SteamRush.Features.Runner
 
 
         [Header("Forgiving Hitbox")]
-        [Tooltip("Bật để Collider tự động co nhỏ hơn Mesh 3D thật lúc Awake (GDD v1.2 mục 4.1). Tắt nếu muốn tự chỉnh tay Collider trong Inspector.")]
+        [Tooltip("Automatically shrink collider relative to 3D mesh on Awake.")]
         [SerializeField] private bool _autoApplyForgivingHitbox = true;
-        [Tooltip("Tỉ lệ kích thước Collider so với Mesh thật. GDD v1.2 = nhỏ hơn Mesh 15% -> 0.85.")]
+        [Tooltip("Collider scale ratio relative to mesh bounds (default: 0.85).")]
         [SerializeField, Range(0.5f, 1f)] private float _hitboxToleranceRatio = 0.85f;
 
         public Rigidbody RB { get; private set; }
@@ -71,9 +62,7 @@ namespace SteamRush.Features.Runner
         {
             RB = GetComponent<Rigidbody>();
 
-            // Tắt hẳn gravity mặc định của Unity — tự áp trọng lực thủ công (xem FixedUpdate)
-            // để đúng chính xác 2 con số GDD (rơi -18.0 m/s², lên tính ngược ra 9.6 m/s²) bất kể
-            // Project Settings > Physics > Gravity của máy đang mở là bao nhiêu.
+            // Disable Unity gravity - manual asymmetric gravity applied in FixedUpdate regardless of physics settings.
             RB.useGravity = false;
 
             _animator = GetComponent<Animator>();
@@ -101,8 +90,7 @@ namespace SteamRush.Features.Runner
                 ApplyForgivingHitbox();
             }
 
-            // Chụp lại kích thước "đứng thẳng" SAU KHI đã co Forgiving Hitbox — mọi phép tính Duck
-            // (co xuống _duckHeightRatio) đều dựa trên baseline đã đúng GDD này.
+            // Cache upright dimensions after forgiving hitbox calculation
             if (_boxCollider != null)
             {
                 _standingBoxSize = _boxCollider.size;
@@ -115,20 +103,19 @@ namespace SteamRush.Features.Runner
                 _standingCapsuleCenter = _capsuleCollider.center;
             }
 
-            // Khoá cả Position X lẫn Z: nhân vật đứng yên tại chỗ theo cả 2 trục ngang — thế
-            // giới (Track/Background) mới là thứ di chuyển, mô hình "treadmill" của endless
-            // runner. Chỉ còn trục Y (nhảy/rơi) là tự do. Hoàn toàn không có knockback.
+            // Constrain horizontal position: world scrolls around stationary runner
             RB.constraints = RigidbodyConstraints.FreezePositionX
                 | RigidbodyConstraints.FreezePositionZ
                 | RigidbodyConstraints.FreezeRotationX
                 | RigidbodyConstraints.FreezeRotationY
                 | RigidbodyConstraints.FreezeRotationZ;
+
+            if (_boxCollider != null) _boxCollider.isTrigger = false;
+            if (_capsuleCollider != null) _capsuleCollider.isTrigger = false;
         }
 
         /// <summary>
-        /// GDD v1.2 mục 4.1 "Hitbox Dung Sai": tính bounds thật từ toàn bộ Renderer (Mesh/Skinned)
-        /// trong con của Runner, rồi co Collider còn <see cref="_hitboxToleranceRatio"/> (mặc định
-        /// 85%) kích thước đó — chân vẫn chạm đúng mặt đất, chỉ co từ tâm ra ngoài theo tỉ lệ.
+        /// Calculates forgiving hitbox from child renderers, scaled by _hitboxToleranceRatio (default: 85%).
         /// </summary>
         private void ApplyForgivingHitbox()
         {
@@ -141,8 +128,7 @@ namespace SteamRush.Features.Runner
                 worldBounds.Encapsulate(meshRenderers[i].bounds);
             }
 
-            // Nhân vật không xoay (constraints khoá hết Rotation), nên quy đổi world -> local
-            // ở đây chỉ cần dịch tâm, kích thước giữ nguyên theo trục thế giới là đủ chính xác.
+            // Convert world bounds to local space without rotation complications
             Vector3 localCenter = transform.InverseTransformPoint(worldBounds.center);
             Vector3 meshSize = worldBounds.size;
             float meshBottomY = localCenter.y - (meshSize.y / 2f);
@@ -181,14 +167,12 @@ namespace SteamRush.Features.Runner
 
         private void FixedUpdate()
         {
-            // Trọng lực thủ công: dùng _risingGravity khi đang đi lên (Y > 0), _fallingGravity
-            // khi đang rơi (Y <= 0) — 2 giá trị tách biệt để khớp đúng GDD (đỉnh nhảy 2.2m,
-            // rơi -18.0 m/s²) thay vì dùng chung 1 multiplier nhân với gravity mặc định.
+            // Asymmetric manual gravity: risingGravity when moving up, fallingGravity when falling
             float gravity = RB.linearVelocity.y > 0f ? _risingGravity : _fallingGravity;
             RB.linearVelocity += Vector3.down * gravity * Time.fixedDeltaTime;
         }
 
-        /// <summary>Nhảy với vận tốc cố định GDD (+6.5 m/s), không phụ thuộc Mass của Rigidbody.</summary>
+        /// <summary>Performs jump with fixed vertical velocity (+6.5 m/s).</summary>
         public void PerformJump()
         {
             if (!IsGrounded || IsDucking) return;
@@ -207,8 +191,7 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Gọi khi bấm Xuống lúc đang ở trên không: huỷ đà nhảy, ép rơi thẳng xuống ngay lập
-        /// tức (kiểu Subway Surfers).
+        /// Fast fall: cancels upward momentum and drives runner directly downward.
         /// </summary>
         public void PerformFastFall()
         {
@@ -217,18 +200,17 @@ namespace SteamRush.Features.Runner
             RB.linearVelocity = new Vector3(RB.linearVelocity.x, -_fastFallSpeed, RB.linearVelocity.z);
         }
 
-        /// <summary>Gọi liên tục khi giữ phím Cúi — true = đang cúi, false = đứng thẳng lại.</summary>
+        /// <summary>Toggles duck state: true = ducking, false = upright.</summary>
         public void SetDucking(bool isDucking)
         {
             if (IsDucking == isDucking) return;
 
-            // Chỉ chặn không cho bắt đầu cúi nếu đang ở trên không.
-            // Khi nhả phím cúi (isDucking == false) thì LUÔN LUÔN cho phép đứng thẳng lại.
+            // Disallow starting duck while airborne; always allow standing up
             if (isDucking && !IsGrounded) return;
 
             IsDucking = isDucking;
 
-            // 1. Điều chỉnh BoxCollider giữ cố định chân tiếp đất
+            // 1. Adjust BoxCollider keeping grounded foot position constant
             if (_boxCollider != null)
             {
                 float bottomY = _standingBoxCenter.y - (_standingBoxSize.y / 2f);
@@ -237,7 +219,7 @@ namespace SteamRush.Features.Runner
                 _boxCollider.center = new Vector3(_standingBoxCenter.x, bottomY + (newHeight / 2f), _standingBoxCenter.z);
             }
 
-            // 2. Điều chỉnh CapsuleCollider giữ cố định chân tiếp đất
+            // 2. Adjust CapsuleCollider keeping grounded foot position constant
             if (_capsuleCollider != null)
             {
                 float bottomY = _standingCapsuleCenter.y - (_standingCapsuleHeight / 2f);
@@ -246,7 +228,7 @@ namespace SteamRush.Features.Runner
                 _capsuleCollider.center = new Vector3(_standingCapsuleCenter.x, bottomY + (newHeight / 2f), _standingCapsuleCenter.z);
             }
 
-            // 3. Phản hồi thị giác: co tỉ lệ chiều cao model để người chơi thấy rõ nhân vật đang cúi rạp xuống
+            // 3. Visual feedback: compress model height while ducking
             if (_visualRoot != null)
             {
                 _visualRoot.localScale = isDucking
@@ -263,7 +245,7 @@ namespace SteamRush.Features.Runner
         public bool IsKnockingBack => _knockbackTimer < _knockbackDuration;
 
         /// <summary>
-        /// Gọi khi va chạm vật cản: ghi nhận trạng thái knockback (GDD v1.2).
+        /// Invoked on collision: records knockback state (GDD v1.2).
         /// </summary>
         public void ApplyKnockback(float distance = -1f, float duration = -1f)
         {
@@ -273,28 +255,33 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Chuyển đổi Collider của Player sang Trigger (dùng khi va chạm vật cản để vật thể trôi xuyên qua Player).
-        /// Khi bật Trigger, tạm khoá trục Y để Player đứng vững tại chỗ, không rơi tiếp trong lúc bất tử.
+        /// Switches player collider to trigger during i-frames to let obstacles pass through.
         /// </summary>
         public void SetTriggerMode(bool isTrigger)
         {
+            if (_boxCollider == null) _boxCollider = GetComponent<BoxCollider>();
+            if (_capsuleCollider == null) _capsuleCollider = GetComponent<CapsuleCollider>();
+            if (RB == null) RB = GetComponent<Rigidbody>();
+
             if (_boxCollider != null) _boxCollider.isTrigger = isTrigger;
             if (_capsuleCollider != null) _capsuleCollider.isTrigger = isTrigger;
 
-            if (isTrigger)
+            if (RB != null)
             {
-                RB.linearVelocity = new Vector3(RB.linearVelocity.x, 0f, RB.linearVelocity.z);
-                RB.constraints |= RigidbodyConstraints.FreezePositionY;
-            }
-            else
-            {
-                RB.constraints &= ~RigidbodyConstraints.FreezePositionY;
+                if (isTrigger)
+                {
+                    RB.linearVelocity = new Vector3(RB.linearVelocity.x, 0f, RB.linearVelocity.z);
+                    RB.constraints |= RigidbodyConstraints.FreezePositionY;
+                }
+                else
+                {
+                    RB.constraints &= ~RigidbodyConstraints.FreezePositionY;
+                }
             }
         }
 
         /// <summary>
-        /// Chuyển Collider của Player sang Trigger nhưng vẫn giữ nguyên vật lý theo trục Y.
-        /// Dùng cho Hyper Dash để Runner có thể nhảy/rơi bình thường trong khi đi xuyên vật cản.
+        /// Enables trigger mode while maintaining vertical physics for Hyper Dash.
         /// </summary>
         public void SetHyperDashTriggerMode(bool isTrigger)
         {
@@ -310,8 +297,8 @@ namespace SteamRush.Features.Runner
 
             if (isTrigger)
             {
-                // Hyper Dash không được tắt Gravity hoặc khoá trục Y.
-                // Runner vẫn có thể nhảy và rơi bình thường.
+                // Maintain gravity and jump physics during Hyper Dash
+                // Runner can still jump and fall normally.
                 RB.useGravity = false;
                 RB.constraints &= ~RigidbodyConstraints.FreezePositionY;
             }

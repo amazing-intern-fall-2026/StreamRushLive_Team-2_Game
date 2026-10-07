@@ -5,12 +5,9 @@ using SteamRush.Track;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Chịu trách nhiệm tạo các chướng ngại vật (Obstacles) và vật phẩm (Items) trong game.
-    /// Quản lý danh sách Prefab cho từng loại (spawn ngẫu nhiên trong danh sách cùng loại).
-    /// Hỗ trợ cả 2 hệ thống enum riêng biệt: ObstacleType và ItemType.
-    /// Giữ nguyên Rotation gốc của Prefab khi Instantiate.
-    /// Hỗ trợ spawn tại vị trí truyền vào hoặc lấy trực tiếp tại vị trí của GameObject Spawner (hoặc SpawnPoint).
-    /// Tự động gắn MovingWorldObject để vật thể trôi theo thế giới.
+    /// Spawns obstacles and items in the game.
+    /// Manages prefab lists for each category (random spawn within category).
+    /// Preserves original prefab rotations and attaches MovingWorldObject.
     /// </summary>
     public class Spawner : MonoBehaviour
     {
@@ -55,18 +52,16 @@ namespace StreamRushLive.Features.Spawning
         [Header("Settings")]
         [SerializeField] private WorldSpeedManager worldSpeedManager;
 
-        // [DHUY - ADDED] ---- Bắt đầu: field phục vụ Obstacle Queue (Safe Distance) ----
-        [Header("Obstacle Queue (Safe Distance) — Added by Dhuy")]
-        [Tooltip("Khoảng cách tối thiểu (mét) giữa 2 obstacle liên tiếp được spawn.")]
+        [Header("Obstacle Queue (Safe Distance)")]
+        [Tooltip("Minimum safe distance (meters) between consecutive spawned obstacles.")]
         [SerializeField] private float minSafeDistance = 15f;
 
-        // Hàng chờ obstacle: được nạp vào qua EnqueueObstacle()/EnqueueObstacles(),
-        // lấy dần ra để spawn khi đã đủ khoảng cách an toàn với obstacle spawn trước đó.
+        // Obstacle queue: enqueued via EnqueueObstacle()/EnqueueObstacles(),
+        // dequeued and spawned when minSafeDistance is reached.
         private readonly Queue<ObstacleType> _obstacleQueue = new Queue<ObstacleType>();
 
-        // Tham chiếu obstacle vừa spawn gần nhất, dùng để đo khoảng cách mỗi frame.
+        // Reference to the most recently spawned obstacle, used to compute spacing.
         private Transform _lastSpawnedObstacle;
-        // [DHUY - ADDED] ---- Kết thúc field ----
 
         public List<GameObject> LowBarrierPrefabs => lowBarrierPrefabs;
         public List<GameObject> HighBarrierPrefabs => highBarrierPrefabs;
@@ -97,7 +92,7 @@ namespace StreamRushLive.Features.Spawning
             set => spawnOffset = value;
         }
 
-        // [DHUY - ADDED] Số obstacle còn đang chờ trong hàng đợi (dùng để debug/hiển thị nếu cần).
+        // Remaining obstacles waiting in queue
         public int QueuedObstacleCount => _obstacleQueue.Count;
 
         private void Awake()
@@ -108,19 +103,15 @@ namespace StreamRushLive.Features.Spawning
             }
         }
 
-        // [DHUY - ADDED] ---- Bắt đầu: Update() mới, file gốc chưa có hàm này ----
-        // Mỗi frame kiểm tra hàng chờ, tự động spawn obstacle tiếp theo khi đủ khoảng cách an toàn.
         private void Update()
         {
             TryDequeueAndSpawn();
         }
-        // [DHUY - ADDED] ---- Kết thúc Update() ----
 
         // Obstacle Queue (Safe Distance)
 
         /// <summary>
-        /// [DHUY - ADDED] Đưa 1 loại obstacle vào hàng chờ, sẽ được spawn khi đủ khoảng cách an toàn.
-        /// Gọi hàm này thay vì gọi thẳng SpawnObstacle() nếu muốn áp dụng ràng buộc 15m.
+        /// Enqueues an obstacle type to be spawned once safe distance is reached.
         /// </summary>
         public void EnqueueObstacle(ObstacleType obstacleType)
         {
@@ -128,7 +119,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// [DHUY - ADDED] Đưa nhiều loại obstacle vào hàng chờ cùng lúc, theo đúng thứ tự sẽ được spawn.
+        /// Enqueues multiple obstacle types into the spawn queue.
         /// </summary>
         public void EnqueueObstacles(IEnumerable<ObstacleType> obstacleTypes)
         {
@@ -139,10 +130,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// [DHUY - ADDED] Logic chính: nếu hàng chờ còn obstacle, kiểm tra khoảng cách giữa
-        /// SpawnPoint và obstacle spawn gần nhất — đủ minSafeDistance mới lấy obstacle tiếp
-        /// theo trong Queue ra để spawn. Nếu obstacle trước đã bị Destroy (đi quá xa, despawn),
-        /// _lastSpawnedObstacle sẽ null, coi như đã đủ xa, cho spawn ngay không cần chờ thêm.
+        /// Checks queue and spawns next obstacle when minSafeDistance has elapsed.
         /// </summary>
         private void TryDequeueAndSpawn()
         {
@@ -169,12 +157,12 @@ namespace StreamRushLive.Features.Spawning
 
             _lastSpawnedObstacle = instance != null ? instance.transform : null;
         }
-        // [DHUY - ADDED] ---- Kết thúc region Obstacle Queue ----
+        // End of Obstacle Queue region
 
         // Obstacle Spawning
 
         /// <summary>
-        /// Spawn vật cản tại vị trí GameObject Spawner (hoặc SpawnPoint).
+        /// Spawns an obstacle at the Spawner GameObject position (or SpawnPoint).
         /// </summary>
         public GameObject SpawnObstacle(ObstacleType obstacleType)
         {
@@ -182,7 +170,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Spawn vật cản tại vị trí chỉ định.
+        /// Spawns an obstacle at the specified position.
         /// </summary>
         public GameObject SpawnObstacle(ObstacleType obstacleType, Vector3 position)
         {
@@ -194,13 +182,13 @@ namespace StreamRushLive.Features.Spawning
             GameObject prefab = GetObstaclePrefab(obstacleType);
             if (prefab == null)
             {
-                Debug.LogWarning($"[Spawner] Không có prefab nào trong danh sách Obstacle: {obstacleType}");
+                Debug.LogWarning($"[Spawner] No prefab found in Obstacle list: {obstacleType}");
                 return null;
             }
 
             GameObject instance = InstantiatePrefab(prefab, position);
 
-            // Vật cản là Solid Collider (không phải Trigger)
+            // Obstacles are solid colliders (non-trigger)
             SetCollidersTrigger(instance, isTrigger: false);
 
             SetupWorldMovement(instance);
@@ -210,7 +198,7 @@ namespace StreamRushLive.Features.Spawning
         // Item Spawning
 
         /// <summary>
-        /// Spawn vật phẩm tại vị trí GameObject Spawner (hoặc SpawnPoint).
+        /// Spawns an item at the Spawner GameObject position (or SpawnPoint).
         /// </summary>
         public GameObject SpawnItem(ItemType itemType)
         {
@@ -218,7 +206,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Spawn vật phẩm tại vị trí chỉ định.
+        /// Spawns an item at the specified position.
         /// </summary>
         public GameObject SpawnItem(ItemType itemType, Vector3 position)
         {
@@ -230,13 +218,13 @@ namespace StreamRushLive.Features.Spawning
             GameObject prefab = GetItemPrefab(itemType);
             if (prefab == null)
             {
-                Debug.LogWarning($"[Spawner] Không có prefab nào trong danh sách Item: {itemType}");
+                Debug.LogWarning($"[Spawner] No prefab found in Item list: {itemType}");
                 return null;
             }
 
             GameObject instance = InstantiatePrefab(prefab, position);
 
-            // Vật phẩm luôn là Trigger để Player chạy xuyên qua nhặt
+            // Items are triggers so player can collect them
             SetCollidersTrigger(instance, isTrigger: true);
 
             SetupWorldMovement(instance);

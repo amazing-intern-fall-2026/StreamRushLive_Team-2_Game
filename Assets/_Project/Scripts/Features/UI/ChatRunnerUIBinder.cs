@@ -4,11 +4,8 @@ using SteamRush.Features.StreamIntegration;
 
 namespace SteamRush.Features.UI
 {
-    // "Day noi" bat buoc giua Manager (logic) va View (UI thuan) qua UnityEvent co san trong
-    // Inspector - KHONG phai file test, phai co mat trong scene tich hop that. Khong co script
-    // nay thi FactionTugOfWarUI/WaitingForFollowerUI se KHONG BAO GIO tu cap nhat du Manager
-    // chay dung, vi ban than Manager/View khong tu tham chieu nhau (SRP, xem comment trong
-    // FactionTugOfWarUI.cs va FactionTugOfWarManager.cs).
+    // Event binder connecting logic managers (FactionTugOfWarManager, ChatRunnerQueueManager)
+    // with view components (FactionTugOfWarUI, WaitingPanel) adhering to SRP and decoupling.
     public class ChatRunnerUIBinder : MonoBehaviour
     {
         [Header("Faction Tug-of-War")]

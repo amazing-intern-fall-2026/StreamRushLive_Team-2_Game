@@ -8,20 +8,20 @@ using SteamRush.Features.Runner;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Quản lý năng lượng của Runner.
-    /// Năng lượng không tự giảm theo thời gian và không trừ khi bứt tốc (Sprint là miễn phí).
-    /// Thay vào đó, mỗi lần đổi làn sẽ bị trừ năng lượng (mặc định -10 điểm / 1%).
-    /// Khi va chạm chướng ngại vật bị phạt trừ năng lượng (-25%).
+    /// Manages Runner energy.
+    /// Energy does not drain over time and sprint is free.
+    /// Lane switching consumes energy (default -10 points).
+    /// Obstacle collisions inflict energy penalty (-25%).
     /// </summary>
     public class EnergySystem : MonoBehaviour
     {
         [Header("Energy Settings")]
         [SerializeField] private float maxEnergy = 100f;
-        [Tooltip("Lượng năng lượng bị trừ mỗi lần Runner đổi làn (mặc định = 10 điểm).")]
+        [Tooltip("Energy deducted per lane change (default = 10 points).")]
         [SerializeField] private float laneChangeEnergyCost = 10f;
 
         [Header("Speed Settings (Optional Override)")]
-        [SerializeField] private float normalSpeed = 8f; // Chuẩn 8 m/s
+        [SerializeField] private float normalSpeed = 8f; // Standard 8 m/s
 
         [Header("References")]
         [SerializeField] private WorldSpeedManager worldSpeedManager;
@@ -57,12 +57,12 @@ namespace StreamRushLive.Features.Spawning
 
         private void Update()
         {
-            // Không còn DrainEnergy() theo thời gian. Năng lượng chỉ bị trừ khi đổi làn hoặc va chạm.
+            // No passive energy drain over time. Energy is deducted on lane change or collisions.
             SyncHUD();
         }
 
         /// <summary>
-        /// Trừ năng lượng khi Runner thực hiện thao tác đổi làn.
+        /// Consumes energy when the runner changes lanes.
         /// </summary>
         public void ConsumeLaneChangeEnergy(float cost = -1f)
         {
@@ -72,7 +72,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Kiểm tra và trừ năng lượng đổi làn. Trả về false nếu không đủ năng lượng.
+        /// Checks and consumes lane change energy. Returns false if insufficient.
         /// </summary>
         public bool TryConsumeLaneChangeEnergy(float cost = -1f)
         {
@@ -99,7 +99,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Trả về tốc độ hiện tại của Runner nếu có ghi đè từ Buff/Item.
+        /// Returns the current runner speed if overridden by an item or buff.
         /// </summary>
         public float GetCurrentSpeed()
         {
@@ -112,7 +112,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Ghi đè tốc độ hiện tại bằng tốc độ đặc biệt của Item (như Hyper Dash).
+        /// Overrides current speed with a buff speed value.
         /// </summary>
         public void SetSpeedOverride(float speed)
         {
@@ -126,7 +126,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Xóa tốc độ ghi đè.
+        /// Clears active speed override.
         /// </summary>
         public void ClearSpeedOverride()
         {
@@ -140,7 +140,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Thêm hoặc trừ năng lượng (dùng cho Thả tim, Nhặt item, hoặc Phạt vấp ngã).
+        /// Adds or deducts energy (hearts, gifts, or collision penalty).
         /// </summary>
         public void AddEnergy(float amount)
         {
@@ -150,7 +150,7 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Nhận tim / like từ viewer: hồi phục năng lượng và kích hoạt popup thông báo tim trên HUD.
+        /// Restores energy and triggers HUD feedback on receiving likes/hearts.
         /// </summary>
         public void AddLike(float energyBonus = 20f, string sender = null)
         {

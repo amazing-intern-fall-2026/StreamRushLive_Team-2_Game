@@ -5,35 +5,32 @@ using UnityEngine;
 namespace SteamRush.Features.UI.Views
 {
     /// <summary>
-    /// Quản lý sinh popup thông báo buff/debuff theo hàng chờ (Queue):
-    /// - Nhận các thông báo từ HUDManager.ShowStatusPopup.
-    /// - Xếp hàng (FIFO): Mỗi thông báo hiển thị tuần tự, không đè chồng lên nhau.
-    /// - Tự động điều tiết nhịp hiển thị:
-    ///   + Khi hàng chờ rảnh rỗi: hiển thị đủ thời lượng (3.0s) để người xem đọc thoải mái.
-    ///   + Khi hàng chờ có nhiều tin nhắn dồn dập: tăng tốc hiển thị (1.8s) để không bị trễ thông tin.
-    /// - Lọc bỏ thông báo rỗng hoặc các thông báo trùng lặp liên tiếp trong thời gian cực ngắn (< 0.5s).
+    /// FIFO queue spawner for status popups:
+    /// - Queues and displays status toasts sequentially without overlap.
+    /// - Dynamically throttles display speed when queue backs up.
+    /// - Deduplicates identical consecutive messages within 0.5s.
     /// </summary>
     public class StatusPopupSpawner : MonoBehaviour
     {
-        // GDD v1.3.1 - yeu cau UI: tat chu noi tren dau Runner de khong che tam nhin + bang ten.
-        // Giu nguyen toan bo logic hang cho ben duoi (co the can lai sau), chi chan o diem vao Spawn().
+        // Floating status text disabled to avoid obstructing Runner visibility and nametag.
+        // Queue logic is retained for optional reuse.
         [SerializeField] private bool _popupsEnabled = false;
 
         [SerializeField] private StatusPopupController popupTemplate;
 
         [Header("Queue Timing Settings")]
-        [Tooltip("Thời lượng hiển thị chuẩn khi hàng chờ ít thông báo (giây).")]
+        [Tooltip("Standard popup display duration when queue is low (seconds).")]
         [SerializeField] private float normalDuration = 3.0f;
         [SerializeField] private float normalHoldDuration = 2.2f;
 
-        [Tooltip("Thời lượng hiển thị tăng tốc khi hàng chờ có nhiều thông báo đang đợi (giây).")]
+        [Tooltip("Accelerated display duration when queue is backed up (seconds).")]
         [SerializeField] private float fastDuration = 1.8f;
         [SerializeField] private float fastHoldDuration = 1.2f;
 
-        [Tooltip("Khoảng dừng ngắn giữa 2 thông báo liên tiếp (giây).")]
+        [Tooltip("Interval pause between consecutive popups (seconds).")]
         [SerializeField] private float interPopupDelay = 0.15f;
 
-        [Tooltip("Giới hạn số lượng thông báo tối đa trong hàng chờ.")]
+        [Tooltip("Maximum queue capacity limit.")]
         [SerializeField] private int maxQueueSize = 25;
 
         private struct PopupRequest
@@ -60,7 +57,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Thêm thông báo mới vào hàng chờ.
+        /// Enqueues new status notification.
         /// </summary>
         public void Spawn(string message, bool isBuff, Sprite icon = null, Color? iconColor = null)
         {
@@ -69,17 +66,17 @@ namespace SteamRush.Features.UI.Views
 
             if (popupTemplate == null)
             {
-                Debug.LogWarning("[StatusPopupSpawner] Chưa gán popupTemplate trong Inspector - bỏ qua Spawn.");
+                Debug.LogWarning("[StatusPopupSpawner] popupTemplate not assigned in Inspector - skipping Spawn.");
                 return;
             }
 
-            // Tránh enqueue liên tục các thông báo trùng lặp y hệt nhau trong vòng 0.5s
+            // Deduplicate identical consecutive messages within 0.5s
             if (message == _lastEnqueuedMessage && (Time.time - _lastEnqueueTime) < 0.5f)
             {
                 return;
             }
 
-            // Giới hạn độ dài hàng chờ tránh spam tràn bộ nhớ
+            // Enforce queue capacity limit to avoid unbounded growth
             if (_queue.Count >= maxQueueSize)
             {
                 _queue.Dequeue();
@@ -116,7 +113,7 @@ namespace SteamRush.Features.UI.Views
                 StatusPopupController instance = Instantiate(popupTemplate, popupTemplate.transform.parent);
                 instance.gameObject.SetActive(true);
 
-                // Nếu còn nhiều tin đang đợi trong hàng chờ -> tăng tốc để đuổi kịp diễn biến game
+                // Accelerate pacing if queue is backed up
                 bool hasPending = _queue.Count > 0;
                 float duration = hasPending ? fastDuration : normalDuration;
                 float hold = hasPending ? fastHoldDuration : normalHoldDuration;
@@ -127,7 +124,7 @@ namespace SteamRush.Features.UI.Views
                     isFinished = true;
                 }, duration, hold);
 
-                // Chờ cho đến khi popup hoàn thành hiển thị và biến mất
+                // Wait until active popup finishes display cycle
                 float timeout = duration + 0.6f;
                 float timer = 0f;
                 while (!isFinished && timer < timeout && instance != null)
@@ -136,7 +133,7 @@ namespace SteamRush.Features.UI.Views
                     yield return null;
                 }
 
-                // Khoảng đệm ngắn trước khi thông báo tiếp theo xuất hiện
+                // Short breathing interval before next popup appears
                 if (_queue.Count > 0 && interPopupDelay > 0f)
                 {
                     yield return new WaitForSeconds(interPopupDelay);
@@ -147,7 +144,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Xóa sạch hàng chờ (dùng khi reset game hoặc chuyển scene).
+        /// Clears all queued notifications (used on reset or scene transition).
         /// </summary>
         public void ClearQueue()
         {

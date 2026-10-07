@@ -3,9 +3,8 @@ using System.Collections.Generic;
 
 namespace SteamRush.Core
 {
-    // Pub/sub toi gian dung chung cho toan bo game - muc dich de cac module giao tiep ma KHONG
-    // tham chieu truc tiep vao nhau (vd: CheckpointManager subscribe PlayerDeathEvent ma khong can
-    // biet module HP/Heart nao ban su kien do). Static, khong ke thua MonoBehaviour.
+    // Minimal pub/sub event bus decoupling modules across the project.
+    // Static, does not inherit from MonoBehaviour.
     public static class EventBus
     {
         private static readonly Dictionary<Type, Delegate> _handlers = new Dictionary<Type, Delegate>();
@@ -52,14 +51,14 @@ namespace SteamRush.Core
         }
     }
 
-    // Event phát khi Runner chết (đã bãi bỏ theo chuẩn GDD v0.3 / v1.2 Không máu - giữ lại để tương thích ngược nếu cần).
-    [System.Obsolete("GDD v0.3 / v1.2 đã loại bỏ hoàn toàn cơ chế máu/tim. Runner không chết vì va chạm.")]
+    // Obsolete death event (deprecated in GDD v0.3/v1.2 - kept for backward compatibility if needed).
+    [System.Obsolete("Deprecated in GDD v0.3/v1.2: Runner no longer has HP or death on collision.")]
     public readonly struct PlayerDeathEvent
     {
     }
 
-    // Yêu cầu hồi tim (đã bãi bỏ theo chuẩn GDD v0.3 / v1.2).
-    [System.Obsolete("GDD v0.3 / v1.2 đã loại bỏ hoàn toàn cơ chế máu/tim.")]
+    // Obsolete heart restore event (deprecated in GDD v0.3/v1.2).
+    [System.Obsolete("Deprecated in GDD v0.3/v1.2: HP/Heart mechanic removed.")]
     public readonly struct RestoreHeartsRequestEvent
     {
         public readonly int HeartCount;
@@ -70,11 +69,7 @@ namespace SteamRush.Core
         }
     }
 
-    // Ban khi phe Anti du 500 tim, yeu cau sinh 1 xe can duong (GDD v1.3 muc 5).
-    // SingleObstacleSpawner.cs (DangHuy, Jira S1-23) co san ham public
-    // "TriggerSpawnCarFromAntiLikes()" nhung KHONG tu subscribe event nay - se co 1 adapter rieng
-    // (khong dung toi FactionTugOfWarManager.cs) noi 2 ben lai sau khi S1-23 co san, tuong tu
-    // adapter cua PlayerDeathEvent voi RunnerHealthSystem (S1-24).
+    // Triggered when Anti faction accumulates sufficient energy to spawn an obstacle vehicle (GDD v1.3).
     public readonly struct RequestCarSpawnEvent
     {
         public readonly int LaneIndex; // 0 = Random, 1 = Left, 2 = Center, 3 = Right
@@ -85,10 +80,7 @@ namespace SteamRush.Core
         }
     }
 
-    // Ban khi 1 nguoi xem chua Follow co gui lenh dieu khien (left/right/fast/slow) - GDD v1.3
-    // muc 3.2: "he thong tu dong bo qua lenh (kem thong bao bot nhac nho neu can)". Module chat
-    // that (StreamIntegration) se subscribe event nay de tra loi comment nhac Follow - chua ton
-    // tai luc viet file nay nen chi Publish, khong tu gui tin nhan duoc.
+    // Published when a non-follower attempts to send runner control commands (GDD v1.3 Section 3.2).
     public readonly struct NonFollowerCommandRejectedEvent
     {
         public readonly string UserId;

@@ -9,49 +9,47 @@ using SteamRush.Features.Environment;
 namespace StreamRushLive.Features.Gifts
 {
     /// <summary>
-    /// Cấu hình chi tiết cho từng loại xe cản đường của phe Red (Anti).
-    /// Cho phép Designer/Tester tùy chỉnh mọi thông số: năng lượng tốn, độ đẩy lùi, % trừ năng lượng, số mét phạt...
+    /// Detailed configuration for Anti team obstacle vehicle tiers.
+    /// Configurable parameters: energy cost, knockback, damage penalty, distance penalty, speed, etc.
     /// </summary>
     [Serializable]
     public class AntiCarGiftConfig
     {
-        [Tooltip("Tên hiển thị loại xe")]
+        [Tooltip("Display name of vehicle tier")]
         public string vehicleName = "Xe";
 
-        [Tooltip("Năng lượng phe Red (Anti) tiêu hao khi thả loại xe này (mặc định: 100).")]
+        [Tooltip("Anti team energy cost to deploy this vehicle (default: 100).")]
         public int energyCost = 100;
 
-        [Tooltip("Khoảng cách Runner bị húc đẩy lùi về phía sau (mét) khi va chạm.")]
+        [Tooltip("Knockback distance in meters pushed backward upon collision.")]
         public float knockbackDistance = 2.0f;
 
-        [Tooltip("Thời gian Runner bị đẩy lùi (giây).")]
+        [Tooltip("Knockback duration in seconds.")]
         public float knockbackDuration = 0.5f;
 
-        [Tooltip("Phần trăm (%) năng lượng của Runner/Fan bị trừ khi va chạm với loại xe này.")]
+        [Tooltip("Energy damage percentage deducted from runner on collision.")]
         [Range(0f, 100f)]
         public float energyPenaltyPercent = 20f;
 
-        [Tooltip("Số mét cự ly tiến trình đường chạy bị trừ khi va chạm (m).")]
+        [Tooltip("Distance penalty in meters deducted from leg progress on collision.")]
         public float distancePenaltyMeters = 100f;
 
-        [Tooltip("Tốc độ xe tự động di chuyển ngược chiều về phía Runner (m/s).")]
+        [Tooltip("Vehicle forward speed traveling toward runner (m/s).")]
         public float drivingSpeed = 7.0f;
 
-        [Tooltip("Thời gian khựng hình (Hit-Stop) tạo cảm giác va chạm mạnh (giây).")]
+        [Tooltip("Hit-stop freeze duration on heavy collision (seconds).")]
         public float hitStopDuration = 0.1f;
 
-        [Tooltip("Tốc độ đỉnh khi thế giới bị cuộn giật lùi lại phía sau.")]
+        [Tooltip("Peak reverse scroll speed when world jolts backward on collision.")]
         public float reverseWorldPeakSpeed = -87.0f;
 
-        [Tooltip("Thời gian thế giới cuộn giật lùi (giây).")]
+        [Tooltip("Reverse scroll duration in seconds.")]
         public float reverseWorldDuration = 1.8f;
     }
 
     /// <summary>
-    /// Trung tâm quản lý và cấu hình toàn bộ các loại Gift tương tác (Interactive Gifts / Stream Gifts).
-    /// Vì trong cơ chế livestream, quà donate của khán giả được kích hoạt trực tiếp ngay lập tức
-    /// (không còn nhặt item vật lý rơi trên đường), script này tập trung toàn bộ thông số
-    /// thời gian, chi phí, năng lượng của từng loại Gift trên một GameObject duy nhất trong Hierarchy.
+    /// Centralized manager and configuration for all interactive stream gifts.
+    /// Handles gift actions, durations, costs, and cooldowns from a single component.
     /// </summary>
     [DisallowMultipleComponent]
     public class GiftManager : MonoBehaviour
@@ -59,29 +57,29 @@ namespace StreamRushLive.Features.Gifts
         public static GiftManager Instance { get; private set; }
 
         [Header("Blue Team Gifts")]
-        [Tooltip("Thời gian tồn tại của Khiên bảo vệ (giây). Mặc định 15s.")]
+        [Tooltip("Shield buff duration in seconds (default: 15s).")]
         [SerializeField] private float _shieldDuration = 15f;
 
-        [Tooltip("Chi phí năng lượng Fan tiêu hao khi bật Khiên (nếu có tính năng lượng phe). Mặc định 0 (miễn phí khi viewer tặng).")]
+        [Tooltip("Fan energy cost for shield activation (0 for free when gifted by viewer).")]
         [SerializeField] private int _shieldEnergyCost = 0;
 
-        [Tooltip("Thời gian duy trì Tăng Tốc (Sprint Buff) (giây). Mặc định 30s.")]
+        [Tooltip("Sprint buff duration in seconds (default: 30s).")]
         [SerializeField] private float _sprintDuration = 30f;
 
-        [Tooltip("Hệ số nhân tốc độ khi nhận Sprint Buff (1.5 = +50% tốc độ).")]
+        [Tooltip("Speed multiplier during sprint buff (1.5 = +50% speed).")]
         [SerializeField] private float _sprintSpeedMultiplier = 1.5f;
 
-        [Tooltip("Thời gian duy trì Thao Tác Tự Do (Free Control) - 0% cost chuyển làn & nhảy (giây). Mặc định 30s.")]
+        [Tooltip("Free Control buff duration in seconds (0 energy cost for jump and lane switches).")]
         [SerializeField] private float _freeControlDuration = 30f;
 
-        [Tooltip("Lượng năng lượng cộng cho Blue Team khi nhận Bình Năng Lượng Xanh (Blue Energy Bottle). Mặc định +300.")]
+        [Tooltip("Energy awarded to Blue Team per Blue Energy Bottle (default: +300).")]
         [SerializeField] private int _blueEnergyBottleAmount = 300;
 
         [Header("Red Team General")]
-        [Tooltip("Lượng năng lượng cộng cho Red Team khi nhận Bình Năng Lượng Đỏ (Red Energy Bottle). Mặc định +500.")]
+        [Tooltip("Energy awarded to Red Team per Red Energy Bottle (default: +500).")]
         [SerializeField] private int _redEnergyBottleAmount = 500;
 
-        [Tooltip("Thời gian kích hoạt Bão Xe (Unlimited Cars) - thả xe liên tục không tốn năng lượng (giây). Mặc định 60s.")]
+        [Tooltip("Unlimited Cars hazard duration in seconds (default: 60s).")]
         [SerializeField] private float _unlimitedCarsDuration = 60f;
 
         [Tooltip("Duration of Vehicle Special Phases (Pickup Truck & Heavy Truck phases in seconds). Default 60s.")]
@@ -102,10 +100,10 @@ namespace StreamRushLive.Features.Gifts
             reverseWorldDuration = 1.8f
         };
 
-        [Header("Pickup Truck")]
+        [Header("Animals (Tier 2)")]
         [SerializeField] private AntiCarGiftConfig _pickupConfig = new AntiCarGiftConfig
         {
-            vehicleName = "Pickup Truck",
+            vehicleName = "Animals",
             energyCost = 100,
             knockbackDistance = 3.0f,
             knockbackDuration = 0.6f,
@@ -117,10 +115,10 @@ namespace StreamRushLive.Features.Gifts
             reverseWorldDuration = 2.4f
         };
 
-        [Header("Heavy Truck")]
+        [Header("Train (Tier 3)")]
         [SerializeField] private AntiCarGiftConfig _heavyTruckConfig = new AntiCarGiftConfig
         {
-            vehicleName = "Heavy Truck",
+            vehicleName = "Train",
             energyCost = 100,
             knockbackDistance = 4.2f,
             knockbackDuration = 0.7f,
@@ -133,7 +131,7 @@ namespace StreamRushLive.Features.Gifts
         };
 
         [Header("Interactive Gifts")]
-        [Tooltip("Thời gian Runner nhảy múa ăn mừng khi viewer tặng Gift Dance (giây).")]
+        [Tooltip("Celebration dance duration when viewer donates Gift Dance (seconds).")]
         [SerializeField] private float _giftDanceDuration = 5f;
 
         [Header("References")]
@@ -165,10 +163,13 @@ namespace StreamRushLive.Features.Gifts
         public int HeavyTruckCost => _heavyTruckConfig.energyCost;
 
         public float GiftDanceDuration => _giftDanceDuration;
+
+        public void SetSprintDuration(float duration) => _sprintDuration = Mathf.Max(1f, duration);
+        public void SetFreeControlDuration(float duration) => _freeControlDuration = Mathf.Max(1f, duration);
         #endregion
 
         /// <summary>
-        /// Lấy cấu hình chi tiết của từng loại xe theo VehicleTier.
+        /// Retrieves vehicle tier configuration.
         /// </summary>
         public AntiCarGiftConfig GetCarConfig(VehicleTier tier)
         {
@@ -199,7 +200,7 @@ namespace StreamRushLive.Features.Gifts
 
         private void OnValidate()
         {
-            // Tự động đồng bộ các giá trị khi designer chỉnh trên Inspector trong Editor
+            // Synchronize values when modified in inspector
             if (Application.isPlaying)
             {
                 SyncSettingsToSubsystems();
@@ -258,7 +259,7 @@ namespace StreamRushLive.Features.Gifts
         #region Direct Gift Activation APIs
 
         /// <summary>
-        /// Kích hoạt trực tiếp Khiên bảo hộ lên Runner.
+        /// Activates protective shield buff on runner.
         /// </summary>
         public bool ActivateShield(string sender = "Blue Team", float customDuration = -1f)
         {
@@ -270,16 +271,16 @@ namespace StreamRushLive.Features.Gifts
                 _runnerEffects.ActivateShield(duration);
                 _hudManager?.ShowFanAction(sender, $"Shield ({duration:F0}s)");
                 _hudManager?.ShowStatusPopup($"[{sender}] Shield ({duration:F0}s)", true);
-                Debug.Log($"[GiftManager] {sender} -> Kích hoạt Khiên bảo vệ trực tiếp ({duration:F0}s).");
+                Debug.Log($"[GiftManager] {sender} -> Activated Shield buff ({duration:F0}s).");
                 return true;
             }
 
-            Debug.LogWarning("[GiftManager] Không tìm thấy RunnerGiftEffects để kích hoạt Khiên!");
+            Debug.LogWarning("[GiftManager] RunnerGiftEffects not found to activate Shield!");
             return false;
         }
 
         /// <summary>
-        /// Kích hoạt trực tiếp Tăng Tốc (Sprint Buff) lên Runner.
+        /// Activates Sprint buff on runner.
         /// </summary>
         public bool ActivateSprintBuff(string sender = "Blue Team", float customDuration = -1f)
         {
@@ -291,16 +292,16 @@ namespace StreamRushLive.Features.Gifts
                 _runnerController.ActivateSprintBuff(duration);
                 _hudManager?.ShowFanAction(sender, $"Speed Boost ({duration:F0}s)");
                 _hudManager?.ShowStatusPopup($"[{sender}] Speed ({duration:F0}s)", true);
-                Debug.Log($"[GiftManager] {sender} -> Kích hoạt Tăng Tốc trực tiếp ({duration:F0}s).");
+                Debug.Log($"[GiftManager] {sender} -> Activated Sprint buff ({duration:F0}s).");
                 return true;
             }
 
-            Debug.LogWarning("[GiftManager] Không tìm thấy ChatLaneRunnerController để kích hoạt Sprint Buff!");
+            Debug.LogWarning("[GiftManager] ChatLaneRunnerController not found to activate Sprint buff!");
             return false;
         }
 
         /// <summary>
-        /// Kích hoạt trực tiếp Thao Tác Tự Do (Free Control) - 0% cost chuyển làn & nhảy.
+        /// Activates Free Control buff (0 energy cost for jump and lane switches).
         /// </summary>
         public bool ActivateFreeControl(string sender = "Blue Team", float customDuration = -1f)
         {
@@ -313,16 +314,16 @@ namespace StreamRushLive.Features.Gifts
                 _hudManager?.ShowFanAction(sender, $"Free Control ({duration:F0}s)");
                 _hudManager?.ShowStatusPopup($"[{sender}] Free Control ({duration:F0}s)", true);
                 AudioManager.Instance?.PlaySFX(SFXType.RunnerSpeedBoost, 0.85f);
-                Debug.Log($"[GiftManager] {sender} -> Kích hoạt Thao Tác Tự Do trực tiếp ({duration:F0}s).");
+                Debug.Log($"[GiftManager] {sender} -> Activated Free Control buff ({duration:F0}s).");
                 return true;
             }
 
-            Debug.LogWarning("[GiftManager] Không tìm thấy ChatLaneRunnerController để kích hoạt Free Control!");
+            Debug.LogWarning("[GiftManager] ChatLaneRunnerController not found to activate Free Control!");
             return false;
         }
 
         /// <summary>
-        /// Kích hoạt cộng trực tiếp năng lượng cho Blue Team (Fan).
+        /// Adds energy directly to Blue Team (Fan).
         /// </summary>
         public void AddBlueEnergy(string sender = "Blue Team", int customAmount = -1)
         {
@@ -336,16 +337,16 @@ namespace StreamRushLive.Features.Gifts
                 _hudManager?.ShowFanAction(sender, $"+{amount} Energy");
                 _hudManager?.ShowStatusPopup($"[{sender}] +{amount} Blue Energy", true);
                 AudioManager.Instance?.PlaySFX(SFXType.CollectEnergy, 1.0f);
-                Debug.Log($"[GiftManager] {sender} -> Tặng Bình Năng Lượng Xanh +{amount} (Total: {_factionManager.FanLikes})");
+                Debug.Log($"[GiftManager] {sender} -> Blue Energy Bottle +{amount} (Total: {_factionManager.FanLikes})");
             }
             else
             {
-                Debug.LogWarning("[GiftManager] Không tìm thấy FactionTugOfWarManager để cộng năng lượng Blue Team!");
+                Debug.LogWarning("[GiftManager] FactionTugOfWarManager not found to add Blue energy!");
             }
         }
 
         /// <summary>
-        /// Kích hoạt cộng trực tiếp năng lượng cho Red Team (Anti).
+        /// Adds energy directly to Red Team (Anti).
         /// </summary>
         public void AddRedEnergy(string sender = "Red Team", int customAmount = -1)
         {
@@ -359,16 +360,16 @@ namespace StreamRushLive.Features.Gifts
                 _hudManager?.ShowAntiAction(sender, $"+{amount} Energy");
                 _hudManager?.ShowStatusPopup($"[{sender}] +{amount} Red Energy", false);
                 AudioManager.Instance?.PlaySFX(SFXType.CollectEnergy, 1.0f);
-                Debug.Log($"[GiftManager] {sender} -> Tặng Bình Năng Lượng Đỏ +{amount} (Total: {_factionManager.AntiLikes})");
+                Debug.Log($"[GiftManager] {sender} -> Red Energy Bottle +{amount} (Total: {_factionManager.AntiLikes})");
             }
             else
             {
-                Debug.LogWarning("[GiftManager] Không tìm thấy FactionTugOfWarManager để cộng năng lượng Red Team!");
+                Debug.LogWarning("[GiftManager] FactionTugOfWarManager not found to add Red energy!");
             }
         }
 
         /// <summary>
-        /// Kích hoạt chế độ Bão Xe (Unlimited Cars) trong thời gian quy định.
+        /// Activates Unlimited Cars storm mode for specified duration.
         /// </summary>
         public bool ActivateUnlimitedCars(string sender = "Red Team", float customDuration = -1f)
         {
@@ -382,18 +383,18 @@ namespace StreamRushLive.Features.Gifts
                     _obstacleSpawner.ActivateUnlimitedMode();
                     _hudManager?.ShowAntiAction(sender, $"Unlimited Cars ({duration:F0}s)");
                     _hudManager?.ShowStatusPopup($"[{sender}] CAR STORM!", false);
-                    Debug.Log($"[GiftManager] {sender} -> Kích hoạt Bão Xe ({duration:F0}s).");
+                    Debug.Log($"[GiftManager] {sender} -> Activated Unlimited Cars ({duration:F0}s).");
                     return true;
                 }
                 return false;
             }
 
-            Debug.LogWarning("[GiftManager] Không tìm thấy SingleObstacleSpawner để kích hoạt Unlimited Cars!");
+            Debug.LogWarning("[GiftManager] SingleObstacleSpawner not found to activate Unlimited Cars!");
             return false;
         }
 
         /// <summary>
-        /// Kích hoạt Giai đoạn Xe Bán Tải (Pickup Truck Phase).
+        /// Activates Pickup Truck Phase.
         /// </summary>
         public bool ActivatePickupTruckPhase(string sender = "Red Team")
         {
@@ -401,17 +402,17 @@ namespace StreamRushLive.Features.Gifts
             if (_obstacleSpawner != null)
             {
                 _obstacleSpawner.ActivatePickupTruckPhase();
-                _hudManager?.ShowAntiAction(sender, $"Pickup Phase ({_vehiclePhaseDuration:F0}s)");
-                _hudManager?.ShowStatusPopup($"[{sender}] Pickup Phase!", false);
+                _hudManager?.ShowAntiAction(sender, $"Animals Phase ({_vehiclePhaseDuration:F0}s)");
+                _hudManager?.ShowStatusPopup($"[{sender}] Animals Phase!", false);
                 AudioManager.Instance?.PlaySFX(SFXType.PickupHorn, 0.9f);
                 return true;
             }
-            Debug.LogWarning("[GiftManager] Không tìm thấy SingleObstacleSpawner để kích hoạt Pickup Truck Phase!");
+            Debug.LogWarning("[GiftManager] SingleObstacleSpawner not found to activate Hunting Beasts Phase!");
             return false;
         }
 
         /// <summary>
-        /// Kích hoạt Giai đoạn Xe Tải Hạng Nặng (Heavy Truck Phase).
+        /// Activates Train Phase.
         /// </summary>
         public bool ActivateHeavyTruckPhase(string sender = "Red Team")
         {
@@ -419,17 +420,17 @@ namespace StreamRushLive.Features.Gifts
             if (_obstacleSpawner != null)
             {
                 _obstacleSpawner.ActivateHeavyTruckPhase();
-                _hudManager?.ShowAntiAction(sender, $"Heavy Truck Phase ({_vehiclePhaseDuration:F0}s)");
-                _hudManager?.ShowStatusPopup($"[{sender}] Heavy Truck Phase!", false);
+                _hudManager?.ShowAntiAction(sender, $"Train Phase ({_vehiclePhaseDuration:F0}s)");
+                _hudManager?.ShowStatusPopup($"[{sender}] Train Phase!", false);
                 AudioManager.Instance?.PlaySFX(SFXType.HeavyTruckHorn, 1.0f);
                 return true;
             }
-            Debug.LogWarning("[GiftManager] Không tìm thấy SingleObstacleSpawner để kích hoạt Heavy Truck Phase!");
+            Debug.LogWarning("[GiftManager] SingleObstacleSpawner not found to activate Train Phase!");
             return false;
         }
 
         /// <summary>
-        /// Kích hoạt xe cản đường của Red Team có trừ năng lượng theo từng loại xe được cấu hình.
+        /// Spawns an obstacle vehicle for Red Team, deducting configured energy cost.
         /// </summary>
         public bool SpawnAntiCar(VehicleTier tier, string sender = "Red Team")
         {
@@ -445,7 +446,7 @@ namespace StreamRushLive.Features.Gifts
                 if (!_factionManager.TrySpendAntiEnergy(cost))
                 {
                     _hudManager?.ShowAntiAction(sender, $"Need {cost} ({_factionManager.AntiLikes})");
-                    // Đã loại bỏ popup lỗi thiếu năng lượng để tránh làm rác màn hình Top Banner
+                    // Suppressed insufficient energy popup to avoid HUD clutter
                     return false;
                 }
             }
@@ -457,7 +458,7 @@ namespace StreamRushLive.Features.Gifts
                 _hudManager?.ShowAntiAction(sender, $"Spawned {tierName}");
                 _hudManager?.ShowStatusPopup($"[{sender}] {tierName}", false);
 
-                // Phát còi xe cảnh báo tương ứng ngay thời điểm quà xe được kích hoạt
+                // Play vehicle horn warning when gift is activated
                 switch (tier)
                 {
                     case VehicleTier.HeavyTruck:
@@ -475,7 +476,7 @@ namespace StreamRushLive.Features.Gifts
             }
             else if (!isUnlimited && _factionManager != null)
             {
-                // Hoàn trả nếu làn kẹt
+                // Refund energy if lane is blocked
                 _factionManager.AddAntiEnergy(cost);
             }
 
@@ -483,9 +484,9 @@ namespace StreamRushLive.Features.Gifts
         }
 
         /// <summary>
-        /// Kích hoạt Gift Dance (nhảy múa) cho Runner.
+        /// Triggers celebration Gift Dance for runner.
         /// </summary>
-        public bool TriggerGiftDance(string sender = "Khán Giả", float customDuration = -1f)
+        public bool TriggerGiftDance(string sender = "Viewer", float customDuration = -1f)
         {
             ResolveReferences();
             if (_giftDanceController != null)
@@ -495,7 +496,7 @@ namespace StreamRushLive.Features.Gifts
                 {
                     _hudManager?.ShowFanAction(sender, $"Dance ({duration:F0}s)");
                     _hudManager?.ShowStatusPopup($"[{sender}] Meme Dance!", true);
-                    Debug.Log($"[GiftManager] {sender} -> Kích hoạt Gift Dance ({duration:F0}s).");
+                    Debug.Log($"[GiftManager] {sender} -> Activated Gift Dance ({duration:F0}s).");
                     return true;
                 }
             }
@@ -504,19 +505,19 @@ namespace StreamRushLive.Features.Gifts
         }
 
         /// <summary>
-        /// Kích hoạt Gift Thời Tiết Mưa (Rain Storm) từ Viewer livestream.
+        /// Activates rain storm weather hazard gift from stream viewers.
         /// </summary>
-        public bool ActivateRainHazard(string sender = "Khán Giả", float duration = 60f)
+        public bool ActivateRainHazard(string sender = "Viewer", float duration = 60f)
         {
             ResolveReferences();
             if (_weatherManager != null)
             {
                 _weatherManager.TriggerWeatherHazard(duration);
                 _hudManager?.ShowStatusPopup($"[{sender}] Rain Storm!", false);
-                Debug.Log($"[GiftManager] {sender} -> Kích hoạt Gift Thời Tiết Mưa ({duration}s).");
+                Debug.Log($"[GiftManager] {sender} -> Activated Rain Storm ({duration}s).");
                 return true;
             }
-            Debug.LogWarning("[GiftManager] Không tìm thấy WeatherHazardManager để kích hoạt hiệu ứng Mưa!");
+            Debug.LogWarning("[GiftManager] WeatherHazardManager not found to activate Rain Storm!");
             return false;
         }
 

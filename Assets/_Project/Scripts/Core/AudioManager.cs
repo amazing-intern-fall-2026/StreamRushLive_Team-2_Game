@@ -70,9 +70,9 @@ public class AudioManager : MonoBehaviour
         [SerializeField] private List<SFXEntry> sfxEntries = new List<SFXEntry>();
 
         [Header("Anti-Spam / Duplicate Prevention")]
-        [Tooltip("Khi bật, nếu cùng một SFX được yêu cầu phát lại liên tiếp dưới minSFXRepeatInterval giây thì sẽ bỏ qua để tránh spam tiếng chói tai.")]
+        [Tooltip("When enabled, consecutive requests to play the same SFX within minSFXRepeatInterval will be ignored to prevent audio spam.")]
         [SerializeField] private bool preventDuplicateSFX = true;
-        [Tooltip("Khoảng cách tối thiểu giữa 2 lần phát cùng một loại SFX (giây). 0.12s vừa chống spam dồn dập trong 1 frame vừa đảm bảo quà tặng liên tiếp vẫn phát ra tiếng.")]
+        [Tooltip("Minimum interval (seconds) between playing the same SFX type to prevent frame spam while allowing sequential feedback.")]
         [SerializeField] private float minSFXRepeatInterval = 0.12f;
 
         [System.Serializable]
@@ -92,12 +92,40 @@ public class AudioManager : MonoBehaviour
         private Coroutine _bgmCrossfadeRoutine;
         private bool _isDanceMusicActive = false;
 
+        private bool _isMuted = false;
+        public bool IsMuted
+        {
+            get => _isMuted;
+            set => SetMuted(value);
+        }
+
+        public event System.Action<bool> OnMuteStateChanged;
+
+        public void ToggleMute()
+        {
+            SetMuted(!_isMuted);
+        }
+
+        public void SetMuted(bool muted)
+        {
+            _isMuted = muted;
+            AudioListener.volume = _isMuted ? 0f : masterVolume;
+            PlayerPrefs.SetInt("Game_Audio_Muted", _isMuted ? 1 : 0);
+            PlayerPrefs.Save();
+            OnMuteStateChanged?.Invoke(_isMuted);
+            Debug.Log($"[AudioManager] Game audio {(_isMuted ? "MUTED" : "UNMUTED")} (AudioListener.volume = {AudioListener.volume:F2})");
+        }
+
         public float MasterVolume
         {
             get => masterVolume;
             set
             {
                 masterVolume = Mathf.Clamp01(value);
+                if (!_isMuted)
+                {
+                    AudioListener.volume = masterVolume;
+                }
                 UpdateVolumes();
             }
         }
@@ -133,6 +161,16 @@ public class AudioManager : MonoBehaviour
             Instance = this;
             DontDestroyOnLoad(gameObject);
 
+            if (PlayerPrefs.HasKey("Game_Audio_Muted"))
+            {
+                _isMuted = PlayerPrefs.GetInt("Game_Audio_Muted", 0) == 1;
+                AudioListener.volume = _isMuted ? 0f : masterVolume;
+            }
+            else
+            {
+                AudioListener.volume = masterVolume;
+            }
+
             BuildLookup();
             SetupAudioSources();
         }
@@ -147,10 +185,10 @@ public class AudioManager : MonoBehaviour
 
         private void Update()
         {
-            // Nếu đang trong chế độ Gift Dance, không tự động chuyển/phát lại BGM game
+            // If Gift Dance mode is active, do not auto-switch/replay game BGM
             if (_isDanceMusicActive) return;
 
-            // Tự động chuyển bài khi hết nhạc
+            // Auto-switch track when current track finishes
             if (bgmSource != null && bgmPlaylist != null && bgmPlaylist.Count > 0 && !bgmSource.isPlaying)
             {
                 PlayRandomBGM();
@@ -182,7 +220,7 @@ public class AudioManager : MonoBehaviour
             bgmSource.spatialBlend = 0f;
             bgmSource.volume = bgmVolume * masterVolume;
 
-            // 2. Loop SFX Source (dung cho Shield Passive, Rain, Siren...)
+            // 2. Loop SFX Source (used for Shield Passive, Rain, Siren, etc.)
             if (loopSfxSource == null)
             {
                 loopSfxSource = gameObject.AddComponent<AudioSource>();
@@ -192,7 +230,7 @@ public class AudioManager : MonoBehaviour
             loopSfxSource.spatialBlend = 0f;
             loopSfxSource.volume = sfxVolume * masterVolume;
 
-            // 3. Dance Music Source (nhạc background riêng khi Viewer tặng Gift Dance)
+            // 3. Dance Music Source (dedicated background music when viewers trigger Gift Dance)
             if (danceMusicSource == null)
             {
                 danceMusicSource = gameObject.AddComponent<AudioSource>();
@@ -212,7 +250,7 @@ public class AudioManager : MonoBehaviour
             uiSource.spatialBlend = 0f;
             uiSource.volume = sfxVolume * masterVolume;
 
-            // 5. SFX Pool (tranh cat tieng khi phat nhieu am thanh don dap)
+            // 5. SFX Pool (avoids cutting sounds when multiple clips play concurrently)
             _sfxPool.Clear();
             for (int i = 0; i < sfxPoolSize; i++)
             {
@@ -235,30 +273,49 @@ public class AudioManager : MonoBehaviour
         #region SFX Playback & Anti-Spam Control
 
         /// <summary>
-        /// Kiểm tra xem SFXType này có bị throttle do vừa mới phát cách đây dưới minSFXRepeatInterval giây hay không.
+        /// Returns the minimum repeat interval for each SFXType to prevent audio spam.
+        /// </summary>
+        private float GetMinRepeatInterval(SFXType type)
+        {
+            return type switch
+            {
+                SFXType.StreamLike => 1.2f,        // Rapid likes -> throttle to at least 1.2s
+                SFXType.StreamDonateGift => 1.5f,  // Large gift donate sound -> throttle to at least 1.5s
+                SFXType.CollectEnergy => 0.6f,     // Energy collection -> throttle to at least 0.6s
+                _ => minSFXRepeatInterval           // Default for fast-response actions (jump, lane switch)
+            };
+        }
+
+        /// <summary>
+        /// Checks whether this SFXType is currently throttled within its minimum safe interval.
         /// </summary>
         public bool IsSFXPlaying(SFXType type)
         {
-            return _lastPlayTimeByType.TryGetValue(type, out float lastTime) && (Time.unscaledTime - lastTime) < minSFXRepeatInterval;
+            float interval = GetMinRepeatInterval(type);
+            return _lastPlayTimeByType.TryGetValue(type, out float lastTime) && (Time.unscaledTime - lastTime) < interval;
         }
 
         /// <summary>
-        /// Kiểm tra xem AudioClip này có bị throttle do vừa mới phát cách đây dưới minSFXRepeatInterval giây hay không.
+        /// Checks whether this AudioClip is currently throttled within its minimum safe interval.
         /// </summary>
         public bool IsSFXPlaying(AudioClip clip)
         {
-            return clip != null && _lastPlayTimeByClip.TryGetValue(clip, out float lastTime) && (Time.unscaledTime - lastTime) < minSFXRepeatInterval;
+            float interval = minSFXRepeatInterval;
+            if (clip != null && clip.length > 2f)
+            {
+                interval = Mathf.Min(clip.length * 0.4f, 1.5f);
+            }
+            return clip != null && _lastPlayTimeByClip.TryGetValue(clip, out float lastTime) && (Time.unscaledTime - lastTime) < interval;
         }
 
         /// <summary>
-        /// Phát Sound Effect theo SFXType.
-        /// Áp dụng khoảng giãn cách an toàn 0.12s để chống spam dồn dập trong 1 frame mà không nuốt tiếng quà tặng.
+        /// Plays a sound effect by SFXType with anti-spam repeat throttling.
         /// </summary>
         public void PlaySFX(SFXType type, float volumeMultiplier = 1f, bool randomizePitch = true, bool allowOverlap = false)
         {
             if (preventDuplicateSFX && !allowOverlap && IsSFXPlaying(type))
             {
-                // Vừa mới phát cách đây chưa tới 0.12s -> Bỏ qua chống spam
+                // Throttled: recently played -> skip to prevent spam
                 return;
             }
 
@@ -271,7 +328,7 @@ public class AudioManager : MonoBehaviour
         }
 
         /// <summary>
-        /// Phát Sound Effect trực tiếp bằng AudioClip.
+        /// Plays a sound effect directly using an AudioClip.
         /// </summary>
         public void PlaySFX(AudioClip clip, float volumeMultiplier = 1f, bool randomizePitch = true, bool allowOverlap = false)
         {
@@ -285,7 +342,7 @@ public class AudioManager : MonoBehaviour
         }
 
         /// <summary>
-        /// Phát Sound Effect theo tên chuỗi.
+        /// Plays a sound effect by string name.
         /// </summary>
         public void PlaySFX(string soundName, float volumeMultiplier = 1f, bool randomizePitch = true, bool allowOverlap = false)
         {
@@ -296,7 +353,7 @@ public class AudioManager : MonoBehaviour
         }
 
         /// <summary>
-        /// Dừng theo dõi và cho phép phát lại một SFXType ngay lập tức.
+        /// Resets throttle timer to allow playing an SFXType immediately.
         /// </summary>
         public void StopSFX(SFXType type)
         {
@@ -318,7 +375,7 @@ public class AudioManager : MonoBehaviour
 
             _lastPlayTimeByClip[clip] = Time.unscaledTime;
 
-            // Tìm AudioSource đang rảnh trong Pool để tránh ngắt âm thanh khác đang phát
+            // Find an idle AudioSource in the pool to avoid interrupting active sounds
             AudioSource availableSource = null;
             for (int i = 0; i < _sfxPool.Count; i++)
             {
@@ -387,8 +444,8 @@ public class AudioManager : MonoBehaviour
         private Coroutine _danceMusicRoutine;
 
         /// <summary>
-        /// Bật nhạc background riêng khi Runner nhảy Gift Dance.
-        /// Tạm dừng BGM game và chuyển hoàn toàn sang bản nhạc nhảy riêng.
+        /// Plays dedicated background music when the Runner executes a Gift Dance.
+        /// Pauses the main game BGM during the dance.
         /// </summary>
         public void StartDanceMusic(float duration = -1f)
         {
@@ -409,7 +466,7 @@ public class AudioManager : MonoBehaviour
                 danceMusicSource.volume = sfxVolume * masterVolume * (entry.volumeMultiplier > 0f ? entry.volumeMultiplier : 1f);
                 danceMusicSource.Play();
 
-                // Tạm dừng BGM game hoàn toàn để bản nhạc nhảy nền chiếm trọn không gian âm nhạc
+                // Pause game BGM so dance music plays exclusively
                 if (bgmSource != null && bgmSource.isPlaying)
                 {
                     bgmSource.Pause();
@@ -420,16 +477,16 @@ public class AudioManager : MonoBehaviour
                     if (_danceMusicRoutine != null) StopCoroutine(_danceMusicRoutine);
                     _danceMusicRoutine = StartCoroutine(StopDanceMusicDelayed(duration));
                 }
-                Debug.Log($"[AudioManager] Bắt đầu phát Dance Background Music ({entry.clip.name}) trong {duration}s.");
+                Debug.Log($"[AudioManager] Playing dance background music ({entry.clip.name}) for {duration}s.");
             }
             else
             {
-                Debug.LogWarning("[AudioManager] Không tìm thấy AudioClip cho SFXType.GiftDanceMusic trong sfxEntries!");
+                Debug.LogWarning("[AudioManager] AudioClip for SFXType.GiftDanceMusic not found in sfxEntries!");
             }
         }
 
         /// <summary>
-        /// Dừng nhạc nhảy và tiếp tục phát lại bài BGM game ban đầu.
+        /// Stops dance music and resumes the main game BGM.
         /// </summary>
         public void StopDanceMusic()
         {
@@ -447,7 +504,7 @@ public class AudioManager : MonoBehaviour
                 danceMusicSource.clip = null;
             }
 
-            // Tiếp tục bài BGM game, nếu đang dừng thì phát bài ngẫu nhiên mới
+            // Resume game BGM, or start a new track if not playing
             if (bgmSource != null)
             {
                 bgmSource.UnPause();
@@ -456,7 +513,7 @@ public class AudioManager : MonoBehaviour
                     PlayRandomBGM();
                 }
             }
-            Debug.Log("[AudioManager] Dừng Dance Music - Tiếp tục phát BGM game.");
+            Debug.Log("[AudioManager] Stopped dance music - Resumed game BGM.");
         }
 
         private IEnumerator StopDanceMusicDelayed(float delay)

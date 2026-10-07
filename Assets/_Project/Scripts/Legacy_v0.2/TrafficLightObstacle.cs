@@ -6,23 +6,22 @@ using SteamRush.Features.Runner;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Chướng ngại vật Đèn Đỏ & Xe Cắt Ngang (Traffic Light & Crossing Car - GDD v1.2 Mục 2):
-    /// Khi Runner tiến gần, đèn bật đỏ cảnh báo trước warningDuration (0.8s), sau đó
-    /// sinh xe CrossingCar phóng cắt ngang đường chạy theo trục Z.
+    /// Traffic Light & Crossing Car obstacle (GDD v1.2 Section 2):
+    /// Turns red to warn runner warningDuration (0.8s) before spawning a crossing car.
     /// </summary>
     public class TrafficLightObstacle : MonoBehaviour
     {
         [Header("Traffic Light Settings")]
-        [Tooltip("Thời gian đèn đỏ cảnh báo trước khi xe lao ra.")]
+        [Tooltip("Warning light duration before the car dashes across.")]
         [SerializeField] private float warningDuration = 0.8f;
 
-        [Tooltip("Prefab xe ô tô phóng cắt ngang đường.")]
+        [Tooltip("Prefab of the car crossing the street.")]
         [SerializeField] private GameObject crossingCarPrefab;
 
-        [Tooltip("Vị trí xuất phát của xe ô tô (nếu null sẽ tự tính bên lề đường).")]
+        [Tooltip("Spawn position for the crossing car (calculated automatically if null).")]
         [SerializeField] private Transform carSpawnPoint;
 
-        [Tooltip("Renderer phần đèn để đổi màu đỏ khi cảnh báo.")]
+        [Tooltip("Light renderer to tint red during warning.")]
         [SerializeField] private Renderer lightRenderer;
 
         [SerializeField] private Color redColor = Color.red;
@@ -46,7 +45,7 @@ namespace StreamRushLive.Features.Spawning
 
         private void Update()
         {
-            // Chỉ tự dịch chuyển nếu chưa có MovingWorldObject quản lý để tránh di chuyển x2 tốc độ
+            // Only move manually if MovingWorldObject is absent to prevent double speed
             if (_movingWorldObject == null)
             {
                 float speed = _speedManager != null ? _speedManager.CurrentSpeed : 0f;

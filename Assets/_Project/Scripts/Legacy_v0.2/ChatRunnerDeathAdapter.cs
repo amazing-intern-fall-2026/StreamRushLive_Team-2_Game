@@ -5,7 +5,7 @@ using SteamRush.Features.Runner;
 namespace SteamRush.Features.Runner
 {
     /// <summary>
-    /// Adapter nối sự kiện chết và hồi sinh giữa RunnerHealthSystem và CheckpointManager qua EventBus.
+    /// Legacy adapter connecting death and revive events between RunnerHealthSystem and CheckpointManager via EventBus.
     /// </summary>
     public class ChatRunnerDeathAdapter : MonoBehaviour
     {
@@ -49,13 +49,13 @@ namespace SteamRush.Features.Runner
 
         private void HandlePlayerDeath()
         {
-            Debug.Log("[ChatRunnerDeathAdapter] Runner hết tim -> Phát PlayerDeathEvent tới CheckpointManager.");
+            Debug.Log("[ChatRunnerDeathAdapter] Runner out of hearts -> Publishing PlayerDeathEvent to CheckpointManager.");
             EventBus.Publish(new PlayerDeathEvent());
         }
 
         private void HandleRestoreHearts(RestoreHeartsRequestEvent evt)
         {
-            Debug.Log($"[ChatRunnerDeathAdapter] Nhận RestoreHeartsRequestEvent({evt.HeartCount}) -> Reset máu Runner về đầy.");
+            Debug.Log($"[ChatRunnerDeathAdapter] Received RestoreHeartsRequestEvent({evt.HeartCount}) -> Resetting runner health.");
             if (_healthSystem != null)
             {
                 _healthSystem.ResetHealth();

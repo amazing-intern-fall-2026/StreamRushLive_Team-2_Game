@@ -3,10 +3,8 @@ using UnityEngine;
 namespace SteamRush.Features.Runner
 {
     /// <summary>
-    /// Gắn vào Model đứng chờ bên lề đường (Roadside Proxy). Phát hiện chính xác thời
-    /// khắc Runner chạy chạm tới (OnTriggerEnter) để kích hoạt chuyển gậy, thay vì so
-    /// sánh khoảng cách X mỗi frame — đảm bảo đổi trang phục/bảng tên đúng lúc 2 nhân
-    /// vật chạm mặt nhau.
+    /// Attached to roadside waiting proxy. Detects when the runner contacts the 12m trigger
+    /// (OnTriggerEnter) to initiate baton handover precisely.
     /// </summary>
     [RequireComponent(typeof(BoxCollider))]
     public class RoadsideHandoverTrigger : MonoBehaviour
@@ -36,7 +34,7 @@ namespace SteamRush.Features.Runner
             if (!isPlayer) return;
 
             _hasTriggered = true;
-            Debug.Log("[RoadsideHandoverTrigger] Runner chạm vào Trigger 12m -> Kích hoạt chuyển gậy!");
+            Debug.Log("[RoadsideHandoverTrigger] Runner entered 12m Trigger -> Initiating baton pass!");
             _queueManager?.NotifyRunnerReachedProxy();
         }
     }

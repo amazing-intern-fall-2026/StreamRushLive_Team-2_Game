@@ -18,6 +18,16 @@ namespace SteamRush.Track
         public float GoalDistanceKm => _goalDistanceKm;
         public float GoalDistanceMeters => _goalDistanceKm * 1000f;
 
+        public void SetGoalDistanceMeters(float meters)
+        {
+            _goalDistanceKm = Mathf.Max(1f, meters) / 1000f;
+            _goalReachedFired = false;
+            if (_hudManager != null)
+            {
+                _hudManager.UpdateLegProgress(TotalDistanceMeters, GoalDistanceMeters);
+            }
+        }
+
         [Serializable] public class ProgressChangedEvent : UnityEvent<float, float, float> { }
 
         [SerializeField] private ProgressChangedEvent _progressChanged = new ProgressChangedEvent();
@@ -26,8 +36,7 @@ namespace SteamRush.Track
         [SerializeField] private UnityEvent<int> _relayCompleted = new UnityEvent<int>();
         public UnityEvent<int> RelayCompleted => _relayCompleted;
 
-        // Ban 1 lan duy nhat khi TotalDistanceMeters cham GoalDistanceMeters (GDD v1.4.1 muc 7 -
-        // Cong Ve Dich). FinishLineArchway nghe su kien nay de spawn cong / kich hoat Victory.
+        // Fired once when TotalDistanceMeters reaches GoalDistanceMeters (GDD v1.4.1 Section 7).
         [SerializeField] private UnityEvent _goalReached = new UnityEvent();
         public UnityEvent GoalReached => _goalReached;
         private bool _goalReachedFired;
@@ -85,7 +94,7 @@ namespace SteamRush.Track
         }
 
         /// <summary>
-        /// Giảm quãng đường hiện tại (dùng khi người chơi va chạm phải chướng ngại vật có hình phạt trừ quãng đường).
+        /// Deducts distance from progress on obstacle collision penalty.
         /// </summary>
         public void ReduceDistance(float distanceDelta)
         {

@@ -8,8 +8,8 @@ using StreamRushLive.Features.Spawning;
 namespace SteamRush.Features.UI.Views
 {
     /// <summary>
-    /// Vòng tròn đếm ngược Giai đoạn Xe Bán Tải / Xe Tải Hạng Nặng (Anti Vehicle Phase).
-    /// Hiển thị thẳng hàng bên phải màn hình (phe Anti / Red Team), đếm ngược thời gian thực từ SingleObstacleSpawner.
+    /// Countdown timer circle for Anti Vehicle Phase (Pickup Truck / Heavy Truck).
+    /// Aligned on the right side of the screen (Anti / Red Team).
     /// </summary>
     public class AntiVehiclePhaseTimerCircle : MonoBehaviour
     {
@@ -36,7 +36,6 @@ namespace SteamRush.Features.UI.Views
         private static void ResetStatics()
         {
             _instance = null;
-            _circleSprite = null;
         }
 
         [Header("References")]
@@ -48,16 +47,7 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private TMP_Text iconText;
         [SerializeField] private CanvasGroup canvasGroup;
 
-        [Header("Position")]
-        [SerializeField] private Vector2 anchoredPosition = new Vector2(-52f, -120f);
-        [SerializeField] private Vector2 circleSize = new Vector2(116f, 116f);
-
-        [Header("Colors & Timing")]
-        [SerializeField] private Color pickupRingColor = new Color(1f, 0.55f, 0.1f, 1f); // Cam hổ phách
-        [SerializeField] private Color heavyRingColor = new Color(1f, 0.18f, 0.15f, 1f);  // Đỏ rực
-        [SerializeField] private Color activeRingColor = new Color(1f, 0.2f, 0.1f, 1f);
-        [SerializeField] private Color bgColor = new Color(0.08f, 0.04f, 0.06f, 0.92f);
-        [SerializeField] private Color innerColor = new Color(0.10f, 0.03f, 0.05f, 0.98f);
+        // Circle sprite and label colors are retrieved from HudTheme (HudTheme.GetTimerSkin).
 
         private float _totalDuration = 60f;
         private float _remainingTime = 0f;
@@ -66,8 +56,6 @@ namespace SteamRush.Features.UI.Views
         public bool IsActive => _isActive;
 
         private VehicleTier? _displayedPhase;
-
-        private static Sprite _circleSprite;
 
         private void Awake()
         {
@@ -117,7 +105,7 @@ namespace SteamRush.Features.UI.Views
 
             VehicleTier? currentPhase = obstacleSpawner.ActiveVehiclePhase;
 
-            // Không có Phase nào đang hoạt động
+            // No active phase
             if (!currentPhase.HasValue)
             {
                 if (_isActive)
@@ -128,7 +116,7 @@ namespace SteamRush.Features.UI.Views
                 return;
             }
 
-            // Phase mới được kích hoạt hoặc chuyển đổi giữa Pickup <-> Heavy
+            // Phase activated or transitioned between Pickup <-> Heavy
             if (!_isActive || _displayedPhase != currentPhase.Value)
             {
                 ActivateTimer(
@@ -136,13 +124,12 @@ namespace SteamRush.Features.UI.Views
                     obstacleSpawner.VehiclePhaseDuration);
             }
 
-            // Lấy thời gian còn lại trực tiếp từ SingleObstacleSpawner
+            // Retrieve remaining time directly from SingleObstacleSpawner
             _remainingTime = obstacleSpawner.VehiclePhaseRemainingTime;
 
             if (_totalDuration > 0f && radialFillRing != null)
             {
                 radialFillRing.fillAmount = Mathf.Clamp01(_remainingTime / _totalDuration);
-                radialFillRing.color = activeRingColor;
             }
 
             if (timerText != null)
@@ -152,7 +139,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Hiện timer cho Phase Pickup hoặc Heavy.
+        /// Shows timer circle for active vehicle phase (Pickup or Heavy).
         /// </summary>
         public void ActivateTimer(VehicleTier phase, float duration)
         {
@@ -161,7 +148,8 @@ namespace SteamRush.Features.UI.Views
             _remainingTime = _totalDuration;
             _isActive = true;
 
-            activeRingColor = (phase == VehicleTier.HeavyTruck) ? heavyRingColor : pickupRingColor;
+            TimerCircleSkin phaseSkin = HudTheme.Current.GetTimerSkin(
+                phase == VehicleTier.HeavyTruck ? TimerCircleKind.VehicleHeavy : TimerCircleKind.VehiclePickup);
 
             if (!gameObject.activeSelf)
             {
@@ -187,7 +175,8 @@ namespace SteamRush.Features.UI.Views
             if (radialFillRing != null)
             {
                 radialFillRing.fillAmount = 1f;
-                radialFillRing.color = activeRingColor;
+                radialFillRing.sprite = phaseSkin.ring;
+                radialFillRing.color = Color.white;
             }
 
             if (timerText != null)
@@ -199,7 +188,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Ẩn timer khi Phase kết thúc.
+        /// Hides timer circle when vehicle phase concludes.
         /// </summary>
         public void DeactivateTimer()
         {
@@ -236,18 +225,18 @@ namespace SteamRush.Features.UI.Views
             switch (phase)
             {
                 case VehicleTier.PickupTruck:
-                    iconText.text = "PICKUP";
-                    iconText.color = pickupRingColor;
+                    iconText.text = "ANIMALS";
+                    iconText.color = HudTheme.Current.GetTimerSkin(TimerCircleKind.VehiclePickup).label;
                     break;
 
                 case VehicleTier.HeavyTruck:
-                    iconText.text = "HEAVY";
-                    iconText.color = heavyRingColor;
+                    iconText.text = "TRAIN";
+                    iconText.color = HudTheme.Current.GetTimerSkin(TimerCircleKind.VehicleHeavy).label;
                     break;
 
                 default:
-                    iconText.text = "VEHICLE";
-                    iconText.color = activeRingColor;
+                    iconText.text = "HAZARD";
+                    iconText.color = HudTheme.Current.GetTimerSkin(TimerCircleKind.VehicleHeavy).label;
                     break;
             }
         }
@@ -310,24 +299,16 @@ namespace SteamRush.Features.UI.Views
                 }
             }
 
-            if (parentTransform != null &&
-                transform.parent != parentTransform)
+            if (transform.parent == null && parentTransform != null)
             {
                 transform.SetParent(parentTransform, false);
             }
 
             containerRect = GetComponent<RectTransform>();
-
             if (containerRect == null)
             {
                 containerRect = gameObject.AddComponent<RectTransform>();
             }
-
-            containerRect.anchorMin = new Vector2(1f, 0.80f);
-            containerRect.anchorMax = new Vector2(1f, 0.80f);
-            containerRect.pivot = new Vector2(1f, 0.5f);
-            containerRect.anchoredPosition = anchoredPosition;
-            containerRect.sizeDelta = circleSize;
 
             canvasGroup = GetComponent<CanvasGroup>();
 
@@ -336,7 +317,7 @@ namespace SteamRush.Features.UI.Views
                 canvasGroup = gameObject.AddComponent<CanvasGroup>();
             }
 
-            Sprite circleSp = GetOrCreateCircleSprite();
+            TimerCircleSkin skin = HudTheme.Current.GetTimerSkin(TimerCircleKind.VehiclePickup);
 
             // Background
             GameObject bgObj = new GameObject(
@@ -353,8 +334,8 @@ namespace SteamRush.Features.UI.Views
             bgRect.sizeDelta = Vector2.zero;
 
             bgCircleImage = bgObj.GetComponent<Image>();
-            bgCircleImage.sprite = circleSp;
-            bgCircleImage.color = bgColor;
+            bgCircleImage.sprite = skin.disc;
+            bgCircleImage.color = skin.bgTint;
 
             // Radial Fill
             GameObject ringObj = new GameObject(
@@ -371,13 +352,13 @@ namespace SteamRush.Features.UI.Views
             ringRect.sizeDelta = Vector2.zero;
 
             radialFillRing = ringObj.GetComponent<Image>();
-            radialFillRing.sprite = circleSp;
+            radialFillRing.sprite = skin.ring;
             radialFillRing.type = Image.Type.Filled;
             radialFillRing.fillMethod = Image.FillMethod.Radial360;
             radialFillRing.fillOrigin = (int)Image.Origin360.Top;
             radialFillRing.fillClockwise = true;
             radialFillRing.fillAmount = 1f;
-            radialFillRing.color = activeRingColor;
+            radialFillRing.color = Color.white;
 
             // Inner Circle
             GameObject innerHole = new GameObject(
@@ -395,8 +376,8 @@ namespace SteamRush.Features.UI.Views
             innerRect.sizeDelta = new Vector2(88f, 88f);
 
             Image innerImg = innerHole.GetComponent<Image>();
-            innerImg.sprite = circleSp;
-            innerImg.color = innerColor;
+            innerImg.sprite = skin.disc;
+            innerImg.color = skin.innerTint;
 
             // Phase Label
             GameObject iconObj = new GameObject(
@@ -415,11 +396,12 @@ namespace SteamRush.Features.UI.Views
             iconRect.sizeDelta = new Vector2(80f, 22f);
 
             iconText = iconObj.GetComponent<TextMeshProUGUI>();
-            iconText.text = "PICKUP";
+            iconText.text = "ANIMALS";
             iconText.fontSize = 13;
             iconText.fontStyle = FontStyles.Bold;
-            iconText.color = activeRingColor;
+            iconText.color = skin.label;
             iconText.alignment = TextAlignmentOptions.Center;
+            if (skin.font != null) iconText.font = skin.font;
 
             // Timer Text
             GameObject textObj = new GameObject(
@@ -443,44 +425,7 @@ namespace SteamRush.Features.UI.Views
             timerText.fontStyle = FontStyles.Bold;
             timerText.alignment = TextAlignmentOptions.Center;
             timerText.color = Color.white;
-        }
-
-        private static Sprite GetOrCreateCircleSprite()
-        {
-            if (_circleSprite != null)
-            {
-                return _circleSprite;
-            }
-
-            int res = 256;
-            Texture2D tex = new Texture2D(res, res, TextureFormat.RGBA32, false);
-            tex.wrapMode = TextureWrapMode.Clamp;
-            tex.filterMode = FilterMode.Bilinear;
-
-            float radius = (res - 4) * 0.5f;
-            Vector2 center = new Vector2(res * 0.5f, res * 0.5f);
-            Color[] colors = new Color[res * res];
-
-            for (int y = 0; y < res; y++)
-            {
-                for (int x = 0; x < res; x++)
-                {
-                    float dist = Vector2.Distance(new Vector2(x, y), center);
-                    float alpha = Mathf.Clamp01(radius - dist + 1.5f);
-                    colors[y * res + x] = new Color(1f, 1f, 1f, alpha);
-                }
-            }
-
-            tex.SetPixels(colors);
-            tex.Apply();
-
-            _circleSprite = Sprite.Create(
-                tex,
-                new Rect(0, 0, res, res),
-                new Vector2(0.5f, 0.5f),
-                100f);
-
-            return _circleSprite;
+            if (skin.font != null) timerText.font = skin.font;
         }
     }
 }

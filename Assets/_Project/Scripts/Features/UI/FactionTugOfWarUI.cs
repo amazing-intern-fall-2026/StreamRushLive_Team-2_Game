@@ -4,20 +4,19 @@ using UnityEngine.UI;
 
 namespace SteamRush.Features.UI
 {
-    // View thuan hien 2 the Fan (xanh, trai) / Anti (do, phai) - GDD v1.3.1 muc 6.
-    // KHONG tu doc du lieu cua FactionTugOfWarManager - chi nhan gia tri qua SetFactionValues()
-    // (Manager goi qua UnityEvent, noi trong Inspector), dung SRP.
-    // Nut "+X% Tim"/"+X Tim" o day la badge TINH (theo dung thiet ke goc), khong gan logic dong -
-    // xem [[feedback]] ngay 22/09: gia tri chi mang tinh minh hoa, se dinh nghia lai sau.
+    /// <summary>
+    /// Displays Fan (Blue, left) and Anti (Red, right) tug-of-war gauges adhering to SRP.
+    /// Receives values via SetFactionValues invoked by FactionTugOfWarManager.
+    /// </summary>
     public class FactionTugOfWarUI : MonoBehaviour
     {
-        [Header("Fan (xanh, trai)")]
+        [Header("Fan (Blue, Left)")]
         [SerializeField] private Image _fanFillImage;
         [SerializeField] private TMP_Text _fanValueLabel;
         [SerializeField] private int _fanMaxValue = 1000;
         [SerializeField] private RectTransform _fanHandle;
 
-        [Header("Anti (do, phai)")]
+        [Header("Anti (Red, Right)")]
         [SerializeField] private Image _antiFillImage;
         [SerializeField] private TMP_Text _antiValueLabel;
         [SerializeField] private int _antiMaxValue = 1000;
@@ -82,8 +81,8 @@ namespace SteamRush.Features.UI
         }
 
         /// <summary>
-        /// Rút gọn số lượng người xem/thành viên thành ký tự viết tắt chuẩn (k, M, B).
-        /// VD: 800 -> "800", 1200 -> "1.2k", 15400 -> "15.4k", 100000 -> "100k", 2500000 -> "2.5M".
+        /// Formats viewer numbers into standard abbreviated strings (k, M, B).
+        /// E.g.: 800 -> "800", 1200 -> "1.2k", 15400 -> "15.4k", 100000 -> "100k", 2500000 -> "2.5M".
         /// </summary>
         public static string FormatNumberShorthand(long number)
         {
@@ -137,8 +136,7 @@ namespace SteamRush.Features.UI
             }
         }
 
-        // Resize RectTransform theo chieu cao thay vi dung Image.fillAmount, vi Image kieu Filled
-        // KHONG ho tro 9-slice (2 dau pill se bi keo meo) - cung logic da dung o ProgressBarController.
+        // Resize RectTransform height instead of Image.fillAmount to maintain 9-slice pill corners
         private static void ApplyFillHeight(Image fillImage, float ratio)
         {
             var fillRect = fillImage.rectTransform;
@@ -146,8 +144,7 @@ namespace SteamRush.Features.UI
             fillRect.sizeDelta = new Vector2(fillRect.sizeDelta.x, trackHeight * ratio);
         }
 
-        // Glow nho bam theo dung mep tren cua fill hien tai - fill gio la RectTransform duoc
-        // resize truc tiep (pivot day, gan bottom) nen rect.height chinh la vi tri can bam.
+        // Align glow handle with top edge of current fill RectTransform
         private static void UpdateHandlePosition(RectTransform handle, Image fillImage)
         {
             if (handle == null) return;
@@ -169,8 +166,7 @@ namespace SteamRush.Features.UI
             }
         }
 
-        // Duoc FactionTugOfWarManager.FactionValuesChanged goi moi lan co Like moi hoac tieu hao nang luong.
-        // Ca Fan va Anti deu dong bo hien theo % (nang luong hien tai / muc toi da).
+        // Invoked by FactionTugOfWarManager whenever faction likes or energy change
         public void SetFactionValues(int fanValue, int antiValue)
         {
             EnsureSpriteAssigned(_fanFillImage);

@@ -21,8 +21,13 @@ namespace SteamRush.Features.StreamIntegration
         [Header("Gameplay Subsystems")]
         [SerializeField] private FactionTugOfWarManager _factionManager;
 
-        [Header("Diagnostics")]
-        [SerializeField] private bool _logEvents = true;
+        [Header("Audio Feedback")]
+        [Tooltip("Minimum interval between like sound effects to prevent audio spam.")]
+        [SerializeField] private float _likeSFXCooldown = 1.2f;
+        private float _lastLikeSFXTime = -999f;
+
+        [Header("Debug")]
+        [SerializeField] private bool _logEvents = false;
 
         private readonly Dictionary<string, int> _processedLikeStepsByUser = new Dictionary<string, int>();
 
@@ -93,7 +98,12 @@ namespace SteamRush.Features.StreamIntegration
                 _factionManager.AddLikes(faction, energyAmount);
             }
 
-            AudioManager.Instance?.PlaySFX(SFXType.StreamLike, 0.5f);
+            // Anti-spam cooldown for like audio
+            if (Time.unscaledTime - _lastLikeSFXTime >= _likeSFXCooldown)
+            {
+                _lastLikeSFXTime = Time.unscaledTime;
+                AudioManager.Instance?.PlaySFX(SFXType.StreamLike, 0.45f);
+            }
 
             if (_logEvents)
             {

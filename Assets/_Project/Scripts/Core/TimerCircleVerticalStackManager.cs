@@ -5,14 +5,14 @@ using UnityEngine;
 namespace SteamRush.Features.UI.Views
 {
     /// <summary>
-    /// Quản lý trục dọc động (Dynamic Vertical Stack) cho tất cả các popup Timer Circle:
-    /// - Phe Fan (bên trái): FanSprintTimerCircle, ShieldTimerCircle, FreeControlTimerCircle.
-    /// - Phe Anti (bên phải): AntiUnlimitedTimerCircle, AntiVehiclePhaseTimerCircle.
-    /// 
-    /// Quy tắc hiển thị:
-    /// 1. Vòng tròn đầu tiên kích hoạt luôn xuất hiện ở vị trí TRÊN CÙNG.
-    /// 2. Khi có thêm vòng tròn mới, nó sẽ tự động trôi dần xuống dưới các vòng tròn trước đó theo trục dọc.
-    /// 3. Khi một vòng tròn hết giờ biến mất, các vòng tròn bên dưới sẽ tự động trượt mượt mà lên trên lấp vào khoảng trống.
+    /// Manages dynamic vertical stacking for all Timer Circle popups:
+    /// - Fan Team (Left column): FanSprintTimerCircle, ShieldTimerCircle, FreeControlTimerCircle.
+    /// - Anti Team (Right column): AntiUnlimitedTimerCircle, AntiVehiclePhaseTimerCircle.
+    ///
+    /// Stacking rules:
+    /// 1. First active circle appears at the topmost position.
+    /// 2. New circles stack beneath existing ones along the vertical axis.
+    /// 3. When a circle expires, circles below smoothly slide up to fill the gap.
     /// </summary>
     public class TimerCircleVerticalStackManager : MonoBehaviour
     {
@@ -99,7 +99,7 @@ namespace SteamRush.Features.UI.Views
         #region Public Static API
 
         /// <summary>
-        /// Đăng ký một vòng tròn buff bên phe Fan vào trục dọc bên trái.
+        /// Registers a Fan team buff timer circle in the left vertical stack.
         /// </summary>
         public static void RegisterFanCircle(MonoBehaviour circle, RectTransform rect)
         {
@@ -108,7 +108,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Hủy đăng ký vòng tròn buff bên phe Fan khi hết thời gian hoặc bị hủy.
+        /// Unregisters a Fan team buff timer circle when expired or cancelled.
         /// </summary>
         public static void UnregisterFanCircle(MonoBehaviour circle)
         {
@@ -120,7 +120,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Đăng ký một vòng tròn hazard bên phe Anti vào trục dọc bên phải.
+        /// Registers an Anti team hazard timer circle in the right vertical stack.
         /// </summary>
         public static void RegisterAntiCircle(MonoBehaviour circle, RectTransform rect)
         {
@@ -129,7 +129,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         /// <summary>
-        /// Hủy đăng ký vòng tròn hazard bên phe Anti khi hết thời gian.
+        /// Unregisters an Anti team hazard timer circle when expired.
         /// </summary>
         public static void UnregisterAntiCircle(MonoBehaviour circle)
         {
@@ -152,13 +152,13 @@ namespace SteamRush.Features.UI.Views
             int existingIndex = stack.FindIndex(e => e.Circle == circle);
             if (existingIndex >= 0)
             {
-                // Đã có trong stack -> giữ nguyên hoặc cập nhật lại rect
+                // Already in stack -> preserve or update cached rect
                 stack[existingIndex].Rect = rect;
                 RepositionStack(isFanSide, animateNew: false);
                 return;
             }
 
-            // Thêm mới vào cuối stack
+            // Append to end of stack
             var newEntry = new StackEntry(circle, rect);
             stack.Add(newEntry);
 
@@ -169,7 +169,7 @@ namespace SteamRush.Features.UI.Views
             int targetIndex = stack.Count - 1;
             float targetY = topY + (targetIndex * stepY);
 
-            // Đảm bảo anchor và pivot chuẩn
+            // Ensure proper anchor and pivot settings
             Vector2 anchor = isFanSide ? new Vector2(0f, 0.80f) : new Vector2(1f, 0.80f);
             rect.anchorMin = anchor;
             rect.anchorMax = anchor;
@@ -179,14 +179,14 @@ namespace SteamRush.Features.UI.Views
 
             if (targetIndex == 0)
             {
-                // Vòng tròn đầu tiên: xuất hiện ngay tại vị trí TRÊN CÙNG
+                // First circle: appears at topmost position
                 rect.anchoredPosition = new Vector2(baseX, targetY);
                 rect.localScale = new Vector3(0.85f, 0.85f, 1f);
                 rect.DOScale(Vector3.one, 0.25f).SetEase(Ease.OutBack);
             }
             else
             {
-                // Vòng tròn thứ 2 trở đi: xuất hiện từ trên rồi trôi dần xuống vị trí bên dưới
+                // Subsequent circles: float down to stacked slot
                 float startY = topY + ((targetIndex - 1) * stepY);
                 rect.anchoredPosition = new Vector2(baseX, startY);
                 rect.localScale = new Vector3(0.9f, 0.9f, 1f);
@@ -205,7 +205,7 @@ namespace SteamRush.Features.UI.Views
             if (removeIndex >= 0)
             {
                 stack.RemoveAt(removeIndex);
-                // Các vòng tròn bên dưới tự động trượt lên lấp đầy khoảng trống
+                // Remaining circles slide up to close gaps
                 RepositionStack(isFanSide, animateNew: true);
             }
         }

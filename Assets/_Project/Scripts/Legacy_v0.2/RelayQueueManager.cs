@@ -29,9 +29,8 @@ namespace SteamRush.Relay
 
         public int Count => _followers.Count;
 
-        // Đọc trước tên follower đầu hàng đợi mà KHÔNG lấy ra khỏi hàng đợi (không dequeue).
-        // Thêm cho BatonHandoverController hiển thị đúng tên thật trên Model chờ (Proxy) ngay từ
-        // lúc spawn (GDD mục 6), thay vì phải chờ tới lúc bàn giao xong mới biết tên.
+        // Peek next follower name without dequeuing, allowing BatonHandoverController
+        // to show the name on the waiting proxy model right upon spawning (GDD section 6).
         public string PeekNextFollower() => _followers.Count > 0 ? _followers.Peek() : null;
 
         [SerializeField] private UnityEvent<string> _followerNameChanged = new UnityEvent<string>();
@@ -42,7 +41,7 @@ namespace SteamRush.Relay
             if (_progressTracker == null) _progressTracker = FindFirstObjectByType<TrackProgressTracker>();
             if (_hudManager == null) _hudManager = FindFirstObjectByType<HUDManager>();
 
-            // Khởi tạo hàng đợi từ danh sách cấu hình trên Inspector
+            // Initialize queue from inspector configuration
             if (_demoFollowers != null && _demoFollowers.Count > 0)
             {
                 for (int i = 0; i < _demoFollowers.Count; i++)
@@ -57,7 +56,7 @@ namespace SteamRush.Relay
 
         private void Start()
         {
-            // Cập nhật tên runner khởi đầu lên HUD
+            // Set initial runner name on HUD
             if (_hudManager != null)
             {
                 _hudManager.UpdateRunnerInfo(_initialRunnerName, null);
@@ -83,26 +82,25 @@ namespace SteamRush.Relay
         public void EnqueueFollower(string followerId)
         {
             _followers.Enqueue(followerId);
-            _hudManager?.ShowStatusPopup($"+1 Đăng ký: {followerId}", true);
+            _hudManager?.ShowStatusPopup($"+1 Registered: {followerId}", true);
         }
 
         private void HandleRelayCompleted(int relayNumber)
         {
             if (_followers.Count == 0)
             {
-                _hudManager?.ShowStatusPopup($"Hoàn thành chặng {relayNumber}!", true);
+                _hudManager?.ShowStatusPopup($"Completed Stage {relayNumber}!", true);
                 return;
             }
 
             string followerId = _followers.Dequeue();
             _followerNameChanged.Invoke(followerId);
 
-            // Nếu không có BatonHandoverController xử lý va chạm chuyển gậy trực tiếp (In-Place),
-            // mới cập nhật HUD ngay tại đây làm fallback.
+            // Fallback HUD update if no BatonHandoverController exists
             if (_hudManager != null && FindFirstObjectByType<BatonHandoverController>() == null)
             {
                 _hudManager.UpdateRunnerInfo(followerId, null);
-                _hudManager.ShowStatusPopup($"Chuyển gậy: {followerId}!", true);
+                _hudManager.ShowStatusPopup($"Baton Handover: {followerId}!", true);
             }
         }
     }

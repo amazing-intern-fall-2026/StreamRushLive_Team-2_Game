@@ -179,6 +179,16 @@ namespace SteamRush.Features.StreamIntegration
 
         #region Connection Management
 
+        public void ConnectWithUsername(string username)
+        {
+            if (!string.IsNullOrEmpty(username))
+            {
+                _tiktokUniqueId = username.Trim().TrimStart('@');
+            }
+            Disconnect();
+            Connect();
+        }
+
         [ContextMenu("Connect")]
         public void Connect()
         {

@@ -3,20 +3,18 @@ using UnityEngine;
 
 namespace SteamRush.Features.UI.Views
 {
-    // View: badge pill hiển thị thời gian trận đấu tăng dần (mm:ss), đặt ngay dưới ProgressBar.
-    // Đếm từ khi component được bật (Awake) - chưa có sự kiện "bắt đầu trận" riêng trong codebase.
+    // View: badge pill displaying elapsed match time (mm:ss) below ProgressBar.
     public class ElapsedTimeStopwatch : MonoBehaviour
     {
         [SerializeField] private TMP_Text timeText;
 
-        // Cap 999:59 theo spec (mm 3 chữ số tối đa) - tránh tràn hiển thị nếu live kéo dài bất thường.
+        // Cap at 999:59 per design specification
         private const float MaxSeconds = 999 * 60 + 59;
 
         private float _elapsedSeconds;
         private bool _isRunning = true;
 
-        // VictoryCeremonyController doc lai text mm:ss cuoi cung de hien trong popup vinh danh -
-        // doc thang tu timeText da cap nhat san, khong lap lai logic format o day.
+        // Read by VictoryCeremonyController to display final clear time in victory popup.
         public string CurrentDisplayText => timeText != null ? timeText.text : "00:00";
 
         private void Update()
@@ -27,7 +25,7 @@ namespace SteamRush.Features.UI.Views
             UpdateDisplay();
         }
 
-        // Goi tu VictoryCeremonyController de dong bang thoi gian hoan thanh cuoi cung khi qua dich.
+        // Called by VictoryCeremonyController to freeze final clear time when crossing finish line.
         public void StopTimer()
         {
             _isRunning = false;

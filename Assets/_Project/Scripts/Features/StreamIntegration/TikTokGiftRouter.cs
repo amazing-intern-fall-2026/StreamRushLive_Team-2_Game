@@ -24,10 +24,10 @@ namespace SteamRush.Features.StreamIntegration
         [InspectorName("Blue: +Energy")]
         Blue_EnergyBottle,
 
-        [InspectorName("Red: Pickup Truck")]
+        [InspectorName("Red: Hunting Beasts")]
         Red_SpawnPickup,
 
-        [InspectorName("Red: Heavy Truck")]
+        [InspectorName("Red: Train")]
         Red_SpawnHeavyTruck,
 
         [InspectorName("Red: Unlimited Cars")]
@@ -49,7 +49,10 @@ namespace SteamRush.Features.StreamIntegration
         Dynamic_ByFaction,
 
         [InspectorName("Like: +Energy")]
-        Like_Energy
+        Like_Energy,
+
+        [InspectorName("Follow: Runner")]
+        Follow_Runner
     }
 
     [System.Serializable]
@@ -71,7 +74,7 @@ namespace SteamRush.Features.StreamIntegration
         [Tooltip("Gameplay action triggered when viewers send this gift.")]
         public GiftActionType action = GiftActionType.Blue_EnergyBottle;
 
-        [Tooltip("Custom value: Duration (seconds) or Energy amount. Set 0 for default.")]
+        [HideInInspector]
         public float customValue = 0f;
     }
 
@@ -86,7 +89,7 @@ namespace SteamRush.Features.StreamIntegration
         [Tooltip("Configured list of gift mappings linking TikTok gift IDs/names to gameplay actions.")]
         [SerializeField] private List<TikTokGiftMapping> _giftMappings = new List<TikTokGiftMapping>();
 
-        [Tooltip("Khi bật, danh sách quà trên UI sẽ hiển thị chính xác theo thứ tự từng Element (từ trái qua phải, từ trên xuống dưới).")]
+        [Tooltip("When enabled, gift cards on UI will display strictly according to element order.")]
         [SerializeField] private bool _showByElementOrder = true;
 
         [Header("Subsystems")]
@@ -159,6 +162,30 @@ namespace SteamRush.Features.StreamIntegration
             return false;
         }
 
+        /// <summary>
+        /// Directly executes action of a gift mapping (for button clicks or offline testing).
+        /// </summary>
+        public void TriggerGiftMappingDirect(TikTokGiftMapping mapping, string displayName = "Streamer")
+        {
+            if (mapping == null) return;
+            EnsureReferences();
+
+            string name = !string.IsNullOrEmpty(displayName) ? displayName : "Streamer";
+            FactionType faction = _factionManager != null ? _factionManager.GetFaction(name) : FactionType.Fan;
+
+            // Audio feedback per gift action
+            if (mapping.action == GiftActionType.Like_Energy)
+            {
+                AudioManager.Instance?.PlaySFX(SFXType.StreamLike, 0.45f);
+            }
+
+            // Trigger gift card bounce animation
+            _giftPanelController?.HighlightGift(mapping.giftId, mapping.giftName);
+
+            // Execute gift action directly
+            ExecuteActionByEnum(mapping.action, name, faction);
+        }
+
         private void OnGiftReceived(TikTokGiftEvent evt)
         {
             EnsureReferences();
@@ -171,10 +198,10 @@ namespace SteamRush.Features.StreamIntegration
             string displayName = !string.IsNullOrEmpty(evt.DisplayName) ? evt.DisplayName : evt.UserId;
             string lowerName = evt.GiftName.ToLowerInvariant();
 
-            // Play generic gift SFX if not a dance gift
-            if (!lowerName.Contains("dance") && !lowerName.Contains("nhảy") && !lowerName.Contains("vũ"))
+            // Play subtle StreamLike feedback for like/heart gifts
+            if (lowerName.Contains("like") || lowerName.Contains("tim") || lowerName.Contains("heart"))
             {
-                AudioManager.Instance?.PlaySFX(SFXType.StreamDonateGift, 0.65f);
+                AudioManager.Instance?.PlaySFX(SFXType.StreamLike, 0.45f);
             }
 
             FactionType faction = _factionManager != null ? _factionManager.GetFaction(evt.UserId) : FactionType.Fan;
@@ -221,84 +248,94 @@ namespace SteamRush.Features.StreamIntegration
 
             if (matched == null) return false;
 
-            float val = matched.customValue;
-            switch (matched.action)
+            ExecuteActionByEnum(matched.action, displayName, faction);
+            return true;
+        }
+
+        /// <summary>
+        /// Executes gift action by GiftActionType. Centrally managed by GiftManager.
+        /// </summary>
+        public void ExecuteActionByEnum(GiftActionType action, string displayName, FactionType faction)
+        {
+            EnsureReferences();
+            switch (action)
             {
                 case GiftActionType.Blue_Shield:
-                    _giftManager?.ActivateShield(displayName, val > 0 ? val : -1f);
+                    _giftManager?.ActivateShield(displayName);
                     break;
                 case GiftActionType.Blue_SpeedBoost:
-                    _giftManager?.ActivateSprintBuff(displayName, val > 0 ? val : -1f);
+                    _giftManager?.ActivateSprintBuff(displayName);
                     break;
                 case GiftActionType.Blue_FreeControl:
-                    _giftManager?.ActivateFreeControl(displayName, val > 0 ? val : -1f);
+                    _giftManager?.ActivateFreeControl(displayName);
                     break;
                 case GiftActionType.Blue_EnergyBottle:
-                    _giftManager?.AddBlueEnergy(displayName, val > 0 ? Mathf.RoundToInt(val) : -1);
+                    _giftManager?.AddBlueEnergy(displayName);
                     break;
                 case GiftActionType.Red_SpawnPickup:
-                    _giftManager?.SpawnAntiCar(VehicleTier.PickupTruck, displayName);
+                    // Activates Pickup Truck Phase
+                    _giftManager?.ActivatePickupTruckPhase(displayName);
                     break;
                 case GiftActionType.Red_SpawnHeavyTruck:
-                    _giftManager?.SpawnAntiCar(VehicleTier.HeavyTruck, displayName);
+                    // Activates Heavy Truck Phase
+                    _giftManager?.ActivateHeavyTruckPhase(displayName);
                     break;
                 case GiftActionType.Red_UnlimitedCars:
-                    _giftManager?.ActivateUnlimitedCars(displayName, val > 0 ? val : 60f);
+                    _giftManager?.ActivateUnlimitedCars(displayName);
                     break;
                 case GiftActionType.Red_EnergyBottle:
-                    _giftManager?.AddRedEnergy(displayName, val > 0 ? Mathf.RoundToInt(val) : -1);
+                    _giftManager?.AddRedEnergy(displayName);
                     break;
                 case GiftActionType.Special_GiftDance:
                     _giftManager?.TriggerGiftDance(displayName);
                     break;
                 case GiftActionType.Special_RainHazard:
-                    _giftManager?.ActivateRainHazard(displayName, val > 0 ? val : 60f);
+                    _giftManager?.ActivateRainHazard(displayName);
                     break;
+                case GiftActionType.Follow_Runner:
                 case GiftActionType.Special_VIPRelayTicket:
-                    _queueManager?.TryEnqueuePriorityFollower(displayName);
-                    ShowPopup($"VIP: [{displayName}]", true);
+                    _queueManager?.EnqueueFollowerAsRunner(displayName);
+                    ShowPopup($"Runner: [{displayName}]", true);
                     break;
                 case GiftActionType.Like_Energy:
-                    int energy = val > 0 ? Mathf.RoundToInt(val) : 10;
+                    int energy = 10;
                     if (faction == FactionType.Fan)
                         _factionManager?.AddLikes(FactionType.Fan, energy);
                     else
                         _factionManager?.AddLikes(FactionType.Anti, energy);
                     break;
                 case GiftActionType.Dynamic_ByFaction:
-                    return false; // Fallback to faction handling
+                    break;
             }
 
             if (_logEvents)
             {
-                Debug.Log($"[TikTokGiftRouter] Activated [{matched.action}] for gift [{giftName}] (ID: {giftId}) from {displayName}!");
+                Debug.Log($"[TikTokGiftRouter] Executed [{action}] from {displayName}!");
             }
-            return true;
         }
 
         private void ExecuteFallbackGift(TikTokGiftEvent evt, string displayName, string lowerName, FactionType faction)
         {
-            if (lowerName.Contains("dance") || lowerName.Contains("nhảy") || lowerName.Contains("vũ"))
+            if (lowerName.Contains("dance"))
             {
                 _giftManager?.TriggerGiftDance(displayName);
                 return;
             }
 
-            if (lowerName.Contains("vip") || lowerName.Contains("ticket") || lowerName.Contains("vé"))
+            if (lowerName.Contains("follow") || lowerName.Contains("vip") || lowerName.Contains("ticket") || lowerName.Contains("runner"))
             {
-                _queueManager?.TryEnqueuePriorityFollower(displayName);
-                ShowPopup($"VIP: [{displayName}]", true);
+                _queueManager?.EnqueueFollowerAsRunner(displayName);
+                ShowPopup($"Runner: [{displayName}]", true);
                 return;
             }
 
-            if (lowerName.Contains("mưa") || lowerName.Contains("rain") || lowerName.Contains("dù") || lowerName.Contains("umbrella"))
+            if (lowerName.Contains("rain") || lowerName.Contains("umbrella"))
             {
                 _giftManager?.ActivateRainHazard(displayName, 60f);
                 return;
             }
 
-            if (evt.TotalCoins >= 100 || lowerName.Contains("lion") || lowerName.Contains("sư tử") ||
-                lowerName.Contains("tên lửa") || lowerName.Contains("rocket"))
+            if (evt.TotalCoins >= 100 || lowerName.Contains("lion") || lowerName.Contains("rocket"))
             {
                 if (faction == FactionType.Anti)
                 {
@@ -313,30 +350,30 @@ namespace SteamRush.Features.StreamIntegration
 
             if (faction == FactionType.Fan)
             {
-                if (lowerName.Contains("shield") || lowerName.Contains("khiên") || lowerName.Contains("donut") || evt.TotalCoins >= 30)
+                if (lowerName.Contains("shield") || lowerName.Contains("donut") || evt.TotalCoins >= 30)
                 {
-                    _giftManager?.ActivateShield(displayName, 15f);
+                    _giftManager?.ActivateShield(displayName);
                 }
-                else if (lowerName.Contains("sprint") || lowerName.Contains("speed") || lowerName.Contains("cap") || lowerName.Contains("mũ"))
+                else if (lowerName.Contains("sprint") || lowerName.Contains("speed") || lowerName.Contains("cap") || lowerName.Contains("hat"))
                 {
-                    _giftManager?.ActivateSprintBuff(displayName, 30f);
+                    _giftManager?.ActivateSprintBuff(displayName);
                 }
                 else
                 {
-                    _giftManager?.AddBlueEnergy(displayName, 300);
+                    _giftManager?.AddBlueEnergy(displayName);
                 }
             }
             else
             {
-                if (lowerName.Contains("heavy") || lowerName.Contains("tải") || evt.TotalCoins >= 50)
+                if (lowerName.Contains("heavy") || lowerName.Contains("truck") || evt.TotalCoins >= 50)
                 {
-                    _giftManager?.SpawnAntiCar(VehicleTier.HeavyTruck, displayName);
+                    _giftManager?.ActivateHeavyTruckPhase(displayName);
                 }
-                else if (lowerName.Contains("pickup") || lowerName.Contains("bán tải") || evt.TotalCoins >= 20)
+                else if (lowerName.Contains("pickup") || evt.TotalCoins >= 20)
                 {
-                    _giftManager?.SpawnAntiCar(VehicleTier.PickupTruck, displayName);
+                    _giftManager?.ActivatePickupTruckPhase(displayName);
                 }
-                else if (lowerName.Contains("car") || lowerName.Contains("sedan") || lowerName.Contains("xe") || evt.TotalCoins >= 10)
+                else if (lowerName.Contains("car") || lowerName.Contains("sedan") || evt.TotalCoins >= 10)
                 {
                     _giftManager?.SpawnAntiCar(VehicleTier.SedanCar, displayName);
                 }
@@ -420,7 +457,7 @@ namespace SteamRush.Features.StreamIntegration
             }
             UnityEditor.EditorUtility.SetDirty(this);
             if (_giftPanelController != null) UnityEditor.EditorUtility.SetDirty(_giftPanelController);
-            Debug.Log("<color=#00FF88>[TikTokGiftRouter] Đã chuyển UI sang hiển thị theo đúng thứ tự Element trong Gift Mappings (trái qua phải, trên xuống dưới).</color>");
+            Debug.Log("<color=#00FF88>[TikTokGiftRouter] UI display order synchronized with Gift Mappings element order.</color>");
         }
 
         [ContextMenu("Sort Gift Mappings By Team")]

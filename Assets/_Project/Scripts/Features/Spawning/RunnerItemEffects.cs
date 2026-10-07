@@ -4,11 +4,7 @@ using UnityEngine;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Quản lý các hiệu ứng Gift (quà tặng trực tiếp từ Viewer) đang tác động lên Runner.
-    /// - Quản lý trạng thái Khiên bảo hộ (Shield).
-    /// - Shield tồn tại tối đa theo thời gian được cấu hình (mặc định 15s).
-    /// - Shield chỉ chặn được 1 lần va chạm.
-    /// - Quản lý hiệu ứng High Jump / Buffs.
+    /// Manages active gift buffs on the Runner (Shield, High Jump, etc.).
     /// </summary>
     public class RunnerGiftEffects : MonoBehaviour
     {
@@ -27,9 +23,38 @@ namespace StreamRushLive.Features.Spawning
         public bool IsHighJumpActive => highJumpActive;
         public float CurrentJumpForceMultiplier => currentJumpForceMultiplier;
 
+        private void Awake()
+        {
+            // Reset buff states cleanly on Awake
+            shieldActive = false;
+            highJumpActive = false;
+            currentJumpForceMultiplier = 1f;
+        }
+
+        private void OnEnable()
+        {
+            if (!Application.isPlaying)
+            {
+                shieldActive = false;
+                highJumpActive = false;
+                currentJumpForceMultiplier = 1f;
+            }
+        }
+
+        private void OnValidate()
+        {
+            // Never allow shieldActive to persist in scene or prefab serialization outside Play Mode
+            if (!Application.isPlaying)
+            {
+                shieldActive = false;
+                highJumpActive = false;
+                currentJumpForceMultiplier = 1f;
+            }
+        }
+
         /// <summary>
-        /// Kích hoạt Shield cho Runner (mặc định 15s theo yêu cầu GDD).
-        /// Nếu Runner đang có Shield, thời gian sẽ được tính lại từ đầu.
+        /// Activates protective shield buff on runner.
+        /// Resets duration if already active.
         /// </summary>
         public void ActivateShield(float duration = 15f)
         {
@@ -51,9 +76,9 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Shield chặn một lần va chạm và bị tiêu hao ngay sau đó.
+        /// Consumes shield to absorb a collision impact.
         /// </summary>
-        /// <returns>True nếu Shield đã chặn được va chạm.</returns>
+        /// <returns>True if shield absorbed the impact.</returns>
         public bool ConsumeShield()
         {
             if (!shieldActive)
@@ -71,7 +96,7 @@ namespace StreamRushLive.Features.Spawning
 
             SteamRush.Features.UI.Views.ShieldTimerCircle.Instance?.DeactivateTimer();
             AudioManager.Instance?.PlaySFX(SFXType.ShieldBreak);
-            Debug.Log("[RunnerItemEffects] Shield đã chặn 1 lần va chạm.");
+            Debug.Log("[RunnerItemEffects] Shield absorbed 1 collision impact.");
 
             return true;
         }
@@ -89,12 +114,11 @@ namespace StreamRushLive.Features.Spawning
             SteamRush.Features.UI.Views.ShieldTimerCircle.Instance?.DeactivateTimer();
             AudioManager.Instance?.PlaySFX(SFXType.ShieldBreak);
 
-            Debug.Log("[RunnerItemEffects] Shield đã hết thời gian.");
+            Debug.Log("[RunnerItemEffects] Shield duration expired.");
         }
 
         /// <summary>
-        /// Kích hoạt High Jump cho Runner.
-        /// Nếu High Jump đang hoạt động, thời gian hiệu ứng sẽ được tính lại từ đầu.
+        /// Activates High Jump buff on runner.
         /// </summary>
         public void ActivateHighJump(float duration, float multiplier)
         {
@@ -122,12 +146,12 @@ namespace StreamRushLive.Features.Spawning
             currentJumpForceMultiplier = 1f;
             highJumpCoroutine = null;
 
-            Debug.Log("[RunnerGiftEffects] High Jump đã hết thời gian.");
+            Debug.Log("[RunnerGiftEffects] High Jump duration expired.");
         }
     }
 
     /// <summary>
-    /// Alias tương thích ngược với các scenes, prefabs và mã nguồn cũ trước khi chuyển sang hệ thống Gift trực tiếp.
+    /// Backward compatibility alias.
     /// </summary>
     public class RunnerItemEffects : RunnerGiftEffects
     {

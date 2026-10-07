@@ -21,39 +21,49 @@ namespace StreamRushLive.Features.Spawning
     public class DrivingObstacleCar : ObstacleBase
     {
         [Header("Vehicle Tier & Penalties (GDD v1.4)")]
-        [Tooltip("Cấp bậc của xe chướng ngại vật.")]
+        [Tooltip("Obstacle vehicle tier.")]
         [SerializeField] private VehicleTier _vehicleTier = VehicleTier.SedanCar;
 
-        [Tooltip("Cự ly knockback đẩy giật lùi Runner khi va chạm (m).")]
+        [Tooltip("Knockback distance pushed backward on collision (meters).")]
         [SerializeField] private float _knockbackDistance = 2.0f;
 
-        [Tooltip("Thời gian Runner hồi phục sau cú knockback (giây).")]
+        [Tooltip("Recovery duration after knockback impulse (seconds).")]
         [SerializeField] private float _knockbackDuration = 0.45f;
 
         [Header("Speed Settings")]
-        [Tooltip("Tốc độ xe tự chạy trên mặt đường (m/s) bổ sung vào tốc độ cuộn của thế giới.")]
+        [Tooltip("Autonomous vehicle drive speed added to world scroll speed (m/s).")]
         [SerializeField] private float _drivingSpeed = 7.0f;
 
-        [Tooltip("Tọa độ X khi xe vượt qua phía sau người chơi để tự hủy.")]
+        [Tooltip("X coordinate threshold behind player where car auto-despawns.")]
         [SerializeField] private float _despawnXThreshold = -15f;
 
         [Header("Visual Effects")]
-        [Tooltip("Tự động tìm và quay các bánh xe theo tốc độ lái.")]
+        [Tooltip("Automatically finds and rotates wheel transforms.")]
         [SerializeField] private bool _enableWheelSpin = true;
 
-        [Tooltip("Bán kính bánh xe để tính tốc độ góc quay (m).")]
+        [Tooltip("Wheel radius for angular velocity calculation (meters).")]
         [SerializeField] private float _wheelRadius = 0.36f;
 
-        [Tooltip("Tạo độ rung nhún động cơ nhẹ khi xe đang chạy.")]
+        [Tooltip("Applies subtle engine vibration suspension wobble.")]
         [SerializeField] private bool _enableEngineRumble = true;
         [SerializeField] private float _rumbleFrequency = 30f;
         [SerializeField] private float _rumbleAmplitude = 0.008f;
 
-        [Header("World Reverse Knockback (Hiệu ứng cuộn ngược thế giới GDD v1.2/v1.4)")]
-        [Tooltip("Vận tốc đỉnh khi thế giới cuộn ngược lại (m/s, giá trị âm).")]
+        [Header("World Reverse Knockback (GDD v1.2/v1.4)")]
+        [Tooltip("Peak reverse world scroll speed (m/s, negative value).")]
         [SerializeField] private float _reverseWorldPeakSpeed = -15f;
-        [Tooltip("Thời lượng thế giới cuộn ngược lại (giây).")]
+        [Tooltip("Duration of reverse world scroll impulse (seconds).")]
         [SerializeField] private float _reverseWorldDuration = 0.65f;
+
+        [Header("Audio & Sound Effects")]
+        [Tooltip("Optional custom SFX played on spawn/alert (overrides standard vehicle horn).")]
+        [SerializeField] private AudioClip _customSpawnSFX;
+
+        public AudioClip CustomSpawnSFX
+        {
+            get => _customSpawnSFX;
+            set => _customSpawnSFX = value;
+        }
 
         private WorldSpeedManager _speedManager;
         private readonly List<Transform> _wheelTransforms = new List<Transform>();
@@ -85,17 +95,17 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Cấu hình thông số hình phạt của xe theo GDD v1.4 Mục 4.3
-        /// Xe và Runner đứng yên trong camera, chỉ thế giới cuộn ngược tạo cảm giác bị đẩy lùi 100m / 200m / 400m
+        /// Configures collision penalty values per vehicle tier (GDD v1.4).
         /// </summary>
         public void ConfigureTier(VehicleTier tier)
         {
             _vehicleTier = tier;
 
-            // Đọc thông số trực tiếp từ GiftManager trên Hierarchy nếu có
-            if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
+            // Retrieve configuration directly from GiftManager if available
+            var gm = StreamRushLive.Features.Gifts.GiftManager.Instance ?? FindFirstObjectByType<StreamRushLive.Features.Gifts.GiftManager>();
+            if (gm != null)
             {
-                var cfg = StreamRushLive.Features.Gifts.GiftManager.Instance.GetCarConfig(tier);
+                var cfg = gm.GetCarConfig(tier);
                 if (cfg != null)
                 {
                     obstacleName = cfg.vehicleName;
@@ -115,41 +125,41 @@ namespace StreamRushLive.Features.Spawning
             switch (tier)
             {
                 case VehicleTier.SedanCar:
-                    obstacleName = "Xe Con Húc";
+                    obstacleName = "Sedan Car";
                     obstacleType = ObstacleType.LowBarrier;
-                    energyPenaltyPercent = 20f;       // -20% năng lượng
-                    distancePenaltyMeters = 100f;     // -100m cự ly
-                    hitStopDuration = 0.10f;          // 0.10s khựng nhẹ
-                    _knockbackDistance = 2.0f;        // Runner bị húc đẩy lùi 2.0m
+                    energyPenaltyPercent = 20f;       // -20% energy penalty
+                    distancePenaltyMeters = 100f;     // -100m distance penalty
+                    hitStopDuration = 0.10f;          // 0.10s hit-stop freeze
+                    _knockbackDistance = 2.0f;        // 2.0m knockback
                     _knockbackDuration = 0.5f;
                     _drivingSpeed = 7.0f;
-                    _reverseWorldPeakSpeed = -87.0f;  // Thế giới cuộn ngược lùi đúng ~100m
+                    _reverseWorldPeakSpeed = -87.0f;  // reverse scroll ~100m
                     _reverseWorldDuration = 1.8f;
                     break;
 
                 case VehicleTier.PickupTruck:
-                    obstacleName = "Xe Bán Tải";
+                    obstacleName = "Animals";
                     obstacleType = ObstacleType.LowBarrier;
-                    energyPenaltyPercent = 40f;       // -40% năng lượng
-                    distancePenaltyMeters = 200f;     // -200m cự ly
-                    hitStopDuration = 0.18f;          // 0.18s khựng/choáng
-                    _knockbackDistance = 3.0f;        // Runner bị húc đẩy lùi 3.0m
+                    energyPenaltyPercent = 40f;       // -40% energy penalty
+                    distancePenaltyMeters = 200f;     // -200m distance penalty
+                    hitStopDuration = 0.18f;          // 0.18s hit-stop freeze
+                    _knockbackDistance = 3.0f;        // 3.0m knockback
                     _knockbackDuration = 0.6f;
                     _drivingSpeed = 6.2f;
-                    _reverseWorldPeakSpeed = -130.0f; // Thế giới cuộn ngược lùi đúng ~200m
+                    _reverseWorldPeakSpeed = -130.0f; // reverse scroll ~200m
                     _reverseWorldDuration = 2.4f;
                     break;
 
                 case VehicleTier.HeavyTruck:
-                    obstacleName = "Xe Tải Hạng Nặng";
+                    obstacleName = "Train";
                     obstacleType = ObstacleType.HighBarrier;
-                    energyPenaltyPercent = 60f;       // -60% năng lượng
-                    distancePenaltyMeters = 400f;     // -400m cự ly
-                    hitStopDuration = 0.25f;          // 0.25s cú tông cực mạnh
-                    _knockbackDistance = 4.2f;        // Runner bị húc đẩy lùi 4.2m
+                    energyPenaltyPercent = 60f;       // -60% energy penalty
+                    distancePenaltyMeters = 400f;     // -400m distance penalty
+                    hitStopDuration = 0.25f;          // 0.25s heavy impact hit-stop
+                    _knockbackDistance = 4.2f;        // 4.2m knockback
                     _knockbackDuration = 0.7f;
                     _drivingSpeed = 5.2f;
-                    _reverseWorldPeakSpeed = -196.0f; // Thế giới cuộn ngược lùi đúng ~400m
+                    _reverseWorldPeakSpeed = -196.0f; // reverse scroll ~400m
                     _reverseWorldDuration = 3.2f;
                     break;
             }
@@ -162,9 +172,11 @@ namespace StreamRushLive.Features.Spawning
             _baseY = transform.position.y;
             _rumbleSeed = Random.Range(0f, 100f);
 
-            // Tìm toàn bộ các cụm bánh xe con (PolygonCity chứa 'wheel', MegaCity chứa '_fl', '_fr', '_rl', '_rr')
-            foreach (Transform child in transform)
+            // Find all wheel transform hierarchies (supporting nested structures like trains)
+            Transform[] allChildren = GetComponentsInChildren<Transform>(true);
+            foreach (Transform child in allChildren)
             {
+                if (child == transform) continue;
                 string lowerName = child.name.ToLowerInvariant();
                 bool isWheel = (lowerName.Contains("wheel") || 
                                 lowerName.Contains("_fl") || lowerName.Contains("_fr") || 
@@ -187,19 +199,26 @@ namespace StreamRushLive.Features.Spawning
                 _speedManager = WorldSpeedManager.Instance ?? FindFirstObjectByType<WorldSpeedManager>();
             }
 
-            // Phat coi xe canh bao tuong ung voi tung loai xe
-            switch (_vehicleTier)
+            // Play custom spawn SFX or default vehicle horn
+            if (_customSpawnSFX != null)
             {
-                case VehicleTier.HeavyTruck:
-                    AudioManager.Instance?.PlaySFX(SFXType.HeavyTruckHorn, 1.0f);
-                    break;
-                case VehicleTier.PickupTruck:
-                    AudioManager.Instance?.PlaySFX(SFXType.PickupHorn, 0.85f);
-                    break;
-                case VehicleTier.SedanCar:
-                default:
-                    AudioManager.Instance?.PlaySFX(SFXType.CarHorn, 0.8f);
-                    break;
+                AudioManager.Instance?.PlaySFX(_customSpawnSFX, 1.0f);
+            }
+            else
+            {
+                switch (_vehicleTier)
+                {
+                    case VehicleTier.HeavyTruck:
+                        AudioManager.Instance?.PlaySFX(SFXType.HeavyTruckHorn, 1.0f);
+                        break;
+                    case VehicleTier.PickupTruck:
+                        AudioManager.Instance?.PlaySFX(SFXType.PickupHorn, 0.85f);
+                        break;
+                    case VehicleTier.SedanCar:
+                    default:
+                        AudioManager.Instance?.PlaySFX(SFXType.CarHorn, 0.8f);
+                        break;
+                }
             }
         }
 
@@ -212,7 +231,7 @@ namespace StreamRushLive.Features.Spawning
                 _speedManager = WorldSpeedManager.Instance ?? FindFirstObjectByType<WorldSpeedManager>();
             }
 
-            // Nếu đã va chạm với Runner: Xe găm cố định ngay trước mặt Runner, không di chuyển theo thế giới
+            // On collision: vehicle pins in place in front of runner during hit-stop
             if (_isPinnedToPlayer)
             {
                 if (_pinnedPlayerTransform != null)
@@ -230,8 +249,7 @@ namespace StreamRushLive.Features.Spawning
                 return;
             }
 
-            // Nếu thế giới đang cuộn ngược (do va chạm đẩy lùi), các xe khác không bị kéo ngược lại
-            // mà vẫn tiếp tục di chuyển bình thường theo tốc độ đường chuẩn
+            // Maintain normal vehicle drive speed during reverse world scroll
             float effectiveWorldSpeed = 10f;
             if (_speedManager != null)
             {
@@ -303,9 +321,8 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Được gọi khi xe đâm phải Khiên bảo vệ của Runner:
-        /// Xe bị hất văng bốc lên không trung và dạt mạnh sang 2 bên lề đường,
-        /// hoàn toàn không gây sát thương hay trừ điểm cho Runner.
+        /// Called when the vehicle collides with runner's active shield.
+        /// Vehicle is deflected away from the road without damaging the runner.
         /// </summary>
         public void DeflectByShield(Vector3 runnerPosition)
         {
@@ -315,11 +332,11 @@ namespace StreamRushLive.Features.Spawning
             _isPinnedToPlayer = false;
             _drivingSpeed = 0f;
 
-            // Vô hiệu hóa script di chuyển thế giới nếu có để xe tự do bay văng
+            // Disable world movement script to let physics trajectory take over
             var mover = GetComponent<MovingWorldObject>() ?? GetComponentInParent<MovingWorldObject>();
             if (mover != null) mover.enabled = false;
 
-            // Vô hiệu hóa toàn bộ colliders để không cản trở Runner
+            // Disable all colliders to prevent interfering with runner
             Collider[] colliders = GetComponentsInChildren<Collider>(true);
             for (int i = 0; i < colliders.Length; i++)
             {
@@ -346,20 +363,20 @@ namespace StreamRushLive.Features.Spawning
 
         private IEnumerator DeflectFlyRoutine(Vector3 runnerPosition)
         {
-            // Xác định hướng văng sang trái (+Z) hoặc phải (-Z)
+            // Determine deflection side: left (+Z) or right (-Z)
             float sideZ = (transform.position.z >= runnerPosition.z) ? 1f : -1f;
             if (Mathf.Abs(transform.position.z - runnerPosition.z) < 0.2f)
             {
                 sideZ = Random.value > 0.5f ? 1f : -1f;
             }
 
-            float vx = 8f;            // Hất mạnh theo chiều phía trước
-            float vy = 15f;           // Bốc cao lên không trung
-            float vz = sideZ * 18f;   // Hất văng dạt mạnh sang 2 bên lề đường
+            float vx = 8f;            // Forward impulse velocity
+            float vy = 15f;           // Upward launch velocity
+            float vz = sideZ * 18f;   // Lateral deflection velocity
             float gravity = -28f;
             Vector3 rotAxis = new Vector3(Random.Range(240f, 420f), Random.Range(100f, 250f), sideZ * Random.Range(300f, 520f));
 
-            Debug.Log($"[DrivingObstacleCar] Xe {gameObject.name} bị khiên hất văng sang {(sideZ > 0 ? "TRÁI" : "PHẢI")}!");
+            Debug.Log($"[DrivingObstacleCar] Vehicle {gameObject.name} deflected {(sideZ > 0 ? "LEFT" : "RIGHT")} by shield!");
 
             float elapsed = 0f;
             float duration = 1.8f;
