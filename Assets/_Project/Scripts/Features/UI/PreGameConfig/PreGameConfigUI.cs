@@ -60,6 +60,24 @@ namespace SteamRush.Features.UI.PreGameConfig
         private void Awake()
         {
             SetupButtonListeners();
+            TuneScrollSensitivity();
+        }
+
+        private void OnEnable()
+        {
+            TuneScrollSensitivity();
+        }
+
+        private void TuneScrollSensitivity(float sensitivity = 40f)
+        {
+            var scrollRects = GetComponentsInChildren<ScrollRect>(true);
+            foreach (var sr in scrollRects)
+            {
+                if (sr != null)
+                {
+                    sr.scrollSensitivity = sensitivity;
+                }
+            }
         }
 
         private void SetupButtonListeners()

@@ -240,6 +240,7 @@ namespace SteamRush.Features.UI.PreGameConfig
             ScrollRect sr = scrollObj.GetComponent<ScrollRect>();
             sr.horizontal = false;
             sr.vertical = true;
+            sr.scrollSensitivity = 40f;
 
             GameObject viewport = new GameObject("Viewport", typeof(RectTransform), typeof(Mask), typeof(Image));
             viewport.transform.SetParent(scrollObj.transform, false);
@@ -286,6 +287,7 @@ namespace SteamRush.Features.UI.PreGameConfig
             ScrollRect srAdv = panelAdv.GetComponent<ScrollRect>();
             srAdv.horizontal = false;
             srAdv.vertical = true;
+            srAdv.scrollSensitivity = 40f;
 
             GameObject vpAdv = new GameObject("Viewport", typeof(RectTransform), typeof(Mask), typeof(Image));
             vpAdv.transform.SetParent(panelAdv.transform, false);
