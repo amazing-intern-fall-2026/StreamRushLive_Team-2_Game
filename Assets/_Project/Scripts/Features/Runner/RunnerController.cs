@@ -109,6 +109,9 @@ namespace SteamRush.Features.Runner
                 | RigidbodyConstraints.FreezeRotationX
                 | RigidbodyConstraints.FreezeRotationY
                 | RigidbodyConstraints.FreezeRotationZ;
+
+            if (_boxCollider != null) _boxCollider.isTrigger = false;
+            if (_capsuleCollider != null) _capsuleCollider.isTrigger = false;
         }
 
         /// <summary>
@@ -256,17 +259,24 @@ namespace SteamRush.Features.Runner
         /// </summary>
         public void SetTriggerMode(bool isTrigger)
         {
+            if (_boxCollider == null) _boxCollider = GetComponent<BoxCollider>();
+            if (_capsuleCollider == null) _capsuleCollider = GetComponent<CapsuleCollider>();
+            if (RB == null) RB = GetComponent<Rigidbody>();
+
             if (_boxCollider != null) _boxCollider.isTrigger = isTrigger;
             if (_capsuleCollider != null) _capsuleCollider.isTrigger = isTrigger;
 
-            if (isTrigger)
+            if (RB != null)
             {
-                RB.linearVelocity = new Vector3(RB.linearVelocity.x, 0f, RB.linearVelocity.z);
-                RB.constraints |= RigidbodyConstraints.FreezePositionY;
-            }
-            else
-            {
-                RB.constraints &= ~RigidbodyConstraints.FreezePositionY;
+                if (isTrigger)
+                {
+                    RB.linearVelocity = new Vector3(RB.linearVelocity.x, 0f, RB.linearVelocity.z);
+                    RB.constraints |= RigidbodyConstraints.FreezePositionY;
+                }
+                else
+                {
+                    RB.constraints &= ~RigidbodyConstraints.FreezePositionY;
+                }
             }
         }
 

@@ -54,6 +54,17 @@ namespace SteamRush.Features.Runner
             _controller = GetComponent<RunnerController>();
             _chatLaneRunner = GetComponent<ChatLaneRunnerController>();
             _renderers = GetComponentsInChildren<Renderer>();
+            _isHandlingHit = false;
+            SetRenderersVisible(true);
+            if (_controller != null)
+            {
+                _controller.SetTriggerMode(false);
+            }
+            else
+            {
+                var col = GetComponent<Collider>();
+                if (col != null) col.isTrigger = false;
+            }
         }
 
         /// <summary>

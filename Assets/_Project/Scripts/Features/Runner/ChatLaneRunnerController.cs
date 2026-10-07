@@ -218,6 +218,8 @@ namespace SteamRush.Features.Runner
                 _baseFov = _mainCamera.fieldOfView;
             }
             _baseX = transform.position.x;
+            var col = GetComponent<Collider>();
+            if (col != null) col.isTrigger = false;
 
             if (_factionManager == null)
             {
