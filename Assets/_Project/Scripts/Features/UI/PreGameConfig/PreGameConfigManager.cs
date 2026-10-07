@@ -30,6 +30,7 @@ namespace SteamRush.Features.UI.PreGameConfig
 
         [Header("UI Reference")]
         [SerializeField] private PreGameConfigUI _configUI;
+        [SerializeField] private UnityEngine.UI.Button _btnOpenConfig;
 
         [Header("State")]
         [SerializeField] private bool _openOnStart = true;
@@ -51,6 +52,7 @@ namespace SteamRush.Features.UI.PreGameConfig
             Instance = this;
 
             LoadConfig();
+            BindOpenButton();
         }
 
         private void Start()
@@ -60,9 +62,31 @@ namespace SteamRush.Features.UI.PreGameConfig
                 _configUI = GetComponentInChildren<PreGameConfigUI>(true);
             }
 
+            BindOpenButton();
+
             if (_openOnStart)
             {
                 OpenConfigUI();
+            }
+        }
+
+        private void BindOpenButton()
+        {
+            if (_btnOpenConfig == null)
+            {
+                Transform t = transform.Find("Btn_OpenPreGameConfig");
+                if (t != null) _btnOpenConfig = t.GetComponent<UnityEngine.UI.Button>();
+                if (_btnOpenConfig == null)
+                {
+                    var found = GameObject.Find("Btn_OpenPreGameConfig");
+                    if (found != null) _btnOpenConfig = found.GetComponent<UnityEngine.UI.Button>();
+                }
+            }
+
+            if (_btnOpenConfig != null)
+            {
+                _btnOpenConfig.onClick.RemoveListener(ToggleConfigUI);
+                _btnOpenConfig.onClick.AddListener(ToggleConfigUI);
             }
         }
 
@@ -149,11 +173,24 @@ namespace SteamRush.Features.UI.PreGameConfig
             Debug.Log("[PreGameConfigManager] Config reset to developer defaults.");
         }
 
+        public void ToggleConfigUI()
+        {
+            if (IsOpen)
+            {
+                CloseConfigUI();
+            }
+            else
+            {
+                OpenConfigUI();
+            }
+        }
+
         public void OpenConfigUI()
         {
             if (_configUI != null)
             {
                 _configUI.gameObject.SetActive(true);
+                _configUI.transform.SetAsLastSibling();
                 _configUI.PopulateUI(CurrentConfig);
             }
 

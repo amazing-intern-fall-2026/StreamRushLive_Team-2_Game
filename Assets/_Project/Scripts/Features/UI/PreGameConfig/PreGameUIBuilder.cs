@@ -514,7 +514,7 @@ namespace SteamRush.Features.UI.PreGameConfig
 #endif
             }
 
-            GameObject gearObj = new GameObject("Btn_OpenPreGameConfig", typeof(RectTransform), typeof(Image), typeof(Button), typeof(Outline));
+            GameObject gearObj = new GameObject("Btn_OpenPreGameConfig", typeof(RectTransform), typeof(Image), typeof(Button), typeof(Outline), typeof(Views.PreGameConfigButtonController));
             gearObj.transform.SetParent(canvas.transform, false);
 
             RectTransform grt = gearObj.GetComponent<RectTransform>();
@@ -532,11 +532,27 @@ namespace SteamRush.Features.UI.PreGameConfig
             outline.effectDistance = new Vector2(1.5f, -1.5f);
 
             Button btn = gearObj.GetComponent<Button>();
+            var colors = btn.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(0.7f, 1f, 1f, 1f);
+            colors.pressedColor = new Color(0.5f, 0.8f, 0.9f, 1f);
+            colors.selectedColor = Color.white;
+            btn.colors = colors;
             btn.targetGraphic = bgImg;
-            btn.onClick.AddListener(() =>
+
+            if (manager != null)
             {
-                manager?.OpenConfigUI();
-            });
+                SetPrivateField(manager, "_btnOpenConfig", btn);
+#if UNITY_EDITOR
+                UnityEditor.Events.UnityEventTools.RemovePersistentListener(btn.onClick, manager.ToggleConfigUI);
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(btn.onClick, manager.ToggleConfigUI);
+                int idx = btn.onClick.GetPersistentEventCount() - 1;
+                if (idx >= 0)
+                {
+                    btn.onClick.SetPersistentListenerState(idx, UnityEngine.Events.UnityEventCallState.EditorAndRuntime);
+                }
+#endif
+            }
 
             Sprite gearSprite = GetGearSprite();
             if (gearSprite != null)
