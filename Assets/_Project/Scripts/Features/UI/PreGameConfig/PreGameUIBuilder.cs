@@ -368,6 +368,7 @@ namespace SteamRush.Features.UI.PreGameConfig
             bbHlg.childForceExpandHeight = true;
 
             GameObject btnReset = CreateButton(bottomBar.transform, "BtnResetDefaults", "RESET DEFAULTS", Vector2.zero, new Color(0.25f, 0.32f, 0.38f, 0.95f), Color.white, 15f, font);
+            GameObject btnSave = CreateButton(bottomBar.transform, "BtnSaveConfig", "SAVE SETTINGS", Vector2.zero, new Color32(0x00, 0x91, 0xEA, 0xFF), Color.white, 16f, font);
             GameObject btnTest = CreateButton(bottomBar.transform, "BtnTestMode", "TEST RUN (OFFLINE)", Vector2.zero, new Color32(0x00, 0xC8, 0x53, 0xFF), Color.white, 16f, font);
             GameObject btnLive = CreateButton(bottomBar.transform, "BtnGoLive", "START LIVE STREAM", Vector2.zero, new Color32(0xFE, 0x2C, 0x55, 0xFF), Color.white, 17f, font);
 
@@ -396,7 +397,7 @@ namespace SteamRush.Features.UI.PreGameConfig
                 rowSimFollowers.GetComponentInChildren<Toggle>(),
                 rowSimDelay.GetComponentInChildren<Toggle>(),
                 rowDebugUI.GetComponentInChildren<Toggle>(),
-                btnReset.GetComponent<Button>(), btnTest.GetComponent<Button>(), btnLive.GetComponent<Button>(), closeBtnObj.GetComponent<Button>()
+                btnReset.GetComponent<Button>(), btnSave.GetComponent<Button>(), btnTest.GetComponent<Button>(), btnLive.GetComponent<Button>(), closeBtnObj.GetComponent<Button>()
             );
 
             // 8. Ensure Manager component on Canvas
@@ -936,7 +937,7 @@ namespace SteamRush.Features.UI.PreGameConfig
             Toggle togAutoSpawn, TMP_InputField inMaxCars, TMP_InputField inDistPen, TMP_InputField inSedanPen, TMP_InputField inPickupPen, TMP_InputField inHeavyPen,
             Toggle togLiveMaster, Toggle togSimChats, Toggle togSimGifts, Toggle togSimLikes, Toggle togSimFollowers, Toggle togSimDelay,
             Toggle togDebugUI,
-            Button btnReset, Button btnTest, Button btnLive, Button btnClose)
+            Button btnReset, Button btnSave, Button btnTest, Button btnLive, Button btnClose)
         {
             SetPrivateField(ui, "_btnTabBasic", btnTabBasic.GetComponent<Button>());
             SetPrivateField(ui, "_btnTabAdvanced", btnTabAdv.GetComponent<Button>());
@@ -971,6 +972,7 @@ namespace SteamRush.Features.UI.PreGameConfig
             SetPrivateField(ui, "_toggleDebugUI", togDebugUI);
 
             SetPrivateField(ui, "_btnResetDefaults", btnReset);
+            SetPrivateField(ui, "_btnSaveConfig", btnSave);
             SetPrivateField(ui, "_btnTestMode", btnTest);
             SetPrivateField(ui, "_btnGoLive", btnLive);
             SetPrivateField(ui, "_btnClose", btnClose);

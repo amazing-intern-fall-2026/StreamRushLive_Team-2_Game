@@ -47,6 +47,7 @@ namespace SteamRush.Features.UI.PreGameConfig
 
         [Header("Action Buttons")]
         [SerializeField] private Button _btnResetDefaults;
+        [SerializeField] private Button _btnSaveConfig;
         [SerializeField] private Button _btnTestMode;
         [SerializeField] private Button _btnGoLive;
         [SerializeField] private Button _btnClose;
@@ -72,6 +73,7 @@ namespace SteamRush.Features.UI.PreGameConfig
             }
 
             if (_btnResetDefaults != null) _btnResetDefaults.onClick.AddListener(OnResetDefaultsClicked);
+            if (_btnSaveConfig != null) _btnSaveConfig.onClick.AddListener(OnSaveConfigClicked);
             if (_btnTestMode != null) _btnTestMode.onClick.AddListener(OnTestModeClicked);
             if (_btnGoLive != null) _btnGoLive.onClick.AddListener(OnGoLiveClicked);
             if (_btnClose != null) _btnClose.onClick.AddListener(OnCloseClicked);
@@ -439,27 +441,56 @@ namespace SteamRush.Features.UI.PreGameConfig
                 data.enableDebugUI = _toggleDebugUI.isOn;
         }
 
-        private void OnResetDefaultsClicked()
+        public void OnResetDefaultsClicked()
         {
             PreGameConfigManager.Instance?.ResetToDefaults();
         }
 
-        private void OnTestModeClicked()
+        public void OnSaveConfigClicked()
+        {
+            ReadUIIntoData();
+            if (PreGameConfigManager.Instance != null)
+            {
+                PreGameConfigManager.Instance.SaveConfig();
+                PreGameConfigManager.Instance.ApplyConfigToRuntime(connectTikTok: false);
+            }
+
+            StartCoroutine(ShowSavedFeedback());
+        }
+
+        private System.Collections.IEnumerator ShowSavedFeedback()
+        {
+            var txt = _btnSaveConfig != null ? _btnSaveConfig.GetComponentInChildren<TextMeshProUGUI>() : null;
+            if (txt != null)
+            {
+                string origText = txt.text;
+                txt.text = "SAVED!";
+                yield return new WaitForSecondsRealtime(1.2f);
+                if (txt != null) txt.text = origText;
+            }
+        }
+
+        public void OnTestModeClicked()
         {
             ReadUIIntoData();
             PreGameConfigManager.Instance?.StartTestMode();
         }
 
-        private void OnGoLiveClicked()
+        public void OnGoLiveClicked()
         {
             ReadUIIntoData();
             PreGameConfigManager.Instance?.StartGoLive();
         }
 
-        private void OnCloseClicked()
+        public void OnCloseClicked()
         {
             ReadUIIntoData();
-            PreGameConfigManager.Instance?.CloseConfigUI();
+            if (PreGameConfigManager.Instance != null)
+            {
+                PreGameConfigManager.Instance.SaveConfig();
+                PreGameConfigManager.Instance.ApplyConfigToRuntime(connectTikTok: false);
+                PreGameConfigManager.Instance.CloseConfigUI();
+            }
         }
     }
 }

@@ -63,6 +63,7 @@ namespace SteamRush.Features.UI.PreGameConfig
             }
 
             BindOpenButton();
+            ApplyConfigToRuntime(connectTikTok: false);
 
             if (_openOnStart)
             {
@@ -127,15 +128,15 @@ namespace SteamRush.Features.UI.PreGameConfig
         private void SyncWithDefaultGifts()
         {
             var def = PreGameConfigData.CreateDefault();
-            var existingNames = new HashSet<string>();
+            var existingActions = new HashSet<GiftActionType>();
             foreach (var g in CurrentConfig.gifts)
             {
-                existingNames.Add(g.giftName.ToLowerInvariant());
+                existingActions.Add(g.action);
             }
 
             foreach (var g in def.gifts)
             {
-                if (!existingNames.Contains(g.giftName.ToLowerInvariant()))
+                if (!existingActions.Contains(g.action))
                 {
                     CurrentConfig.gifts.Add(g);
                 }
