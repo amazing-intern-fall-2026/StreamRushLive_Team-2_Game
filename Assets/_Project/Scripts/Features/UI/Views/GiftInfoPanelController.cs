@@ -608,8 +608,6 @@ namespace SteamRush.Features.UI.Views
         {
             if (mapping == null) return;
 
-            Debug.Log($"<color=#00FFFF>[GiftInfoPanel] Clicked gift card: [{mapping.giftName}] (ID: {mapping.giftId}, Action: {mapping.action})</color>");
-
             // 1. Gift card bounce animation
             HighlightGift(mapping.giftId, mapping.giftName);
 

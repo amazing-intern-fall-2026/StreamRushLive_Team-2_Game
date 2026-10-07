@@ -5,12 +5,10 @@ using SteamRush.Features.Runner;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Tên Lửa Vô Địch (Hyper Dash):
-    /// - Kế thừa ItemBase.
-    /// - Khi nhặt, lập tức đưa tốc độ thế giới lên 18.0 m/s.
-    /// - Kích hoạt trạng thái bất tử trong 5 giây.
-    /// - Khi đang bất tử, Runner có thể đi xuyên và phá hủy vật cản.
-    /// - Hết 5 giây, tốc độ và trạng thái bất tử trở lại bình thường.
+    /// Hyper Dash item:
+    /// - Inherits from ItemBase.
+    /// - Sets world speed to 18.0 m/s.
+    /// - Grants invulnerability for 5 seconds to phase through and destroy obstacles.
     /// </summary>
     public class HyperDashItem : ItemBase
     {

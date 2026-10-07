@@ -5,14 +5,14 @@ using SteamRush.Track;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Chướng ngại vật Bảng Dừng (Stop Sign - GDD v1.2 Mục 2):
-    /// Chắn ngang đường chạy. Khi va chạm (hoặc chạm Trigger), ép vận tốc cuộn thế giới
-    /// về 0 trong stopDuration (mặc định 1.0s), sau đó thế giới tự tăng tốc mượt mà trở lại.
+    /// Stop Sign obstacle (GDD v1.2 Section 2):
+    /// Spans across track. On collision, forces world scroll speed to 0 for stopDuration (default 1.0s),
+    /// then smoothly accelerates the world back to normal speed.
     /// </summary>
     public class StopSignObstacle : ObstacleBase
     {
         [Header("Stop Sign Settings")]
-        [Tooltip("Thời gian thế giới ngừng trôi khi va phải biển STOP.")]
+        [Tooltip("Duration the world stops scrolling when hitting the STOP sign.")]
         [SerializeField] private float stopDuration = 1.0f;
 
         private WorldSpeedManager _speedManager;
@@ -34,7 +34,7 @@ namespace StreamRushLive.Features.Spawning
 
         private void Update()
         {
-            // Chỉ tự dịch chuyển nếu chưa có MovingWorldObject quản lý để tránh di chuyển x2 tốc độ
+            // Only move manually if MovingWorldObject is absent to prevent double movement
             if (_movingWorldObject == null)
             {
                 float speed = _speedManager != null ? _speedManager.CurrentSpeed : 0f;
@@ -57,7 +57,7 @@ namespace StreamRushLive.Features.Spawning
 
             yield return new WaitForSeconds(stopDuration);
 
-            // Hồi phục gia tốc thế giới cuộn từ 0 lên lại tốc độ chuẩn trong 1.0s
+            // Recover world scroll speed from 0 to normal speed over 1.0s
             float elapsed = 0f;
             float recoveryDuration = 1.0f;
             while (elapsed < recoveryDuration)

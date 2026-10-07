@@ -565,7 +565,6 @@ namespace StreamRushLive.Features.Spawning
             }
 
             InitializeCarMovement(carInstance, chosenTier);
-            Debug.Log($"[SingleObstacleSpawner] Spawned [{chosenTier}] '{prefabToSpawn.name}' on lane Z={selectedLane:F1}, {spawnDistanceAhead}m ahead.");
             return carInstance;
         }
 

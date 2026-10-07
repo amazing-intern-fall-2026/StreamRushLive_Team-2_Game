@@ -3,9 +3,9 @@ using UnityEngine;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Chướng ngại vật dạng rào chắn (Rào thấp LowBarrier hoặc Xà cao HighBarrier):
-    /// - Kế thừa ObstacleBase.
-    /// - Cho phép tinh chỉnh thông số va chạm riêng trực tiếp trên Inspector của từng Prefab.
+    /// Barrier obstacle (LowBarrier or HighBarrier):
+    /// - Inherits from ObstacleBase.
+    /// - Allows configuring specific collision parameters on each prefab in the Inspector.
     /// </summary>
     public class BarrierObstacle : ObstacleBase
     {

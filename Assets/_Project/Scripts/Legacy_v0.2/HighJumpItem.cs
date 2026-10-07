@@ -4,11 +4,9 @@ using SteamRush.Features.Runner;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Vật phẩm Giày Bật Cao (High Jump):
-    /// - Kế thừa ItemBase.
-    /// - Khi nhặt, tăng lực nhảy của Runner lên 40%.
-    /// - Hiệu ứng duy trì trong 10 giây.
-    /// - Sau khi hết thời gian, lực nhảy trở về giá trị ban đầu.
+    /// High Jump Item:
+    /// - Inherits from ItemBase.
+    /// - Increases jump force by 40% for 10 seconds.
     /// </summary>
     public class HighJumpItem : ItemBase
     {
@@ -48,7 +46,7 @@ namespace StreamRushLive.Features.Spawning
             }
             else
             {
-                Debug.LogWarning("[HighJumpItem] Không tìm thấy RunnerItemEffects trên Runner.");
+                Debug.LogWarning("[HighJumpItem] RunnerItemEffects not found on collector.");
             }
         }
     }

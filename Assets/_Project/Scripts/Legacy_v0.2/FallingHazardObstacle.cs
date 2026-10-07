@@ -5,9 +5,9 @@ using SteamRush.Track;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Chướng ngại vật Rơi Từ Trời (Falling Hazard - GDD v1.2 Mục 2):
-    /// Rơi thẳng đứng xuống đường chạy. Có bóng cảnh báo nhấp nháy trên mặt đường
-    /// trong warningDuration (1.0s) trước khi vật thể rơi xuống.
+    /// Falling Hazard obstacle (GDD v1.2 Section 2):
+    /// Drops vertically onto the track. A blinking shadow warns the runner
+    /// on the road for warningDuration (1.0s) before falling.
     /// </summary>
     public class FallingHazardObstacle : ObstacleBase
     {
@@ -48,7 +48,7 @@ namespace StreamRushLive.Features.Spawning
 
         private void Update()
         {
-            // Chỉ tự dịch chuyển nếu chưa có MovingWorldObject quản lý để tránh di chuyển x2 tốc độ
+            // Only move manually if MovingWorldObject is absent to prevent double movement
             if (_movingWorldObject == null)
             {
                 float speed = _speedManager != null ? _speedManager.CurrentSpeed : 0f;
@@ -58,7 +58,7 @@ namespace StreamRushLive.Features.Spawning
 
         public override void OnHitPlayer(GameObject player)
         {
-            // Đã được xử lý trong ObstacleBase và RunnerCollisionHandler
+            // Handled in ObstacleBase and RunnerCollisionHandler
         }
 
         private IEnumerator PrepareToFall()

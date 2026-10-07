@@ -5,30 +5,21 @@ using UnityEngine;
 namespace SteamRush.Features.Runner
 {
     /// <summary>
-    /// Quản lý máu của Runner.
-    ///
-    /// Gameplay hiện tại:
-    /// - Runner có tối đa 3 tim.
-    /// - TakeDamage(1): mất 1 tim.
-    /// - Sau khi nhận damage, Runner được bất tử trong 2 giây.
-    /// - Trong thời gian bất tử, Runner nhấp nháy để thể hiện trạng thái.
-    /// - Heal(1): hồi 1 tim, không vượt quá 3 tim.
-    /// - ResetHealth(): đưa máu về đầy 3 tim.
-    /// - Khi máu về 0, phát sự kiện OnPlayerDeath.
+    /// Manages runner health (legacy heart system).
     /// </summary>
     public class RunnerHealthSystem : MonoBehaviour
     {
         [Header("Health Settings")]
-        [Tooltip("Số tim tối đa của Runner.")]
+        [Tooltip("Maximum hearts for runner.")]
         [SerializeField] private int maxHealth = 3;
 
         [SerializeField] private int currentHealth;
 
         [Header("Invulnerability Settings")]
-        [Tooltip("Thời gian bất tử sau khi nhận damage.")]
+        [Tooltip("Invulnerability duration after receiving damage.")]
         [SerializeField] private float invulnerabilityDuration = 2f;
 
-        [Tooltip("Khoảng thời gian giữa các lần nhấp nháy.")]
+        [Tooltip("Blink interval during invulnerability.")]
         [SerializeField] private float blinkInterval = 0.15f;
 
         private Renderer[] _renderers;
@@ -36,8 +27,7 @@ namespace SteamRush.Features.Runner
         private bool _isInvulnerable;
 
         /// <summary>
-        /// Sự kiện được phát khi Runner hết máu.
-        /// Checkpoint có thể đăng ký vào event này để xử lý respawn.
+        /// Event published when runner runs out of health.
         /// </summary>
         public event Action OnPlayerDeath;
 
@@ -55,13 +45,7 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Trừ máu của Runner.
-        ///
-        /// Ví dụ:
-        /// TakeDamage(1) = mất 1 tim.
-        ///
-        /// Nếu Runner đang bất tử thì damage sẽ bị bỏ qua.
-        /// Khi máu chạm 0, Debug.Log được gọi trước OnPlayerDeath.
+        /// Deducts runner health.
         /// </summary>
         public void TakeDamage(int damage)
         {
@@ -72,7 +56,7 @@ namespace SteamRush.Features.Runner
 
             if (_isInvulnerable)
             {
-                Debug.Log("[RunnerHealthSystem] Runner đang bất tử, damage bị bỏ qua.");
+                Debug.Log("[RunnerHealthSystem] Runner is invulnerable, damage ignored.");
                 return;
             }
 
@@ -80,17 +64,14 @@ namespace SteamRush.Features.Runner
             currentHealth = Mathf.Max(currentHealth, 0);
 
             Debug.Log(
-                $"[RunnerHealthSystem] Runner nhận {damage} damage. " +
+                $"[RunnerHealthSystem] Runner took {damage} damage. " +
                 $"Health: {currentHealth}/{maxHealth}"
             );
 
             if (currentHealth <= 0)
             {
                 currentHealth = 0;
-
-                // Debug phải nằm trước OnPlayerDeath
-                // để Checkpoint có thể bắt được event sau đó.
-                Debug.Log("[RunnerHealthSystem] Runner hết máu! OnPlayerDeath sẽ được kích hoạt.");
+                Debug.Log("[RunnerHealthSystem] Runner out of health! Invoking OnPlayerDeath.");
 
                 OnPlayerDeath?.Invoke();
 
@@ -101,12 +82,7 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Hồi máu cho Runner.
-        ///
-        /// Ví dụ:
-        /// Heal(1) = hồi 1 tim.
-        ///
-        /// Máu không thể vượt quá maxHealth.
+        /// Restores runner health up to maxHealth.
         /// </summary>
         public void Heal(int amount)
         {
@@ -121,13 +97,13 @@ namespace SteamRush.Features.Runner
             currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
 
             Debug.Log(
-                $"[RunnerHealthSystem] Runner hồi {currentHealth - oldHealth} tim. " +
+                $"[RunnerHealthSystem] Runner healed {currentHealth - oldHealth} hearts. " +
                 $"Health: {currentHealth}/{maxHealth}"
             );
         }
 
         /// <summary>
-        /// Đưa Runner về trạng thái đầy máu.
+        /// Resets runner health to max.
         /// </summary>
         public void ResetHealth()
         {
@@ -136,12 +112,12 @@ namespace SteamRush.Features.Runner
             StopInvulnerability();
 
             Debug.Log(
-                $"[RunnerHealthSystem] Health đã reset: {currentHealth}/{maxHealth}"
+                $"[RunnerHealthSystem] Health reset: {currentHealth}/{maxHealth}"
             );
         }
 
         /// <summary>
-        /// Bắt đầu trạng thái bất tử sau khi nhận damage.
+        /// Begins invulnerability state after taking damage.
         /// </summary>
         private void StartInvulnerability()
         {
@@ -155,7 +131,7 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// Runner bất tử và nhấp nháy trong 2 giây.
+        /// Runner invulnerability and blinking coroutine.
         /// </summary>
         private IEnumerator InvulnerabilityRoutine()
         {
@@ -180,12 +156,11 @@ namespace SteamRush.Features.Runner
             _isInvulnerable = false;
             _invulnerabilityCoroutine = null;
 
-            Debug.Log("[RunnerHealthSystem] Trạng thái bất tử đã kết thúc.");
+            Debug.Log("[RunnerHealthSystem] Invulnerability period ended.");
         }
 
         /// <summary>
-        /// Dừng trạng thái bất tử ngay lập tức.
-        /// Dùng khi ResetHealth().
+        /// Stops invulnerability immediately.
         /// </summary>
         private void StopInvulnerability()
         {

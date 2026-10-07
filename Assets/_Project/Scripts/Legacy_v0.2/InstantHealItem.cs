@@ -5,25 +5,19 @@ using SteamRush.Features.Runner;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Xử lý hiệu ứng hồi máu tức thì từ quà Donate.
-    ///
-    /// Gameplay mới:
-    /// - Không phải vật phẩm vật lý trên đường chạy.
-    /// - Không cần Player nhặt.
-    /// - Khi được kích hoạt sẽ hồi ngay 1 tim.
-    /// - Hiển thị hiệu ứng ánh sáng xanh lá trong thời gian ngắn.
+    /// Handles instant heal / energy recovery effect from donate gifts.
     /// </summary>
     public class InstantHealItem : MonoBehaviour
     {
         [Header("Heal / Energy Settings")]
-        [Tooltip("Lượng năng lượng hồi mỗi lần nhận quà hồi máu.")]
+        [Tooltip("Energy recovered per heal gift.")]
         [SerializeField] private float energyAmount = 20f;
 
-        [Tooltip("Thời gian hiển thị hiệu ứng ánh sáng xanh lá.")]
+        [Tooltip("Display duration of green heal light effect.")]
         [SerializeField] private float effectDuration = 0.5f;
 
         [Header("Green Heal Effect")]
-        [Tooltip("GameObject chứa hiệu ứng ánh sáng xanh lá.")]
+        [Tooltip("GameObject containing the green heal effect.")]
         [SerializeField] private GameObject healEffect;
 
         private Coroutine _effectCoroutine;
@@ -37,8 +31,8 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Kích hoạt bình hồi phục năng lượng (GDD v1.2).
-        /// Hàm này được MockChatConsole gọi khi giả lập Donate Heal/Energy.
+        /// Activates energy recovery bottle (GDD v1.2).
+        /// Called by MockChatConsole or stream adapters.
         /// </summary>
         public void ActivateHeal()
         {
@@ -60,15 +54,14 @@ namespace StreamRushLive.Features.Spawning
                 }
             }
 
-            Debug.Log($"[InstantHealItem] Donate Heal -> hồi +{energyAmount}% Năng lượng.");
+            Debug.Log($"[InstantHealItem] Donate Heal -> recovered +{energyAmount}% Energy.");
 
-            // Hiển thị hiệu ứng ánh sáng xanh lá.
+            // Display heal particle effect
             PlayHealEffect();
         }
 
         /// <summary>
-        /// Bật hiệu ứng hồi máu.
-        /// Nếu hiệu ứng đang chạy thì reset thời gian hiển thị.
+        /// Plays heal visual effect.
         /// </summary>
         private void PlayHealEffect()
         {

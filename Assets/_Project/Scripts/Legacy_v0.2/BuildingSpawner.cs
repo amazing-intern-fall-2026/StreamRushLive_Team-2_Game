@@ -74,7 +74,7 @@ namespace SteamRush.Track
                 movingBuilding = instance.AddComponent<MovingBuilding>();
             }
 
-            // Khởi tạo tòa nhà với tùy chọn dùng WorldSpeed hoặc CustomSpeed từ Spawner
+            // Initialize building with WorldSpeed or CustomSpeed options from Spawner
             movingBuilding.Initialize(this, _despawnXThreshold, _useWorldSpeed, _customSpeed);
         }
     }

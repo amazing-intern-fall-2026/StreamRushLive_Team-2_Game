@@ -19,7 +19,7 @@ namespace StreamRushLive.Features.Spawning
 
         public override void OnHitPlayer(GameObject player)
         {
-            Debug.Log($"Crossing Car va chạm Player — cần trừ {energyPenaltyPercent}% Energy.", this);
+            Debug.Log($"[CrossingCar] Hit Player - deducting {energyPenaltyPercent}% Energy.", this);
         }
     }
 }

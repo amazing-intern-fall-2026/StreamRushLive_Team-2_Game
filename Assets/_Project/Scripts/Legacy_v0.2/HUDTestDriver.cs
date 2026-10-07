@@ -11,11 +11,11 @@ namespace SteamRush.MinhHuy
         [SerializeField] private float statusPopupInterval = 3f;
         [SerializeField] private float giftToastInterval = 4f;
 
-        // Nhãn chung chung, không ghi số cụ thể (số liệu game có thể đổi mà không cần sửa UI).
+        // Generic labels without hardcoded stats so values can change without breaking UI.
         private static readonly string[] BuffMessages = { "Energy +", "Distance +", "Shield +" };
         private static readonly string[] DebuffMessages = { "Energy -", "Stumble!" };
 
-        // Icon cho buff, tái dùng đúng màu đã dùng ở Progress/Energy bar và Gift Toast cho nhất quán.
+        // Buff icons matching colors used in Progress/Energy bars and Gift Toasts for consistency.
         [SerializeField] private Sprite[] buffIcons = new Sprite[3];
         [SerializeField]
         private Color[] buffIconColors =
@@ -25,7 +25,7 @@ namespace SteamRush.MinhHuy
             new Color(0.35f, 0.70f, 1.00f, 1f),    // Shield +
         };
 
-        // Icon cho debuff theo đúng thứ tự DebuffMessages.
+        // Debuff icons in the exact order of DebuffMessages.
         [SerializeField] private Sprite[] debuffIcons = new Sprite[2];
         [SerializeField]
         private Color[] debuffIconColors =
@@ -34,20 +34,20 @@ namespace SteamRush.MinhHuy
             new Color(1.00f, 0.85f, 0.30f, 1f), // Stumble!
         };
 
-        private static readonly string[] ViewerNames = { "MeoU_88", "Khoa Ngu Gat", "Lan.tv", "AnhTrangTV" };
+        private static readonly string[] ViewerNames = { "Alex_88", "Viewer_Pro", "Runner_Fan", "StarGamer" };
         private static readonly string[] GiftItemNames = { "Low Hurdle", "High Bar", "Rolling Rock", "Energy +20%", "Shield", "+25m Boost" };
 
-        // Icon + màu tint theo đúng thứ tự GiftItemNames (icon nguồn trắng/nền trong suốt từ game-icons.net, cần tint để có màu phù hợp).
+        // Icon + tint color matching GiftItemNames.
         [SerializeField] private Sprite[] giftIcons = new Sprite[6];
         [SerializeField]
         private Color[] giftIconColors =
         {
-            new Color(0.93f, 0.31f, 0.42f, 1f), // Rào thấp - hoa hồng: đỏ hồng
-            new Color(1.00f, 0.62f, 0.75f, 1f), // Xà cao - donut: hồng kem
-            new Color(0.85f, 0.65f, 0.30f, 1f), // Đá lăn - sư tử/cá voi: vàng nâu
-            new Color(1.00f, 0.30f, 0.40f, 1f), // Năng lượng +20% - trái tim: đỏ
-            new Color(0.35f, 0.70f, 1.00f, 1f), // Khiên chắn - khiên: xanh dương thép
-            new Color(1.00f, 0.80f, 0.20f, 1f), // +25m tức thì - ngôi sao: vàng gold
+            new Color(0.93f, 0.31f, 0.42f, 1f), // Low Hurdle - Rose: Red/Pink
+            new Color(1.00f, 0.62f, 0.75f, 1f), // High Bar - Donut: Pink Cream
+            new Color(0.85f, 0.65f, 0.30f, 1f), // Rolling Rock - Lion: Golden Brown
+            new Color(1.00f, 0.30f, 0.40f, 1f), // Energy +20% - Heart: Red
+            new Color(0.35f, 0.70f, 1.00f, 1f), // Shield - Steel Blue
+            new Color(1.00f, 0.80f, 0.20f, 1f), // Instant Boost - Star: Gold
         };
 
         private float fakeKm;
@@ -56,15 +56,13 @@ namespace SteamRush.MinhHuy
 
         private void Start()
         {
-            // Dùng field SerializeField hud kéo từ Inspector, KHÔNG dùng GetComponent vì script và HUDManager nằm trên 2 GameObject khác nhau.
             if (hud == null)
             {
-                Debug.LogError("[MinhHuy] HUDTestDriver: chưa kéo HUD_Canvas vào slot Hud!");
+                Debug.LogWarning("[HUDTestDriver] HUD_Canvas not assigned in HUD slot!");
             }
 
-            hud?.UpdateRunnerInfo("MinhHuy", dummyAvatar);
+            hud?.UpdateRunnerInfo("DemoRunner", dummyAvatar);
             hud?.UpdateRunnerTarget(dummyRunner);
-            Debug.Log("[MinhHuy] dữ liệu giả chờ module Relay/Like");
         }
 
         [SerializeField] private bool testFakeProgressAndEnergy = true;
@@ -72,7 +70,7 @@ namespace SteamRush.MinhHuy
 
         private void Update()
         {
-            // Tăng tiến độ giả để kiểm tra HUD khi các module gameplay chưa sẵn sàng.
+            // Simulate progress to verify HUD when gameplay modules are offline.
             if (testFakeProgressAndEnergy)
             {
                 fakeKm += Time.deltaTime;
@@ -80,7 +78,7 @@ namespace SteamRush.MinhHuy
                 hud?.UpdateEnergy(Mathf.PingPong(Time.time, 1f));
             }
 
-            // Giả lập buff/debuff ngẫu nhiên khi được bật (dùng test UI khi không chạy gameplay thật).
+            // Simulate random buff/debuff popups when enabled.
             if (testRandomStatusPopups)
             {
                 statusPopupTimer += Time.deltaTime;
@@ -98,7 +96,7 @@ namespace SteamRush.MinhHuy
                 }
             }
 
-            // Giả lập viewer tặng quà ngẫu nhiên mỗi giftToastInterval giây để test toast khi module StreamIntegration chưa sẵn sàng.
+            // Simulate random gift toast every interval to test toasts without live stream connection.
             giftToastTimer += Time.deltaTime;
             if (giftToastTimer >= giftToastInterval)
             {

@@ -33,7 +33,7 @@ namespace SteamRush.EditorTools
             Scene activeScene = SceneManager.GetActiveScene();
             if (!activeScene.isLoaded) return;
 
-            // 1. Tìm PlayerRunner
+            // 1. Locate PlayerRunner
             GameObject playerRunner = GameObject.Find("PlayerRunner");
             if (playerRunner == null)
             {
@@ -47,7 +47,7 @@ namespace SteamRush.EditorTools
                 }
             }
 
-            // 2. Tìm hoặc Tạo Character_Male_Jacket_01
+            // 2. Find or Instantiate Character_Male_Jacket_01
             GameObject targetChar = GameObject.Find("Character_Male_Jacket_01");
             if (targetChar == null)
             {
@@ -71,30 +71,30 @@ namespace SteamRush.EditorTools
                 }
                 else
                 {
-                    Debug.LogWarning("[Transfer] Không tìm thấy Character_Male_Jacket_01 trong Scene hoặc Assets!");
+                    Debug.LogWarning("[Transfer] Character_Male_Jacket_01 not found in Scene or Assets!");
                     return;
                 }
             }
 
             if (playerRunner == null)
             {
-                Debug.LogWarning("[Transfer] Không tìm thấy PlayerRunner trong Scene!");
+                Debug.LogWarning("[Transfer] PlayerRunner not found in Scene!");
                 return;
             }
 
             Undo.RegisterFullObjectHierarchyUndo(targetChar, "Transfer Components to Character");
             Undo.RegisterFullObjectHierarchyUndo(playerRunner, "Transfer Components from PlayerRunner");
 
-            // Sao chép Transform
+            // Copy Transform
             targetChar.transform.position = playerRunner.transform.position;
             targetChar.transform.rotation = playerRunner.transform.rotation;
             targetChar.transform.localScale = playerRunner.transform.localScale;
 
-            // Sao chép Tag & Layer
+            // Copy Tag & Layer
             targetChar.tag = playerRunner.tag;
             targetChar.layer = playerRunner.layer;
 
-            // Sao chép BoxCollider
+            // Copy BoxCollider
             BoxCollider srcBox = playerRunner.GetComponent<BoxCollider>();
             if (srcBox != null)
             {
@@ -103,7 +103,7 @@ namespace SteamRush.EditorTools
                 EditorUtility.CopySerialized(srcBox, dstBox);
             }
 
-            // Sao chép Rigidbody
+            // Copy Rigidbody
             Rigidbody srcRb = playerRunner.GetComponent<Rigidbody>();
             if (srcRb != null)
             {
@@ -112,7 +112,7 @@ namespace SteamRush.EditorTools
                 EditorUtility.CopySerialized(srcRb, dstRb);
             }
 
-            // Sao chép RunnerController
+            // Copy RunnerController
             RunnerController srcController = playerRunner.GetComponent<RunnerController>();
             if (srcController != null)
             {
@@ -121,7 +121,7 @@ namespace SteamRush.EditorTools
                 EditorUtility.CopySerialized(srcController, dstController);
             }
 
-            // Sao chép RunnerInputHandler
+            // Copy RunnerInputHandler
             RunnerInputHandler srcInput = playerRunner.GetComponent<RunnerInputHandler>();
             if (srcInput != null)
             {
@@ -130,7 +130,7 @@ namespace SteamRush.EditorTools
                 EditorUtility.CopySerialized(srcInput, dstInput);
             }
 
-            // Sao chép RunnerCollisionHandler
+            // Copy RunnerCollisionHandler
             RunnerCollisionHandler srcCollision = playerRunner.GetComponent<RunnerCollisionHandler>();
             if (srcCollision != null)
             {
@@ -139,7 +139,7 @@ namespace SteamRush.EditorTools
                 EditorUtility.CopySerialized(srcCollision, dstCollision);
             }
 
-            // Sao chép HUDTestDriver nếu có
+            // Copy HUDTestDriver if present
             HUDTestDriver srcHud = playerRunner.GetComponent<HUDTestDriver>();
             if (srcHud != null)
             {
@@ -156,7 +156,7 @@ namespace SteamRush.EditorTools
                 }
             }
 
-            // Cập nhật các reference khác trong Scene đang trỏ tới PlayerRunner
+            // Update other scene references pointing to PlayerRunner
             foreach (var root in activeScene.GetRootGameObjects())
             {
                 foreach (var mb in root.GetComponentsInChildren<MonoBehaviour>(true))
@@ -190,14 +190,14 @@ namespace SteamRush.EditorTools
                 }
             }
 
-            // Xóa bỏ PlayerRunner cũ (capsule placeholder)
+            // Destroy obsolete placeholder
             Object.DestroyImmediate(playerRunner);
 
             EditorUtility.SetDirty(targetChar);
             EditorSceneManager.MarkSceneDirty(activeScene);
             EditorSceneManager.SaveScene(activeScene);
 
-            Debug.Log($"[Transfer] Đã chuyển thành công toàn bộ component và transform sang {targetChar.name} và lưu scene!");
+            Debug.Log($"[Transfer] Successfully transferred all components and transform to {targetChar.name} and saved scene.");
         }
     }
 }
