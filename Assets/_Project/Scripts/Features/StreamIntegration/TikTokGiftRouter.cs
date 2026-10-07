@@ -24,10 +24,10 @@ namespace SteamRush.Features.StreamIntegration
         [InspectorName("Blue: +Energy")]
         Blue_EnergyBottle,
 
-        [InspectorName("Red: Thú săn")]
+        [InspectorName("Red: Hunting Beasts")]
         Red_SpawnPickup,
 
-        [InspectorName("Red: Tàu hỏa")]
+        [InspectorName("Red: Train")]
         Red_SpawnHeavyTruck,
 
         [InspectorName("Red: Unlimited Cars")]

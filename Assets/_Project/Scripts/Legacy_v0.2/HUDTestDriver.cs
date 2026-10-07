@@ -12,17 +12,17 @@ namespace SteamRush.MinhHuy
         [SerializeField] private float giftToastInterval = 4f;
 
         // Nhãn chung chung, không ghi số cụ thể (số liệu game có thể đổi mà không cần sửa UI).
-        private static readonly string[] BuffMessages = { "Năng lượng +", "Quãng đường +", "Khiên +" };
-        private static readonly string[] DebuffMessages = { "Năng lượng -", "Vấp ngã!" };
+        private static readonly string[] BuffMessages = { "Energy +", "Distance +", "Shield +" };
+        private static readonly string[] DebuffMessages = { "Energy -", "Stumble!" };
 
         // Icon cho buff, tái dùng đúng màu đã dùng ở Progress/Energy bar và Gift Toast cho nhất quán.
         [SerializeField] private Sprite[] buffIcons = new Sprite[3];
         [SerializeField]
         private Color[] buffIconColors =
         {
-            new Color(0.996f, 0.553f, 0.102f, 1f), // Năng lượng + : cam, giống icon Energy bar
-            new Color(0.149f, 0.451f, 0.949f, 1f), // Quãng đường + : xanh dương, giống icon Progress bar
-            new Color(0.35f, 0.70f, 1.00f, 1f),    // Khiên + : xanh dương thép, giống icon Gift Toast Khiên
+            new Color(0.996f, 0.553f, 0.102f, 1f), // Energy +
+            new Color(0.149f, 0.451f, 0.949f, 1f), // Distance +
+            new Color(0.35f, 0.70f, 1.00f, 1f),    // Shield +
         };
 
         // Icon cho debuff theo đúng thứ tự DebuffMessages.
@@ -30,13 +30,12 @@ namespace SteamRush.MinhHuy
         [SerializeField]
         private Color[] debuffIconColors =
         {
-            new Color(0.95f, 0.35f, 0.3f, 1f),  // Năng lượng - : đỏ, dùng lại icon battery-pack (chưa có icon riêng)
-            new Color(1.00f, 0.85f, 0.30f, 1f), // Vấp ngã! : vàng, icon knockout (sao choáng)
+            new Color(0.95f, 0.35f, 0.3f, 1f),  // Energy -
+            new Color(1.00f, 0.85f, 0.30f, 1f), // Stumble!
         };
 
-        // Viewer + quà tặng -> vật thể trong game tương ứng (theo GDD-ver1). Icon quà thật sẽ bổ sung sau.
         private static readonly string[] ViewerNames = { "MeoU_88", "Khoa Ngu Gat", "Lan.tv", "AnhTrangTV" };
-        private static readonly string[] GiftItemNames = { "Rào thấp", "Xà cao", "Đá lăn", "Năng lượng +20%", "Khiên chắn", "+25m tức thì" };
+        private static readonly string[] GiftItemNames = { "Low Hurdle", "High Bar", "Rolling Rock", "Energy +20%", "Shield", "+25m Boost" };
 
         // Icon + màu tint theo đúng thứ tự GiftItemNames (icon nguồn trắng/nền trong suốt từ game-icons.net, cần tint để có màu phù hợp).
         [SerializeField] private Sprite[] giftIcons = new Sprite[6];

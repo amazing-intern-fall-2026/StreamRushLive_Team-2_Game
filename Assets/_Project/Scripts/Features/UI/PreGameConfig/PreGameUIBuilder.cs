@@ -332,8 +332,8 @@ namespace SteamRush.Features.UI.PreGameConfig
             CreateHeaderBanner(advContent.transform, "COLLISION PENALTIES", new Color32(0xFC, 0xDA, 0x21, 0xFF), font);
             GameObject rowDistPen = CreateSettingField(advContent.transform, "Distance penalty on crash (meters, default: 100m):", "100", font);
             GameObject rowSedanPen = CreateSettingField(advContent.transform, "Energy lost on Sedan hit (%):", "20", font);
-            GameObject rowPickupPen = CreateSettingField(advContent.transform, "Energy lost on Thú săn hit (%):", "40", font);
-            GameObject rowHeavyPen = CreateSettingField(advContent.transform, "Energy lost on Tàu hỏa hit (%):", "60", font);
+            GameObject rowPickupPen = CreateSettingField(advContent.transform, "Energy lost on Hunting Beast hit (%):", "40", font);
+            GameObject rowHeavyPen = CreateSettingField(advContent.transform, "Energy lost on Train hit (%):", "60", font);
 
             // SECTION 4: OFFLINE LIVE STREAM SIMULATION
             CreateHeaderBanner(advContent.transform, "OFFLINE LIVE STREAM SIMULATION", new Color32(0x00, 0xE5, 0xFF, 0xFF), font);

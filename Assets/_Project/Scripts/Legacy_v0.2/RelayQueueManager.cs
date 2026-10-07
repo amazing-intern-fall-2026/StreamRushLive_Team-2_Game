@@ -83,26 +83,25 @@ namespace SteamRush.Relay
         public void EnqueueFollower(string followerId)
         {
             _followers.Enqueue(followerId);
-            _hudManager?.ShowStatusPopup($"+1 Đăng ký: {followerId}", true);
+            _hudManager?.ShowStatusPopup($"+1 Registered: {followerId}", true);
         }
 
         private void HandleRelayCompleted(int relayNumber)
         {
             if (_followers.Count == 0)
             {
-                _hudManager?.ShowStatusPopup($"Hoàn thành chặng {relayNumber}!", true);
+                _hudManager?.ShowStatusPopup($"Completed Stage {relayNumber}!", true);
                 return;
             }
 
             string followerId = _followers.Dequeue();
             _followerNameChanged.Invoke(followerId);
 
-            // Nếu không có BatonHandoverController xử lý va chạm chuyển gậy trực tiếp (In-Place),
-            // mới cập nhật HUD ngay tại đây làm fallback.
+            // Fallback HUD update if no BatonHandoverController exists
             if (_hudManager != null && FindFirstObjectByType<BatonHandoverController>() == null)
             {
                 _hudManager.UpdateRunnerInfo(followerId, null);
-                _hudManager.ShowStatusPopup($"Chuyển gậy: {followerId}!", true);
+                _hudManager.ShowStatusPopup($"Baton Handover: {followerId}!", true);
             }
         }
     }

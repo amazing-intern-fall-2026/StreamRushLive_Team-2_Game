@@ -24,7 +24,7 @@ namespace SteamRush.Relay
         [SerializeField] private GameObject nameplatePrefab;
         [Tooltip("Khoảng cách X coi như đã chạm tới để thực hiện bàn giao (m).")]
         [SerializeField] private float arrivalThresholdMeters = 0.5f;
-        [SerializeField] private string waitingLabel = "Người chơi tiếp theo...";
+        [SerializeField] private string waitingLabel = "Next Player...";
 
         [Header("Model Swap")]
         [Tooltip("Danh sách Model Prefab - mỗi lần bàn giao sẽ bốc ngẫu nhiên 1 model để spawn Proxy và hoán đổi trang phục cho Runner.")]
@@ -352,7 +352,7 @@ namespace SteamRush.Relay
             {
                 string display = !string.IsNullOrEmpty(followerName) ? followerName : waitingLabel;
                 hudManager.UpdateRunnerInfo(display, null);
-                hudManager.ShowStatusPopup($"Chuyển gậy: {display}!", true);
+                hudManager.ShowStatusPopup($"Baton Handover: {display}!", true);
             }
 
             // 3. Huỷ nhân vật Proxy

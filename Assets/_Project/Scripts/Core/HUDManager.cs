@@ -122,7 +122,7 @@ namespace SteamRush.Features.UI
             {
                 isBlueTeam = true;
             }
-            else if (lower.Contains("red") || lower.Contains("anti") || lower.Contains("car") || lower.Contains("truck") || lower.Contains("sedan") || lower.Contains("pickup"))
+            else if (lower.Contains("red") || lower.Contains("anti") || lower.Contains("car") || lower.Contains("truck") || lower.Contains("sedan") || lower.Contains("pickup") || lower.Contains("beast") || lower.Contains("train"))
             {
                 isBlueTeam = false;
             }

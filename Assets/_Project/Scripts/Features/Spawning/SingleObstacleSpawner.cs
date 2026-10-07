@@ -21,10 +21,10 @@ namespace StreamRushLive.Features.Spawning
         [Tooltip("Sedan Car (Tier 1): -20% energy, -100m penalty")]
         [SerializeField] private List<GameObject> sedanCarPrefabs = new List<GameObject>();
 
-        [Tooltip("Thú săn (Tier 2): -40% energy, -200m penalty")]
+        [Tooltip("Hunting Beasts (Tier 2): -40% energy, -200m penalty")]
         [SerializeField] private List<GameObject> pickupTruckPrefabs = new List<GameObject>();
 
-        [Tooltip("Tàu hỏa (Tier 3): -60% energy, -400m penalty")]
+        [Tooltip("Train (Tier 3): -60% energy, -400m penalty")]
         [SerializeField] private List<GameObject> heavyTruckPrefabs = new List<GameObject>();
 
         [Tooltip("Autonomous vehicle drive speed added to world scroll speed (default: 6.5 m/s).")]
