@@ -4,7 +4,7 @@ namespace SteamRush.Features.Runner
     using UnityEngine;
     using SteamRush.Track;
     using SteamRush.Features.StreamIntegration;
-
+    using StreamRushLive.Features.VFX;
     /// <summary>
     /// Controls 3-lane runner movement and chat command execution.
     /// </summary>
@@ -627,17 +627,31 @@ namespace SteamRush.Features.Runner
         private System.Collections.IEnumerator SprintBuffRoutine(float duration)
         {
             _isSprintBuffActive = true;
+
             TriggerFast();
+
+            SpeedLinesController.Instance?.Activate();
+
             var timer = SteamRush.Features.UI.Views.FanSprintTimerCircle.Instance;
-            if (timer != null) timer.ActivateTimer(duration);
+            if (timer != null)
+            {
+                timer.ActivateTimer(duration);
+            }
 
             yield return new WaitForSeconds(duration);
 
             _isSprintBuffActive = false;
             _sprintBuffCoroutine = null;
+
             StopFast();
+
+            SpeedLinesController.Instance?.Deactivate();
+
             var timerEnd = SteamRush.Features.UI.Views.FanSprintTimerCircle.Instance;
-            if (timerEnd != null) timerEnd.DeactivateTimer();
+            if (timerEnd != null)
+            {
+                timerEnd.DeactivateTimer();
+            }
         }
 
         public void SetSprintBuffDebug(bool isActive)
@@ -653,12 +667,24 @@ namespace SteamRush.Features.Runner
             if (isActive)
             {
                 TriggerFast();
-                if (timer != null) timer.ActivateTimer(999f);
+
+                SpeedLinesController.Instance?.Activate();
+
+                if (timer != null)
+                {
+                    timer.ActivateTimer(999f);
+                }
             }
             else
             {
                 StopFast();
-                if (timer != null) timer.DeactivateTimer();
+
+                SpeedLinesController.Instance?.Deactivate();
+
+                if (timer != null)
+                {
+                    timer.DeactivateTimer();
+                }
             }
         }
 
