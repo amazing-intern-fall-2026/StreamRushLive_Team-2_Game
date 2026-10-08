@@ -17,6 +17,15 @@ namespace SteamRush.Features.UI.Views
         // Read by VictoryCeremonyController to display final clear time in victory popup.
         public string CurrentDisplayText => timeText != null ? timeText.text : "00:00";
 
+        public void SetDisplayVisible(bool isVisible)
+        {
+            var cg = GetComponent<CanvasGroup>();
+            if (cg == null) cg = gameObject.AddComponent<CanvasGroup>();
+            cg.alpha = isVisible ? 1f : 0f;
+            cg.interactable = isVisible;
+            cg.blocksRaycasts = isVisible;
+        }
+
         private void Update()
         {
             if (!_isRunning) return;

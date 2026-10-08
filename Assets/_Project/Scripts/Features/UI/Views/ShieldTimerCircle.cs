@@ -248,6 +248,10 @@ namespace SteamRush.Features.UI.Views
 
             containerRect = GetComponent<RectTransform>();
             if (containerRect == null) containerRect = gameObject.AddComponent<RectTransform>();
+            containerRect.anchorMin = new Vector2(0f, 0.8f);
+            containerRect.anchorMax = new Vector2(0f, 0.8f);
+            containerRect.pivot = new Vector2(0f, 0.5f);
+            containerRect.sizeDelta = new Vector2(116f, 116f);
 
             canvasGroup = GetComponent<CanvasGroup>();
             if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();

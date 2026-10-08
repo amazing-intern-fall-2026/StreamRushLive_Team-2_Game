@@ -1154,10 +1154,12 @@ public void MockActivatePickupTruckPhase(string sender = "Red Team")
 
             if (hudManager == null) hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
 
-            if (giftDance.TriggerDance())
-            {
-                hudManager?.ShowFanAction(sender, $"Dance ({giftDance.Duration:F0}s)");
-            }
+            string displayName = !string.IsNullOrEmpty(sender) ? sender : "Viewer";
+            float dur = giftDance != null ? giftDance.Duration : 5f;
+            hudManager?.ShowFanAction(displayName, $"Dance ({dur:F0}s)");
+            hudManager?.ShowStatusPopup($"[{displayName}] Meme Dance!", true);
+
+            giftDance.TriggerDance();
         }
 
         public void MockWeatherHazard(string sender = "Viewer_Red")

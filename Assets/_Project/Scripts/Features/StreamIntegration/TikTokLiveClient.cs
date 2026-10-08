@@ -18,14 +18,14 @@ namespace SteamRush.Features.StreamIntegration
     public class TikTokLiveClient : MonoBehaviour
     {
         [Header("Backend Connection")]
-        [Tooltip("TikTok Live backend server URL (default port: 9090).")]
-        [SerializeField] private string _serverUrl = "http://localhost:9090";
+        [Tooltip("TikTok Live backend Socket.IO URL (default port: 3001).")]
+        [SerializeField] private string _serverUrl = "http://localhost:3001";
 
         [Tooltip("TikTok username of the active live stream (without @).")]
         [SerializeField] private string _tiktokUniqueId = "";
 
         [Tooltip("Auto-connect to live backend on Start.")]
-        [SerializeField] private bool _connectOnStart = true;
+        [SerializeField] private bool _connectOnStart = false;
 
         [Tooltip("Enforce WebSocket transport only.")]
         [SerializeField] private bool _webSocketOnly = true;
@@ -52,6 +52,12 @@ namespace SteamRush.Features.StreamIntegration
         [Header("Diagnostics")]
         [SerializeField] private bool _logEvents = true;
 
+        [Header("Event Timing Safeguard")]
+        [Tooltip("If TRUE: Discards historical/buffered events from before connection to only process fresh stream data.")]
+        [SerializeField] private bool _ignorePastEventsOnConnect = true;
+
+        private long _sessionConnectUnixMs = 0;
+
         [Header("Modular Adapters (Auto-Resolved)")]
         [SerializeField] private TikTokChatAdapter _chatAdapter;
         [SerializeField] private TikTokLikeAdapter _likeAdapter;
@@ -64,6 +70,8 @@ namespace SteamRush.Features.StreamIntegration
         #region Public Properties & Backward Compatibility
 
         public bool IsConnected => _socket != null && _socket.Connected;
+        public bool IsTikTokLiveConnected { get; private set; }
+        public string CurrentRoomId { get; private set; }
         public string ServerUrl => _serverUrl;
         public string TikTokUniqueId => _tiktokUniqueId;
 
@@ -101,10 +109,12 @@ namespace SteamRush.Features.StreamIntegration
             return _giftRouter != null && _giftRouter.RemoveGiftMapping(giftId, giftName);
         }
 
-        [ContextMenu("Show Gifts By Element Order On UI")]
-        public void ShowGiftsByElementOrderOnUI()
+        public void SetServerUrl(string url)
         {
-            _giftRouter?.ShowGiftsByElementOrder();
+            if (!string.IsNullOrWhiteSpace(url))
+            {
+                _serverUrl = url.Trim();
+            }
         }
 
         #endregion
@@ -114,6 +124,11 @@ namespace SteamRush.Features.StreamIntegration
         private void Awake()
         {
             EnsureAdapters();
+            // Automatically correct old HTTP port references (9090 or 9091) to Socket.IO port 3001
+            if (!string.IsNullOrEmpty(_serverUrl) && (_serverUrl.Contains(":9090") || _serverUrl.Contains(":9091")))
+            {
+                _serverUrl = "http://localhost:3001";
+            }
         }
 
         private void Start()
@@ -181,10 +196,21 @@ namespace SteamRush.Features.StreamIntegration
 
         public void ConnectWithUsername(string username)
         {
-            if (!string.IsNullOrEmpty(username))
+            string normalized = NormalizeUniqueId(username);
+            string previousUser = NormalizeUniqueId(_tiktokUniqueId);
+
+            // If already connected to the same username on the same backend, reuse the active connection
+            if (IsConnected && IsTikTokLiveConnected && string.Equals(previousUser, normalized, StringComparison.OrdinalIgnoreCase))
             {
-                _tiktokUniqueId = username.Trim().TrimStart('@');
+                Debug.Log($"[TikTokLiveClient] Already connected to active stream @{normalized}. Reusing existing live connection.");
+                return;
             }
+
+            if (!string.IsNullOrEmpty(normalized))
+            {
+                _tiktokUniqueId = normalized;
+            }
+
             Disconnect();
             Connect();
         }
@@ -193,6 +219,7 @@ namespace SteamRush.Features.StreamIntegration
         public void Connect()
         {
             if (_socket != null) return;
+            _sessionConnectUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
             string uniqueId = NormalizeUniqueId(_tiktokUniqueId);
             if (string.IsNullOrEmpty(uniqueId))
@@ -261,6 +288,10 @@ namespace SteamRush.Features.StreamIntegration
         [ContextMenu("Disconnect")]
         public void Disconnect()
         {
+            IsTikTokLiveConnected = false;
+            CurrentRoomId = "";
+            _sessionConnectUnixMs = 0;
+
             if (_socket != null)
             {
                 try
@@ -283,7 +314,7 @@ namespace SteamRush.Features.StreamIntegration
         private void OnRawChatReceived(SocketIOResponse response)
         {
             JObject json = ParseResponse(response);
-            if (json == null) return;
+            if (json == null || IsHistoricalEvent(json, "chat")) return;
 
             string comment = ReadStringWithFallback(json, _commentPath, "comment", "text");
             string userId = ReadStringWithFallback(json, _userIdPath, "userId", "uniqueId", "data.user.uniqueId");
@@ -298,7 +329,7 @@ namespace SteamRush.Features.StreamIntegration
         private void OnRawFollowReceived(SocketIOResponse response)
         {
             JObject json = ParseResponse(response);
-            if (json == null) return;
+            if (json == null || IsHistoricalEvent(json, "follow")) return;
 
             string userId = ReadStringWithFallback(json, _userIdPath, "userId", "uniqueId", "data.user.uniqueId");
             if (string.IsNullOrEmpty(userId)) return;
@@ -312,7 +343,7 @@ namespace SteamRush.Features.StreamIntegration
         private void OnRawLikeReceived(SocketIOResponse response)
         {
             JObject json = ParseResponse(response);
-            if (json == null) return;
+            if (json == null || IsHistoricalEvent(json, "like")) return;
 
             string userId = ReadStringWithFallback(json, _userIdPath, "userId", "uniqueId", "data.user.uniqueId");
             string totalLikeRaw = ReadStringWithFallback(json, _totalLikePath, "totalLike", "totalLikeCount", "likeCount");
@@ -326,7 +357,7 @@ namespace SteamRush.Features.StreamIntegration
         private void OnRawGiftReceived(SocketIOResponse response)
         {
             JObject json = ParseResponse(response);
-            if (json == null) return;
+            if (json == null || IsHistoricalEvent(json, "gift")) return;
 
             string userId = ReadStringWithFallback(json, _userIdPath, "userId", "uniqueId", "data.user.uniqueId");
             string giftName = ReadStringWithFallback(json, _giftNamePath, "giftName", "data.giftName");
@@ -372,7 +403,7 @@ namespace SteamRush.Features.StreamIntegration
         private void OnRawShareReceived(SocketIOResponse response)
         {
             JObject json = ParseResponse(response);
-            if (json == null) return;
+            if (json == null || IsHistoricalEvent(json, "share")) return;
 
             string userId = ReadStringWithFallback(json, _userIdPath, "userId", "uniqueId", "data.user.uniqueId");
             string displayName = GetDisplayName(json, userId);
@@ -382,11 +413,14 @@ namespace SteamRush.Features.StreamIntegration
 
         private void OnRawTikTokConnected(SocketIOResponse response)
         {
+            _sessionConnectUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             string channel = NormalizeUniqueId(_tiktokUniqueId);
-            Debug.Log($"[TikTokLiveClient] Connected to TikTok Live successfully! Channel: @{channel}");
+            Debug.Log($"[TikTokLiveClient] Connected to TikTok Live successfully! Channel: @{channel} (Session Start: {_sessionConnectUnixMs})");
 
             JObject json = ParseResponse(response);
             string roomId = ReadStringWithFallback(json, "roomId", "room_id", "data.roomId");
+            IsTikTokLiveConnected = true;
+            CurrentRoomId = roomId;
             EventBus.Publish(new TikTokConnectedEvent(channel, roomId, json));
         }
 
@@ -394,6 +428,8 @@ namespace SteamRush.Features.StreamIntegration
         {
             string reason = response != null ? response.ToString() : "Disconnected";
             Debug.LogWarning($"[TikTokLiveClient] TikTok Live disconnected: {reason}");
+            IsTikTokLiveConnected = false;
+            CurrentRoomId = "";
             EventBus.Publish(new TikTokDisconnectedEvent(reason));
         }
 
@@ -404,6 +440,8 @@ namespace SteamRush.Features.StreamIntegration
 
             string channel = NormalizeUniqueId(_tiktokUniqueId);
             string roomId = ReadStringWithFallback(json, "roomId", "room_id", "data.roomId");
+            IsTikTokLiveConnected = true;
+            CurrentRoomId = roomId;
             EventBus.Publish(new TikTokConnectedEvent(channel, roomId, json));
         }
 
@@ -466,6 +504,44 @@ namespace SteamRush.Features.StreamIntegration
         private static string NormalizeUniqueId(string raw)
         {
             return string.IsNullOrWhiteSpace(raw) ? string.Empty : raw.Trim().TrimStart('@');
+        }
+
+        private static long ReadLongWithFallback(JObject json, params string[] paths)
+        {
+            if (json == null || paths == null) return 0;
+            foreach (var path in paths)
+            {
+                if (string.IsNullOrEmpty(path)) continue;
+                JToken token = json.SelectToken(path);
+                if (token != null && token.Type != JTokenType.Null)
+                {
+                    if (long.TryParse(token.ToString().Trim(), out long val))
+                    {
+                        return val;
+                    }
+                }
+            }
+            return 0;
+        }
+
+        private bool IsHistoricalEvent(JObject json, string eventType = "event")
+        {
+            if (!_ignorePastEventsOnConnect || _sessionConnectUnixMs <= 0 || json == null) return false;
+
+            long eventTime = ReadLongWithFallback(json, "createTime", "timestamp");
+            if (eventTime > 0)
+            {
+                if (eventTime < 10000000000L) eventTime *= 1000L;
+                if (eventTime < _sessionConnectUnixMs - 3000L)
+                {
+                    if (_logEvents)
+                    {
+                        Debug.Log($"[TikTokLiveClient] Ignored historical {eventType} (eventTime: {eventTime}, sessionStart: {_sessionConnectUnixMs}).");
+                    }
+                    return true;
+                }
+            }
+            return false;
         }
 
         #endregion

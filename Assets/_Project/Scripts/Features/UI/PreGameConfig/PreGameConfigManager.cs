@@ -35,6 +35,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         [Header("State")]
         [SerializeField] private bool _openOnStart = true;
         [SerializeField] private bool _isTestModeActive = false;
+        [SerializeField] private GameObject _badgeDemoRun;
 
         public PreGameConfigData CurrentConfig { get; private set; }
         public bool IsTestModeActive => _isTestModeActive;
@@ -53,6 +54,14 @@ namespace SteamRush.Features.UI.PreGameConfig
 
             LoadConfig();
             BindOpenButton();
+
+            // Early configure TikTokLiveClient with the correct Socket.IO port
+            var client = FindFirstObjectByType<TikTokLiveClient>();
+            if (client != null && CurrentConfig != null)
+            {
+                int socketPort = CurrentConfig.backendSocketPort > 0 ? CurrentConfig.backendSocketPort : 3001;
+                client.SetServerUrl($"http://localhost:{socketPort}");
+            }
         }
 
         private void Start()
@@ -69,11 +78,41 @@ namespace SteamRush.Features.UI.PreGameConfig
             {
                 OpenConfigUI();
             }
+            else
+            {
+                Time.timeScale = 1f;
+            }
+
+            UpdateDemoRunBadgeVisibility();
+        }
+
+        private void Update()
+        {
+            UpdateDemoRunBadgeVisibility();
+        }
+
+        public void SetDemoRunBadge(GameObject badge)
+        {
+            _badgeDemoRun = badge;
+            UpdateDemoRunBadgeVisibility();
+        }
+
+        public void UpdateDemoRunBadgeVisibility()
+        {
+            if (_badgeDemoRun == null) return;
+
+            bool isDemo = _isTestModeActive || (SteamRush.Features.Runner.LiveSessionDemoRunner.Instance != null && SteamRush.Features.Runner.LiveSessionDemoRunner.Instance.IsRunning);
+            if (IsOpen) isDemo = false;
+
+            if (_badgeDemoRun.activeSelf != isDemo)
+            {
+                _badgeDemoRun.SetActive(isDemo);
+            }
         }
 
         private void BindOpenButton()
         {
-            if (_btnOpenConfig == null)
+            if (_btnOpenConfig == null || _btnOpenConfig.name == "BtnOpenPreGameConfig")
             {
                 Transform t = transform.Find("Btn_OpenPreGameConfig");
                 if (t != null) _btnOpenConfig = t.GetComponent<UnityEngine.UI.Button>();
@@ -122,6 +161,22 @@ namespace SteamRush.Features.UI.PreGameConfig
             {
                 // Ensure all default gifts exist even if config was loaded from an older version
                 SyncWithDefaultGifts();
+
+                // Sanitize legacy target distance values
+                if (CurrentConfig.finiteTargetDistanceMeters <= 0f || CurrentConfig.finiteTargetDistanceMeters >= 900000000f)
+                {
+                    CurrentConfig.finiteTargetDistanceMeters = (CurrentConfig.targetDistanceMeters > 0f && CurrentConfig.targetDistanceMeters < 900000000f && CurrentConfig.targetDistanceMeters != 1000000f)
+                        ? CurrentConfig.targetDistanceMeters
+                        : 1000f;
+                }
+
+                if (!CurrentConfig.isInfiniteDistance)
+                {
+                    if (CurrentConfig.targetDistanceMeters >= 900000000f || CurrentConfig.targetDistanceMeters == 1000000f)
+                    {
+                        CurrentConfig.targetDistanceMeters = CurrentConfig.finiteTargetDistanceMeters;
+                    }
+                }
             }
         }
 
@@ -132,6 +187,24 @@ namespace SteamRush.Features.UI.PreGameConfig
             foreach (var g in CurrentConfig.gifts)
             {
                 existingActions.Add(g.action);
+                if (g.customValue <= 0f && PreGameGiftItemConfig.HasStatForAction(g.action))
+                {
+                    g.customValue = PreGameGiftItemConfig.GetDefaultStat(g.action);
+                }
+
+                // Sanitize legacy feature action names
+                if (g.featureName == "+300 Blue Energy" || g.featureName == "300 Blue Energy" || (g.action == GiftActionType.Blue_EnergyBottle && g.featureName.Contains("300")))
+                {
+                    g.featureName = "Blue Energy";
+                }
+                else if (g.featureName == "+Red Energy" || (g.action == GiftActionType.Red_EnergyBottle && g.featureName.StartsWith("+")))
+                {
+                    g.featureName = "Red Energy";
+                }
+                else if (g.featureName == "Meme Dance" || (g.action == GiftActionType.Special_GiftDance && g.featureName.Contains("Meme")))
+                {
+                    g.featureName = "Dance";
+                }
             }
 
             foreach (var g in def.gifts)
@@ -174,8 +247,16 @@ namespace SteamRush.Features.UI.PreGameConfig
             Debug.Log("[PreGameConfigManager] Config reset to developer defaults.");
         }
 
+        private int _lastToggleFrame = -1;
+        private float _lastToggleTime = -1f;
+
         public void ToggleConfigUI()
         {
+            if (Time.frameCount == _lastToggleFrame) return;
+            if (Time.unscaledTime - _lastToggleTime < 0.15f) return;
+            _lastToggleFrame = Time.frameCount;
+            _lastToggleTime = Time.unscaledTime;
+
             if (IsOpen)
             {
                 CloseConfigUI();
@@ -193,6 +274,12 @@ namespace SteamRush.Features.UI.PreGameConfig
                 _configUI.gameObject.SetActive(true);
                 _configUI.transform.SetAsLastSibling();
                 _configUI.PopulateUI(CurrentConfig);
+
+                // Keep Settings toggle button and Audio button above the backdrop so they remain clickable
+                if (_btnOpenConfig != null)
+                {
+                    _btnOpenConfig.transform.SetAsLastSibling();
+                }
             }
 
             Time.timeScale = 0f;
@@ -206,6 +293,7 @@ namespace SteamRush.Features.UI.PreGameConfig
             }
 
             Time.timeScale = 1f;
+            UpdateDemoRunBadgeVisibility();
         }
 
         public void StartTestMode()
@@ -251,6 +339,7 @@ namespace SteamRush.Features.UI.PreGameConfig
             SaveConfig();
             ApplyConfigToRuntime(connectTikTok: true);
             CloseConfigUI();
+            UpdateDemoRunBadgeVisibility();
 
             // Stop all mock demo simulation in real live mode
             var demoRunner = LiveSessionDemoRunner.Instance ?? FindFirstObjectByType<LiveSessionDemoRunner>();
@@ -352,13 +441,75 @@ namespace SteamRush.Features.UI.PreGameConfig
             var client = FindFirstObjectByType<TikTokLiveClient>();
             if (client != null)
             {
+                int socketPort = CurrentConfig.backendSocketPort > 0 ? CurrentConfig.backendSocketPort : 3001;
+                client.SetServerUrl($"http://localhost:{socketPort}");
+
                 if (connectTikTok && !string.IsNullOrWhiteSpace(CurrentConfig.tiktokUsername))
                 {
                     client.ConnectWithUsername(CurrentConfig.tiktokUsername);
                 }
-                else
+                else if (!connectTikTok && _isTestModeActive)
                 {
+                    // Only disconnect TikTok when explicitly switching to Sandbox / Test Mode
                     client.Disconnect();
+                }
+                // When saving settings or closing modal during an active Live broadcast, keep connection alive!
+            }
+
+            // 9. Overlay Banners & Displays (How To Play Guide, Gift Info Panel, Stopwatch)
+            var canvas = FindFirstObjectByType<Canvas>();
+            if (canvas != null)
+            {
+                var guideObj = canvas.transform.Find("HowToPlayGuide");
+                if (guideObj != null) guideObj.gameObject.SetActive(CurrentConfig.showHowToPlayGuide);
+
+                var giftPanelObj = canvas.transform.Find("GiftInfoPanel");
+                if (giftPanelObj != null) giftPanelObj.gameObject.SetActive(CurrentConfig.showGiftInfoPanel);
+
+                var stopwatchObj = canvas.transform.Find("ElapsedTimeStopwatch");
+                if (stopwatchObj != null)
+                {
+                    var sw = stopwatchObj.GetComponent<Views.ElapsedTimeStopwatch>();
+                    if (sw != null) sw.SetDisplayVisible(CurrentConfig.showStopwatchTimer);
+                    else stopwatchObj.gameObject.SetActive(CurrentConfig.showStopwatchTimer);
+                }
+            }
+
+            // 10. Timer Circles Visibility
+            ApplyTimerCirclesVisibility(CurrentConfig.showTimerCircles);
+        }
+
+        private void ApplyTimerCirclesVisibility(bool visible)
+        {
+            var stackMgr = Views.TimerCircleVerticalStackManager.Instance ?? FindFirstObjectByType<Views.TimerCircleVerticalStackManager>();
+            if (stackMgr != null)
+            {
+                var cg = stackMgr.GetComponent<CanvasGroup>();
+                if (cg == null) cg = stackMgr.gameObject.AddComponent<CanvasGroup>();
+                cg.alpha = visible ? 1f : 0f;
+                cg.interactable = visible;
+                cg.blocksRaycasts = visible;
+            }
+
+            var circles = new string[]
+            {
+                "FreeControlTimerCircle",
+                "ShieldTimerCircle",
+                "AntiVehiclePhaseTimerCircle",
+                "FanSprintTimerCircle",
+                "AntiUnlimitedTimerCircle"
+            };
+
+            foreach (var circleName in circles)
+            {
+                var go = GameObject.Find(circleName);
+                if (go != null)
+                {
+                    var cg = go.GetComponent<CanvasGroup>();
+                    if (cg != null && !visible)
+                    {
+                        cg.alpha = 0f;
+                    }
                 }
             }
         }
@@ -378,20 +529,15 @@ namespace SteamRush.Features.UI.PreGameConfig
                     iconCache[m.giftName.ToLowerInvariant()] = m.giftIcon;
                 }
             }
-#if UNITY_EDITOR
-            string dir = "Assets/_Project/Textures/TikTokGifts";
             foreach (var opt in PreGameConfigData.AvailableGifts)
             {
                 string k = opt.giftName.ToLowerInvariant();
                 if (!iconCache.ContainsKey(k))
                 {
-                    Sprite s = null;
-                    if (opt.giftId > 0) s = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/{opt.giftId}.png");
-                    if (s == null) s = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/{k}.png");
+                    Sprite s = PreGameUIBuilder.ResolveGiftIcon(opt.giftId, opt.giftName);
                     if (s != null) iconCache[k] = s;
                 }
             }
-#endif
 
             var newMappings = new List<TikTokGiftMapping>();
             foreach (var g in CurrentConfig.gifts)
@@ -400,9 +546,13 @@ namespace SteamRush.Features.UI.PreGameConfig
 
                 Sprite icon = null;
                 string key = (g.giftName ?? "").ToLowerInvariant();
-                if (iconCache.ContainsKey(key))
+                if (iconCache.ContainsKey(key) && iconCache[key] != null)
                 {
                     icon = iconCache[key];
+                }
+                if (icon == null)
+                {
+                    icon = PreGameUIBuilder.ResolveGiftIcon(g.giftId, g.giftName);
                 }
 
                 newMappings.Add(new TikTokGiftMapping
@@ -411,7 +561,8 @@ namespace SteamRush.Features.UI.PreGameConfig
                     giftName = g.giftName,
                     description = g.description,
                     action = g.action,
-                    giftIcon = icon
+                    giftIcon = icon,
+                    customValue = g.customValue
                 });
             }
 

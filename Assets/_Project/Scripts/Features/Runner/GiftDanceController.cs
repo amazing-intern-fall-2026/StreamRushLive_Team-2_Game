@@ -38,28 +38,42 @@ namespace SteamRush.Features.Runner
 
         private void Awake()
         {
-            // Animator can be on Player root or child - search recursively
-            _animator = GetComponentInChildren<Animator>();
-            if (_animator == null)
-            {
-                Debug.LogError("[GiftDance] Animator not found on Player or children!", this);
-                return;
-            }
-
-            _danceLayerIndex = _animator.GetLayerIndex(_danceLayerName);
-            if (_danceLayerIndex < 0)
-            {
-                Debug.LogError($"[GiftDance] Player.controller missing layer '{_danceLayerName}'!", this);
-                return;
-            }
-
-            _danceStateHash = Animator.StringToHash(_danceStateName);
-            _victoryDanceStateHash = Animator.StringToHash(_victoryDanceStateName);
-            _animator.SetLayerWeight(_danceLayerIndex, 0f);
+            EnsureInitialized();
         }
 
         /// <summary>
-        /// Starts celebration dance. Returns false if already dancing or layer is unready.
+        /// Ensures animator and dance layer index are resolved on demand (self-healing for spawned/swapped models).
+        /// </summary>
+        public void EnsureInitialized()
+        {
+            if (_animator == null)
+            {
+                _animator = GetComponentInChildren<Animator>();
+                if (_animator == null)
+                {
+                    _animator = GetComponentInParent<Animator>();
+                }
+            }
+
+            if (_animator != null && _danceLayerIndex < 0)
+            {
+                _danceLayerIndex = _animator.GetLayerIndex(_danceLayerName);
+                _danceStateHash = Animator.StringToHash(_danceStateName);
+                _victoryDanceStateHash = Animator.StringToHash(_victoryDanceStateName);
+
+                if (_danceLayerIndex >= 0)
+                {
+                    _animator.SetLayerWeight(_danceLayerIndex, 0f);
+                }
+                else
+                {
+                    Debug.LogWarning($"[GiftDance] Player animator missing layer '{_danceLayerName}'!", this);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Starts celebration dance. Extends duration if already dancing.
         /// </summary>
         /// <param name="overrideDuration">
         /// Overrides default _danceDuration if > 0.
@@ -80,10 +94,20 @@ namespace SteamRush.Features.Runner
 
         private bool PlayState(int stateHash, float overrideDuration)
         {
+            EnsureInitialized();
             if (_animator == null || _danceLayerIndex < 0) return false;
-            if (IsDancing) return false;
 
-            _remainingTime = overrideDuration > 0f ? overrideDuration : Duration;
+            float addDuration = overrideDuration > 0f ? overrideDuration : Duration;
+
+            if (IsDancing)
+            {
+                // Extend remaining celebration duration so viewers' gifts stack without being dropped
+                _remainingTime += addDuration;
+                AudioManager.Instance?.StartDanceMusic(_remainingTime);
+                return true;
+            }
+
+            _remainingTime = addDuration;
 
             // Reset state to normalized time 0 so dance begins from the first frame
             _animator.Play(stateHash, _danceLayerIndex, 0f);

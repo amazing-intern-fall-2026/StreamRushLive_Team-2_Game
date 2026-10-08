@@ -114,8 +114,8 @@ namespace SteamRush.Features.UI.Views
 
             if (textEffect != null)
             {
-                // Refresh bat buoc phai goi SAU khi doi label.text, vi no doc do dai chu hien tai
-                // de tinh so ky tu can ap hieu ung - goi truoc se ap sai len chu "Preview" cua template.
+                // Refresh must be called AFTER changing label.text because it measures the current string length
+                // to calculate character count for the text effect; calling before would apply to the template's "Preview" text.
                 textEffect.Refresh();
                 textEffect.StartManualEffects();
             }

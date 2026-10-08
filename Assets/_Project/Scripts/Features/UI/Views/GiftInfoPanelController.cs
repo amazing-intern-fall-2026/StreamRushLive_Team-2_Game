@@ -720,7 +720,7 @@ namespace SteamRush.Features.UI.Views
                 GiftActionType.Red_SpawnHeavyTruck => "Train",
                 GiftActionType.Red_UnlimitedCars => "Unlimited Cars",
                 GiftActionType.Red_EnergyBottle => "+500 Energy",
-                GiftActionType.Special_GiftDance => "Meme Dance",
+                GiftActionType.Special_GiftDance => "Dance",
                 GiftActionType.Special_RainHazard => "Rain Hazard",
                 GiftActionType.Follow_Runner => "Runner",
                 GiftActionType.Special_VIPRelayTicket => "Runner",
