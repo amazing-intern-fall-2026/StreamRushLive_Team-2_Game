@@ -61,6 +61,16 @@ namespace SteamRush.Features.UI.PreGameConfig
             return LoadSprite("Assets/Hyper_Casual_UI/Sprites/Icons/Close.png");
         }
 
+        public static Sprite GetDropdownArrowSprite()
+        {
+            return LoadSprite("Assets/_Project/Textures/Icons/icon_dropdown_arrow.png");
+        }
+
+        private static Sprite GetCheckmarkSprite()
+        {
+            return LoadSprite("Assets/Violet Theme Ui/White Icons/White Check.png");
+        }
+
         /// <summary>
         /// Universally resolves TikTok gift icon sprite by giftId and/or giftName with fallback chains.
         /// </summary>
@@ -886,7 +896,9 @@ namespace SteamRush.Features.UI.PreGameConfig
 
         private static GameObject CreateDropdownControl(Transform parent, string name, TMP_FontAsset font)
         {
-            GameObject dropdownObj = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(TMP_Dropdown));
+            var res = new TMPro.TMP_DefaultControls.Resources();
+            GameObject dropdownObj = TMPro.TMP_DefaultControls.CreateDropdown(res);
+            dropdownObj.name = name;
             dropdownObj.transform.SetParent(parent, false);
 
             Image bg = dropdownObj.GetComponent<Image>();
@@ -898,38 +910,175 @@ namespace SteamRush.Features.UI.PreGameConfig
             }
             bg.color = new Color(0.08f, 0.20f, 0.28f, 0.95f);
 
-            GameObject labelObj = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-            labelObj.transform.SetParent(dropdownObj.transform, false);
-            RectTransform lrt = labelObj.GetComponent<RectTransform>();
-            lrt.anchorMin = Vector2.zero;
-            lrt.anchorMax = Vector2.one;
-            lrt.offsetMin = new Vector2(10f, 2f);
-            lrt.offsetMax = new Vector2(-26f, -2f);
+            var dd = dropdownObj.GetComponent<TMP_Dropdown>();
+            dd.options.Clear();
 
-            TextMeshProUGUI label = labelObj.GetComponent<TextMeshProUGUI>();
-            if (font != null) label.font = font;
-            label.fontSize = 12f;
-            label.color = Color.white;
-            label.alignment = TextAlignmentOptions.MidlineLeft;
+            // Style Caption Label
+            if (dd.captionText != null)
+            {
+                if (font != null) dd.captionText.font = font;
+                dd.captionText.fontSize = 12f;
+                dd.captionText.color = Color.white;
+                dd.captionText.alignment = TextAlignmentOptions.MidlineLeft;
+                var lrt = dd.captionText.GetComponent<RectTransform>();
+                if (lrt != null)
+                {
+                    lrt.offsetMin = new Vector2(10f, 2f);
+                    lrt.offsetMax = new Vector2(-26f, -2f);
+                }
+            }
 
-            GameObject arrowObj = new GameObject("Arrow", typeof(RectTransform), typeof(TextMeshProUGUI));
-            arrowObj.transform.SetParent(dropdownObj.transform, false);
-            RectTransform art = arrowObj.GetComponent<RectTransform>();
-            art.anchorMin = new Vector2(1f, 0.5f);
-            art.anchorMax = new Vector2(1f, 0.5f);
-            art.pivot = new Vector2(1f, 0.5f);
-            art.anchoredPosition = new Vector2(-6f, 0f);
-            art.sizeDelta = new Vector2(16f, 16f);
+            // Style Arrow
+            var arrowTr = dropdownObj.transform.Find("Arrow");
+            if (arrowTr != null)
+            {
+                var arrowImg = arrowTr.GetComponent<Image>();
+                if (arrowImg != null)
+                {
+                    Sprite arrowSp = GetDropdownArrowSprite();
+                    if (arrowSp != null)
+                    {
+                        arrowImg.sprite = arrowSp;
+                        arrowImg.type = Image.Type.Simple;
+                        arrowImg.preserveAspect = true;
+                    }
+                    arrowImg.color = new Color32(0xBF, 0xE3, 0xE8, 0xFF);
+                }
+                var arrowRt = arrowTr.GetComponent<RectTransform>();
+                if (arrowRt != null)
+                {
+                    arrowRt.anchorMin = new Vector2(1f, 0.5f);
+                    arrowRt.anchorMax = new Vector2(1f, 0.5f);
+                    arrowRt.pivot = new Vector2(0.5f, 0.5f);
+                    arrowRt.anchoredPosition = new Vector2(-12f, 0f);
+                    arrowRt.sizeDelta = new Vector2(10f, 10f);
+                }
+            }
 
-            TextMeshProUGUI arrow = arrowObj.GetComponent<TextMeshProUGUI>();
-            if (font != null) arrow.font = font;
-            arrow.fontSize = 11f;
-            arrow.text = "▼";
-            arrow.color = new Color32(0xBF, 0xE3, 0xE8, 0xFF);
-            arrow.alignment = TextAlignmentOptions.Center;
+            // Style Template (Popup Window)
+            if (dd.template != null)
+            {
+                dd.template.pivot = new Vector2(0f, 1f);
+                dd.template.anchorMin = new Vector2(0f, 0f);
+                dd.template.anchorMax = new Vector2(0f, 0f);
+                dd.template.anchoredPosition = new Vector2(0f, -2f);
+                dd.template.sizeDelta = new Vector2(150f, 200f);
 
-            TMP_Dropdown dd = dropdownObj.GetComponent<TMP_Dropdown>();
-            dd.captionText = label;
+                var templateImg = dd.template.GetComponent<Image>();
+                if (templateImg != null)
+                {
+                    if (inputBg != null)
+                    {
+                        templateImg.sprite = inputBg;
+                        templateImg.type = Image.Type.Sliced;
+                    }
+                    templateImg.color = new Color(0.05f, 0.14f, 0.20f, 0.98f);
+                }
+
+                // Style Item Text
+                if (dd.itemText != null)
+                {
+                    if (font != null) dd.itemText.font = font;
+                    dd.itemText.fontSize = 12f;
+                    dd.itemText.color = Color.white;
+                    dd.itemText.text = "";
+                    dd.itemText.alignment = TextAlignmentOptions.MidlineLeft;
+                    var itRt = dd.itemText.GetComponent<RectTransform>();
+                    if (itRt != null)
+                    {
+                        itRt.offsetMin = new Vector2(28f, 2f);
+                        itRt.offsetMax = new Vector2(-10f, -2f);
+                    }
+                }
+
+                // Style Item (height and background)
+                var itemTr = dd.template.Find("Viewport/Content/Item");
+                if (itemTr != null)
+                {
+                    var itemRt = itemTr.GetComponent<RectTransform>();
+                    if (itemRt != null) itemRt.sizeDelta = new Vector2(0f, 28f);
+
+                    var itemLabel = itemTr.Find("Item Label")?.GetComponent<TextMeshProUGUI>();
+                    if (itemLabel != null) itemLabel.text = "";
+
+                    var itemBg = itemTr.Find("Item Background")?.GetComponent<Image>();
+                    if (itemBg != null)
+                    {
+                        if (inputBg != null)
+                        {
+                            itemBg.sprite = inputBg;
+                            itemBg.type = Image.Type.Sliced;
+                        }
+                        itemBg.color = new Color(0.10f, 0.24f, 0.34f, 0.95f);
+                    }
+
+                    var checkmark = itemTr.Find("Item Checkmark")?.GetComponent<Image>();
+                    if (checkmark != null)
+                    {
+                        Sprite checkSp = GetCheckmarkSprite();
+                        if (checkSp != null)
+                        {
+                            checkmark.sprite = checkSp;
+                            checkmark.preserveAspect = true;
+                        }
+                        checkmark.color = new Color32(0x00, 0xE5, 0xFF, 0xFF);
+                        var checkRt = checkmark.GetComponent<RectTransform>();
+                        if (checkRt != null)
+                        {
+                            checkRt.anchorMin = new Vector2(0f, 0.5f);
+                            checkRt.anchorMax = new Vector2(0f, 0.5f);
+                            checkRt.pivot = new Vector2(0.5f, 0.5f);
+                            checkRt.anchoredPosition = new Vector2(14f, 0f);
+                            checkRt.sizeDelta = new Vector2(14f, 14f);
+                        }
+                    }
+
+                    var toggle = itemTr.GetComponent<Toggle>();
+                    if (toggle != null)
+                    {
+                        var colors = toggle.colors;
+                        colors.normalColor = new Color(0.08f, 0.20f, 0.28f, 0.95f);
+                        colors.highlightedColor = new Color(0.14f, 0.35f, 0.48f, 1f);
+                        colors.pressedColor = new Color(0.06f, 0.16f, 0.22f, 1f);
+                        colors.selectedColor = new Color(0.10f, 0.26f, 0.38f, 1f);
+                        toggle.colors = colors;
+                    }
+                }
+
+                // Style Viewport - use RectMask2D instead of Mask for clean clip without solid white graphics
+                var vpTr = dd.template.Find("Viewport");
+                if (vpTr != null)
+                {
+                    var oldMask = vpTr.GetComponent<Mask>();
+                    if (oldMask != null) UnityEngine.Object.DestroyImmediate(oldMask);
+
+                    var vpImg = vpTr.GetComponent<Image>();
+                    if (vpImg != null) UnityEngine.Object.DestroyImmediate(vpImg);
+
+                    if (vpTr.GetComponent<RectMask2D>() == null)
+                    {
+                        vpTr.gameObject.AddComponent<RectMask2D>();
+                    }
+                }
+
+                // Style Scrollbar
+                var scrollbarTr = dd.template.Find("Scrollbar");
+                if (scrollbarTr != null)
+                {
+                    var sbRt = scrollbarTr.GetComponent<RectTransform>();
+                    if (sbRt != null) sbRt.sizeDelta = new Vector2(6f, 0f);
+                    var sbImg = scrollbarTr.GetComponent<Image>();
+                    if (sbImg != null) sbImg.color = new Color(0.04f, 0.10f, 0.16f, 0.85f);
+
+                    var handle = scrollbarTr.Find("Sliding Area/Handle")?.GetComponent<Image>();
+                    if (handle != null)
+                    {
+                        handle.color = new Color32(0x00, 0xE5, 0xFF, 0x88);
+                    }
+                }
+
+                dd.template.gameObject.SetActive(false);
+            }
 
             return dropdownObj;
         }

@@ -148,10 +148,10 @@ namespace SteamRush.Features.UI.PreGameConfig
         public float heavyTruckEnergyPenaltyPercent = 60f;
 
         // === C. LIVE DEMO SIMULATION (LiveSessionDemoRunner) ===
-        public bool enableLiveDemoSimulation = true;
-        public bool enableSimulatedChats = true;
-        public bool enableSimulatedGifts = true;
-        public bool enableSimulatedLikes = true;
+        public bool enableLiveDemoSimulation = false;
+        public bool enableSimulatedChats = false;
+        public bool enableSimulatedGifts = false;
+        public bool enableSimulatedLikes = false;
         public bool enableSimulatedFollowers = false;
         public bool enableSimulatedStreamDelay = false;
 
@@ -203,10 +203,10 @@ namespace SteamRush.Features.UI.PreGameConfig
                 sedanEnergyPenaltyPercent = 20f,
                 pickupEnergyPenaltyPercent = 40f,
                 heavyTruckEnergyPenaltyPercent = 60f,
-                enableLiveDemoSimulation = true,
-                enableSimulatedChats = true,
-                enableSimulatedGifts = true,
-                enableSimulatedLikes = true,
+                enableLiveDemoSimulation = false,
+                enableSimulatedChats = false,
+                enableSimulatedGifts = false,
+                enableSimulatedLikes = false,
                 enableSimulatedFollowers = false,
                 enableSimulatedStreamDelay = false,
                 gifts = new List<PreGameGiftItemConfig>

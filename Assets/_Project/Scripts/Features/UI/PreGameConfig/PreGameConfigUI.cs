@@ -547,6 +547,8 @@ namespace SteamRush.Features.UI.PreGameConfig
                     dd.interactable = enabled;
                     var ddImg = dd.GetComponent<Image>();
                     if (ddImg != null) ddImg.color = new Color(0.08f, 0.20f, 0.28f, 0.95f * alpha);
+                    var arrowImg = dd.transform.Find("Arrow")?.GetComponent<Image>();
+                    if (arrowImg != null) arrowImg.color = new Color(0.75f, 0.89f, 0.91f, alpha);
                 }
             }
 
@@ -607,6 +609,50 @@ namespace SteamRush.Features.UI.PreGameConfig
             var dropdown = rowObj.transform.Find("GiftDropdown")?.GetComponent<TMP_Dropdown>();
             if (dropdown != null)
             {
+                if (dropdown.template == null && _giftRowTemplate != null)
+                {
+                    var origDd = _giftRowTemplate.transform.Find("GiftDropdown")?.GetComponent<TMP_Dropdown>();
+                    if (origDd != null && origDd.template != null)
+                    {
+                        var clonedTemplate = Instantiate(origDd.template, dropdown.transform);
+                        clonedTemplate.name = "Template";
+                        dropdown.template = clonedTemplate;
+                        dropdown.itemText = clonedTemplate.GetComponentInChildren<TextMeshProUGUI>();
+                        clonedTemplate.gameObject.SetActive(false);
+                    }
+                }
+
+                // Ensure dropdown Arrow has the correct sprite and styling
+                var arrowTr = dropdown.transform.Find("Arrow");
+                if (arrowTr != null)
+                {
+                    var arrowImg = arrowTr.GetComponent<Image>();
+                    if (arrowImg != null)
+                    {
+                        Sprite arrowSp = PreGameUIBuilder.GetDropdownArrowSprite();
+                        if (arrowSp != null)
+                        {
+                            arrowImg.sprite = arrowSp;
+                            arrowImg.type = Image.Type.Simple;
+                            arrowImg.preserveAspect = true;
+                        }
+                        arrowImg.color = new Color32(0xBF, 0xE3, 0xE8, 0xFF);
+                    }
+                    var arrowRt = arrowTr.GetComponent<RectTransform>();
+                    if (arrowRt != null)
+                    {
+                        arrowRt.anchorMin = new Vector2(1f, 0.5f);
+                        arrowRt.anchorMax = new Vector2(1f, 0.5f);
+                        arrowRt.pivot = new Vector2(0.5f, 0.5f);
+                        arrowRt.anchoredPosition = new Vector2(-12f, 0f);
+                        arrowRt.sizeDelta = new Vector2(10f, 10f);
+                    }
+                }
+
+                // Ensure Start() has executed so m_AlphaTweenRunner is initialized
+                var startMethod = typeof(TMP_Dropdown).GetMethod("Start", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                startMethod?.Invoke(dropdown, null);
+
                 dropdown.ClearOptions();
                 var options = new List<TMP_Dropdown.OptionData>();
                 int selectedIndex = 0;

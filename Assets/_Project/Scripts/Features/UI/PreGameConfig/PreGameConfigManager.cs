@@ -101,7 +101,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         {
             if (_badgeDemoRun == null) return;
 
-            bool isDemo = _isTestModeActive || (SteamRush.Features.Runner.LiveSessionDemoRunner.Instance != null && SteamRush.Features.Runner.LiveSessionDemoRunner.Instance.IsRunning);
+            bool isDemo = _isTestModeActive && (CurrentConfig != null && CurrentConfig.enableLiveDemoSimulation);
             if (IsOpen) isDemo = false;
 
             if (_badgeDemoRun.activeSelf != isDemo)
