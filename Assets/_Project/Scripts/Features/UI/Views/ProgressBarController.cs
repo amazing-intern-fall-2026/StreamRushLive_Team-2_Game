@@ -36,7 +36,7 @@ namespace SteamRush.Features.UI.Views
 
             if (labelKm != null)
             {
-                if (targetMeters >= 900000f)
+                if (targetMeters >= 900000000f)
                 {
                     if (clampedMeters < 1000f)
                         labelKm.text = $"{clampedMeters:F0}m / ∞";
@@ -46,14 +46,15 @@ namespace SteamRush.Features.UI.Views
                 else if (targetMeters >= 1000f)
                 {
                     float targetKm = targetMeters / 1000f;
+                    string targetKmStr = targetKm.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
                     if (clampedMeters < 1000f)
                     {
-                        labelKm.text = $"{clampedMeters:F0}m/{targetKm:F0}km";
+                        labelKm.text = $"{clampedMeters:F0}m/{targetKmStr}km";
                     }
                     else
                     {
                         float currentKm = clampedMeters / 1000f;
-                        labelKm.text = $"{currentKm:F2}km/{targetKm:F0}km";
+                        labelKm.text = $"{currentKm:F2}km/{targetKmStr}km";
                     }
                 }
                 else

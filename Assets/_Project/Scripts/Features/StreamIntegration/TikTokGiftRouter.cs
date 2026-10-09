@@ -36,7 +36,7 @@ namespace SteamRush.Features.StreamIntegration
         [InspectorName("Red: +Energy")]
         Red_EnergyBottle,
 
-        [InspectorName("Special: Meme Dance")]
+        [InspectorName("Special: Dance")]
         Special_GiftDance,
 
         [InspectorName("Special: Rain Hazard")]
@@ -69,7 +69,7 @@ namespace SteamRush.Features.StreamIntegration
 
         [Tooltip("Description displayed directly on the in-game gift card UI.")]
         [UnityEngine.Serialization.FormerlySerializedAs("englishDescription")]
-        public string description = "+300 Blue Energy";
+        public string description = "Blue Energy";
 
         [Tooltip("Gameplay action triggered when viewers send this gift.")]
         public GiftActionType action = GiftActionType.Blue_EnergyBottle;
@@ -108,6 +108,15 @@ namespace SteamRush.Features.StreamIntegration
         private void Awake()
         {
             EnsureReferences();
+        }
+
+        private void Start()
+        {
+            EnsureReferences();
+            if (_showByElementOrder && _giftPanelController != null)
+            {
+                _giftPanelController.SortOption = GiftSortOption.ByElementOrder;
+            }
         }
 
         private void OnEnable()
@@ -248,49 +257,49 @@ namespace SteamRush.Features.StreamIntegration
 
             if (matched == null) return false;
 
-            ExecuteActionByEnum(matched.action, displayName, faction);
+            ExecuteActionByEnum(matched.action, displayName, faction, matched.customValue);
             return true;
         }
 
         /// <summary>
         /// Executes gift action by GiftActionType. Centrally managed by GiftManager.
         /// </summary>
-        public void ExecuteActionByEnum(GiftActionType action, string displayName, FactionType faction)
+        public void ExecuteActionByEnum(GiftActionType action, string displayName, FactionType faction, float customValue = -1f)
         {
             EnsureReferences();
             switch (action)
             {
                 case GiftActionType.Blue_Shield:
-                    _giftManager?.ActivateShield(displayName);
+                    _giftManager?.ActivateShield(displayName, customValue);
                     break;
                 case GiftActionType.Blue_SpeedBoost:
-                    _giftManager?.ActivateSprintBuff(displayName);
+                    _giftManager?.ActivateSprintBuff(displayName, customValue);
                     break;
                 case GiftActionType.Blue_FreeControl:
-                    _giftManager?.ActivateFreeControl(displayName);
+                    _giftManager?.ActivateFreeControl(displayName, customValue);
                     break;
                 case GiftActionType.Blue_EnergyBottle:
-                    _giftManager?.AddBlueEnergy(displayName);
+                    _giftManager?.AddBlueEnergy(displayName, customValue > 0f ? Mathf.RoundToInt(customValue) : -1);
                     break;
                 case GiftActionType.Red_SpawnPickup:
                     // Activates Pickup Truck Phase
-                    _giftManager?.ActivatePickupTruckPhase(displayName);
+                    _giftManager?.ActivatePickupTruckPhase(displayName, customValue);
                     break;
                 case GiftActionType.Red_SpawnHeavyTruck:
                     // Activates Heavy Truck Phase
-                    _giftManager?.ActivateHeavyTruckPhase(displayName);
+                    _giftManager?.ActivateHeavyTruckPhase(displayName, customValue);
                     break;
                 case GiftActionType.Red_UnlimitedCars:
-                    _giftManager?.ActivateUnlimitedCars(displayName);
+                    _giftManager?.ActivateUnlimitedCars(displayName, customValue);
                     break;
                 case GiftActionType.Red_EnergyBottle:
-                    _giftManager?.AddRedEnergy(displayName);
+                    _giftManager?.AddRedEnergy(displayName, customValue > 0f ? Mathf.RoundToInt(customValue) : -1);
                     break;
                 case GiftActionType.Special_GiftDance:
-                    _giftManager?.TriggerGiftDance(displayName);
+                    _giftManager?.TriggerGiftDance(displayName, customValue);
                     break;
                 case GiftActionType.Special_RainHazard:
-                    _giftManager?.ActivateRainHazard(displayName);
+                    _giftManager?.ActivateRainHazard(displayName, customValue > 0f ? customValue : 60f);
                     break;
                 case GiftActionType.Follow_Runner:
                 case GiftActionType.Special_VIPRelayTicket:
@@ -298,7 +307,7 @@ namespace SteamRush.Features.StreamIntegration
                     ShowPopup($"Runner: [{displayName}]", true);
                     break;
                 case GiftActionType.Like_Energy:
-                    int energy = 10;
+                    int energy = customValue > 0f ? Mathf.RoundToInt(customValue) : 20;
                     if (faction == FactionType.Fan)
                         _factionManager?.AddLikes(FactionType.Fan, energy);
                     else
@@ -310,7 +319,7 @@ namespace SteamRush.Features.StreamIntegration
 
             if (_logEvents)
             {
-                Debug.Log($"[TikTokGiftRouter] Executed [{action}] from {displayName}!");
+                Debug.Log($"[TikTokGiftRouter] Executed [{action}] (Value: {customValue}) from {displayName}!");
             }
         }
 
@@ -440,6 +449,7 @@ namespace SteamRush.Features.StreamIntegration
             }
             _giftPanelController.BuildGiftDisplay();
         }
+#endif
 
         [ContextMenu("Show Gifts By Element Order (Left -> Right, Top -> Bottom)")]
         public void ShowGiftsByElementOrder()
@@ -455,8 +465,10 @@ namespace SteamRush.Features.StreamIntegration
                 _giftPanelController.SortOption = GiftSortOption.ByElementOrder;
                 _giftPanelController.BuildGiftDisplay();
             }
+#if UNITY_EDITOR
             UnityEditor.EditorUtility.SetDirty(this);
             if (_giftPanelController != null) UnityEditor.EditorUtility.SetDirty(_giftPanelController);
+#endif
             Debug.Log("<color=#00FF88>[TikTokGiftRouter] UI display order synchronized with Gift Mappings element order.</color>");
         }
 
@@ -473,6 +485,5 @@ namespace SteamRush.Features.StreamIntegration
                 _giftPanelController.SyncSortedOrderToClient();
             }
         }
-#endif
     }
 }

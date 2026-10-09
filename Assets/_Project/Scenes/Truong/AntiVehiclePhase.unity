@@ -3521,6 +3521,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.LiveSessionDemoRunner
   autoStart: 1
   isRunning: 0
+  enableMockFollowers: 0
+  syncQueueManagerMock: 1
   chatIntervalMin: 0.2
   chatIntervalMax: 0.8
   giftIntervalMin: 4
@@ -3541,6 +3543,9 @@ MonoBehaviour:
   maxLikesPerBatch: 12
   fanLikeRatio: 0.52
   totalRoomLikes: 15400
+  enableStreamDelay: 1
+  streamDelayMin: 1.5
+  streamDelayMax: 3
 --- !u!4 &250882780
 Transform:
   m_ObjectHideFlags: 0
@@ -4554,6 +4559,8 @@ MonoBehaviour:
   canvasGroup: {fileID: 0}
   anchoredPosition: {x: -52, y: -120}
   circleSize: {x: 116, y: 116}
+  pickupRingColor: {r: 1, g: 0.55, b: 0.1, a: 1}
+  heavyRingColor: {r: 1, g: 0.18, b: 0.15, a: 1}
   activeRingColor: {r: 1, g: 0.2, b: 0.1, a: 1}
   bgColor: {r: 0.08, g: 0.04, b: 0.06, a: 0.92}
   innerColor: {r: 0.1, g: 0.03, b: 0.05, a: 0.98}
@@ -12344,6 +12351,7 @@ MonoBehaviour:
   _worldSpeedManager: {fileID: 1580461031}
   _legDistanceMeters: 100
   _initialRunnerId: Streamer_Alex
+  _enableMockFollowers: 0
   _initialFollowers:
   - Viewer_Bao
   - Viewer_Chi
@@ -12351,13 +12359,13 @@ MonoBehaviour:
   - Mod_Giang
   - Gamer_Huy
   _autoReplenishMockQueue: 1
+  _pauseWhenQueueEmpty: 0
   _hudManager: {fileID: 845593090}
   _runnerTransform: {fileID: 913794228}
   _defaultAvatar: {fileID: 21300000, guid: 33f6747086f03b2499072836eddfe397, type: 3}
   _enableRoadsideHandover: 1
   _spawnAheadMeters: 30
   _roadsideProxyPrefab: {fileID: 100001, guid: 8192a0e9d6c547a192d6e4b85c123456, type: 3}
-  _arrivalThresholdX: 0.6
   _leftSidewalkZ: -5.8
   _rightSidewalkZ: 5.8
   _sidewalkY: 0.2
@@ -12390,9 +12398,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.StreamIntegration.FactionTugOfWarManager
   _antiCarThreshold: 1000
-  _antiCarCost: 100
-  _antiCarLaneCost: 100
-  _fanItemLaneCost: 50
   _defaultFaction: 0
   _factionValuesChanged:
     m_PersistentCalls:
@@ -12472,6 +12477,9 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   _relayCompleted:
+    m_PersistentCalls:
+      m_Calls: []
+  _goalReached:
     m_PersistentCalls:
       m_Calls: []
   _hudManager: {fileID: 845593090}
@@ -14056,9 +14064,6 @@ MonoBehaviour:
   queueManager: {fileID: 845593087}
   hudManager: {fileID: 845593090}
   obstacleSpawner: {fileID: 819347502}
-  shieldDuration: 20
-  shieldGiftIcon: {fileID: 21300000, guid: 001faf8fd3372574b88f41c7d2dd86aa, type: 3}
-  energyGiftIcon: {fileID: 21300000, guid: 428240ec2d8930c449439e44c078f9e0, type: 3}
   debugPanelContainer: {fileID: 0}
   toggleDebugButton: {fileID: 0}
   toggleButtonText: {fileID: 0}
@@ -14098,9 +14103,10 @@ MonoBehaviour:
   _maxCommandsPerBatch: 3
   _nonLaneCommandDelay: 0.1
   _fastTargetSpeed: 18
-  _fastEnergyDrainPerSecond: 25
   _factionManager: {fileID: 845593088}
-  _sprintBuffDuration: 30
+  _energySystem: {fileID: 0}
+  _laneChangeEnergyCost: 10
+  _jumpEnergyCost: 20
   _knockbackDistance: 1.8
   _knockbackDuration: 0.45
   _lockControlOnKnockback: 1
@@ -14119,8 +14125,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.Runner.GiftDanceController
   _danceLayerName: Dance
   _danceStateName: Dance
-  _danceDuration: 60
   _blendTime: 0.25
+  _victoryDanceStateName: VictoryDance
 --- !u!1 &922362394
 GameObject:
   m_ObjectHideFlags: 0
@@ -23401,6 +23407,7 @@ GameObject:
   - component: {fileID: 1574763930}
   - component: {fileID: 1574763929}
   - component: {fileID: 1574763932}
+  - component: {fileID: 1574763933}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -23526,6 +23533,20 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!114 &1574763933
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1574763928}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e033e9aa4118ee348bd030603e186475, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StreamRushLive.Features.VFX.SpeedLinesController
+  _rendererData: {fileID: 11400000, guid: f288ae1f4751b564a96ac7587541f7a2, type: 2}
+  _speedLinesMaterial: {fileID: 2100000, guid: 6cce47a06c84a9445a54924b857c4069, type: 2}
 --- !u!1 &1580461030
 GameObject:
   m_ObjectHideFlags: 0
@@ -23570,6 +23591,7 @@ MonoBehaviour:
   _recoveryDecelDuration: 0.4
   _defaultRecoveryTotalDuration: 1.2
   _commandOverrideAccelRate: 24
+  _victoryDecelDuration: 1.5
 --- !u!4 &1580461032
 Transform:
   m_ObjectHideFlags: 0
@@ -23706,9 +23728,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bf36b73281923d948976425fb1988bd9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AudioManager
-  sfxSource: {fileID: 1608972808}
+  masterVolume: 1
+  bgmVolume: 0.55
+  sfxVolume: 0.85
   bgmSource: {fileID: 1608972809}
-  bgmClips: []
+  loopSfxSource: {fileID: 0}
+  danceMusicSource: {fileID: 0}
+  uiSource: {fileID: 0}
+  sfxPoolSize: 10
+  bgmPlaylist: []
+  sfxEntries: []
+  preventDuplicateSFX: 1
+  minSFXRepeatInterval: 0.12
 --- !u!4 &1608972807
 Transform:
   m_ObjectHideFlags: 0

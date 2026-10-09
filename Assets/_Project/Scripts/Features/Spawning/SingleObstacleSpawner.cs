@@ -36,10 +36,6 @@ namespace StreamRushLive.Features.Spawning
             set => carDrivingSpeed = Mathf.Max(0f, value);
         }
 
-        [HideInInspector] [SerializeField] private GameObject shieldItemPrefab;
-        [HideInInspector] [SerializeField] private GameObject energyBuffItemPrefab;
-        [HideInInspector] [SerializeField] private GameObject laserIndicatorPrefab;
-
         [Tooltip("Player transform reference for spawn calculation.")]
         [SerializeField] private Transform playerReference;
 
@@ -295,23 +291,24 @@ namespace StreamRushLive.Features.Spawning
         /// <summary>
         /// Activates Unlimited Cars mode, bypassing maxConcurrentObstacles limit.
         /// </summary>
-        public void ActivateUnlimitedMode()
+        public void ActivateUnlimitedMode(float customDuration = -1f)
         {
+            float dur = customDuration > 0f ? customDuration : unlimitedModeDuration;
             if (_unlimitedModeCoroutine != null)
             {
                 StopCoroutine(_unlimitedModeCoroutine);
             }
-            _unlimitedModeCoroutine = StartCoroutine(UnlimitedModeRoutine());
+            _unlimitedModeCoroutine = StartCoroutine(UnlimitedModeRoutine(dur));
         }
 
-        private IEnumerator UnlimitedModeRoutine()
+        private IEnumerator UnlimitedModeRoutine(float duration)
         {
             _isUnlimitedModeActive = true;
-            Debug.Log($"[SingleObstacleSpawner] Unlimited Mode activated for {unlimitedModeDuration}s.");
-            AntiUnlimitedTimerCircle.Instance?.ActivateTimer(unlimitedModeDuration);
+            Debug.Log($"[SingleObstacleSpawner] Unlimited Mode activated for {duration}s.");
+            AntiUnlimitedTimerCircle.Instance?.ActivateTimer(duration);
             AudioManager.Instance?.PlaySFX(SFXType.WarningSiren);
 
-            yield return new WaitForSeconds(unlimitedModeDuration);
+            yield return new WaitForSeconds(duration);
 
             _isUnlimitedModeActive = false;
             _unlimitedModeCoroutine = null;
@@ -326,23 +323,23 @@ namespace StreamRushLive.Features.Spawning
         /// <summary>
         /// Activates Pickup Truck Phase. Future spawned vehicles during this phase spawn as Pickup.
         /// </summary>
-        public void ActivatePickupTruckPhase()
+        public void ActivatePickupTruckPhase(float customDuration = -1f)
         {
-            ActivateVehiclePhase(VehicleTier.PickupTruck);
+            ActivateVehiclePhase(VehicleTier.PickupTruck, customDuration);
         }
 
         /// <summary>
         /// Activates Heavy Truck Phase. Future spawned vehicles during this phase spawn as Heavy Truck.
         /// </summary>
-        public void ActivateHeavyTruckPhase()
+        public void ActivateHeavyTruckPhase(float customDuration = -1f)
         {
-            ActivateVehiclePhase(VehicleTier.HeavyTruck);
+            ActivateVehiclePhase(VehicleTier.HeavyTruck, customDuration);
         }
 
         /// <summary>
         /// Activates or transitions vehicle phase. Resets phase duration timer.
         /// </summary>
-        private void ActivateVehiclePhase(VehicleTier phase)
+        private void ActivateVehiclePhase(VehicleTier phase, float customDuration = -1f)
         {
             if (_vehiclePhaseCoroutine != null)
             {
@@ -351,7 +348,8 @@ namespace StreamRushLive.Features.Spawning
             }
 
             _activeVehiclePhase = phase;
-            _vehiclePhaseRemainingTime = Mathf.Max(0f, VehiclePhaseDuration);
+            float dur = customDuration > 0f ? customDuration : VehiclePhaseDuration;
+            _vehiclePhaseRemainingTime = Mathf.Max(0f, dur);
 
             _vehiclePhaseCoroutine = StartCoroutine(VehiclePhaseRoutine(phase));
 

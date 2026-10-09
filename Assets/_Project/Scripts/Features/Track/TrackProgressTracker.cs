@@ -20,8 +20,30 @@ namespace SteamRush.Track
 
         public void SetGoalDistanceMeters(float meters)
         {
-            _goalDistanceKm = Mathf.Max(1f, meters) / 1000f;
+            if (meters >= 900000000f)
+            {
+                _goalDistanceKm = meters / 1000f;
+            }
+            else
+            {
+                if (TotalDistanceMeters > 0f && TotalDistanceMeters >= meters)
+                {
+                    _goalDistanceKm = (TotalDistanceMeters + meters) / 1000f;
+                }
+                else
+                {
+                    _goalDistanceKm = Mathf.Max(1f, meters) / 1000f;
+                }
+            }
+
             _goalReachedFired = false;
+
+            var archway = FindFirstObjectByType<FinishLineArchway>();
+            if (archway != null)
+            {
+                archway.ResetArchway();
+            }
+
             if (_hudManager != null)
             {
                 _hudManager.UpdateLegProgress(TotalDistanceMeters, GoalDistanceMeters);

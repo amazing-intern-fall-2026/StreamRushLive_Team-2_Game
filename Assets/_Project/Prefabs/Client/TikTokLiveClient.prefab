@@ -1,0 +1,243 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &5622087704065922437
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1763711092983111815}
+  - component: {fileID: 2025942474267505929}
+  - component: {fileID: 2131961269100743895}
+  - component: {fileID: 8644300865785197916}
+  - component: {fileID: 2917179576966616114}
+  - component: {fileID: 5612809008279926907}
+  - component: {fileID: 7860309012029492210}
+  m_Layer: 0
+  m_Name: TikTokLiveClient
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1763711092983111815
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5622087704065922437}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 2041.719, y: -0.00002, z: 974.7802}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2025942474267505929
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5622087704065922437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e352aa37985029a4da82b118b0342afe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.StreamIntegration.TikTokLiveClient
+  _serverUrl: http://localhost:3001
+  _tiktokUniqueId: chickmangames
+  _connectOnStart: 0
+  _webSocketOnly: 1
+  _setUniqueIdEvent: setUniqueID
+  _chatEvent: chat
+  _followEvent: follow
+  _likeEvent: like
+  _giftEvent: gift
+  _userIdPath: data.user.userId
+  _nicknamePath: data.user.nickname
+  _uniqueIdPath: data.user.uniqueId
+  _commentPath: comment
+  _totalLikePath: totalLike
+  _giftNamePath: giftName
+  _giftIdPath: giftId
+  _diamondCountPath: diamondCount
+  _coinCountPath: coinCount
+  _repeatCountPath: repeatCount
+  _logEvents: 1
+  _ignorePastEventsOnConnect: 1
+  _chatAdapter: {fileID: 2131961269100743895}
+  _likeAdapter: {fileID: 8644300865785197916}
+  _followAdapter: {fileID: 2917179576966616114}
+  _giftRouter: {fileID: 5612809008279926907}
+  _profileSync: {fileID: 7860309012029492210}
+--- !u!114 &2131961269100743895
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5622087704065922437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab8c4d2bcfcf2684e8757cd723499e5b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.StreamIntegration.TikTokChatAdapter
+  _factionManager: {fileID: 0}
+  _hudManager: {fileID: 0}
+  _runnerController: {fileID: 0}
+  _requireFollowToPlay: 0
+  _showPopups: 1
+  _logEvents: 1
+--- !u!114 &8644300865785197916
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5622087704065922437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 35b5ae349379aae41ad7ce6964a9b78d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.StreamIntegration.TikTokLikeAdapter
+  _likesPerEnergyStep: 20
+  _energyPerStep: 20
+  _factionManager: {fileID: 0}
+  _likeSFXCooldown: 1.2
+  _logEvents: 1
+--- !u!114 &2917179576966616114
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5622087704065922437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c867f8a20fc1d14a815eccd40c0c384, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.StreamIntegration.TikTokFollowAdapter
+  _queueManager: {fileID: 0}
+  _hudManager: {fileID: 0}
+  _showPopups: 1
+  _logEvents: 1
+  _followerJoined:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &5612809008279926907
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5622087704065922437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 246910d66ff464e4c858e28c9b8fc5e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.StreamIntegration.TikTokGiftRouter
+  _giftMappings:
+  - giftId: 5487
+    giftName: Heart
+    giftIcon: {fileID: 21300000, guid: 068d1eb2cde936d4eac4fa83bb226a6a, type: 3}
+    description: 'x20: 20 Team Energy'
+    action: 12
+    customValue: 0
+  - giftId: 5655
+    giftName: Rose
+    giftIcon: {fileID: 21300000, guid: 7cd20eb8f10cce442a533ab7a770b8f4, type: 3}
+    description: Protection Shield
+    action: 0
+    customValue: 0
+  - giftId: 5269
+    giftName: TikTok
+    giftIcon: {fileID: 21300000, guid: b63f68f132fbcc047a07badb5837d70b, type: 3}
+    description: Turbo Speed
+    action: 1
+    customValue: 0
+  - giftId: 5879
+    giftName: Cap
+    giftIcon: {fileID: 21300000, guid: baebce296c02f6b49a557ef20956d4dc, type: 3}
+    description: Freedom Charm
+    action: 2
+    customValue: 0
+  - giftId: 5338
+    giftName: Donut
+    giftIcon: {fileID: 21300000, guid: d6f3adfb40d2c6f439fade767985a23a, type: 3}
+    description: Blue Energy
+    action: 3
+    customValue: 0
+  - giftId: 5585
+    giftName: Dumbbell
+    giftIcon: {fileID: 21300000, guid: 92a880866c3b22a49a43e41b2973cd0e, type: 3}
+    description: Animal
+    action: 4
+    customValue: 0
+  - giftId: 6001
+    giftName: Lion
+    giftIcon: {fileID: 21300000, guid: 958fd5fe7a6d9a849ad8ba760c1b3c68, type: 3}
+    description: Train
+    action: 5
+    customValue: 0
+  - giftId: 5661
+    giftName: Sunglasses
+    giftIcon: {fileID: 21300000, guid: 0a0439e7df8c1d74cb3a19a3c07c13a2, type: 3}
+    description: Car Storm
+    action: 6
+    customValue: 0
+  - giftId: 5586
+    giftName: Chili
+    giftIcon: {fileID: 21300000, guid: e536b17f3211ccb4baff1c9453bd47fd, type: 3}
+    description: Red Energy
+    action: 7
+    customValue: 0
+  - giftId: 6037
+    giftName: Meme Dance
+    giftIcon: {fileID: 21300000, guid: e376e5cce82cdb4429d085e066d5c855, type: 3}
+    description: Dance
+    action: 8
+    customValue: 0
+  - giftId: 5978
+    giftName: Rain
+    giftIcon: {fileID: 21300000, guid: 7095f2587525e6644b716a40fd8468c8, type: 3}
+    description: Rain Storm
+    action: 9
+    customValue: 0
+  - giftId: 0
+    giftName: Follow
+    giftIcon: {fileID: 21300000, guid: 9f0a017c352f0d746a254c677fc5c211, type: 3}
+    description: Next Runner
+    action: 13
+    customValue: 0
+  _showByElementOrder: 1
+  _giftManager: {fileID: 0}
+  _queueManager: {fileID: 0}
+  _factionManager: {fileID: 0}
+  _giftPanelController: {fileID: 0}
+  _hudManager: {fileID: 0}
+  _showPopups: 1
+  _logEvents: 1
+--- !u!114 &7860309012029492210
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5622087704065922437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98f037ed775adb44685eed104b532de9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.StreamIntegration.TikTokProfileSync
+  _client: {fileID: 2025942474267505929}
+  _syncHostAsInitialRunner: 1
+  _hostDisplayName: 
+  _hostAvatarSprite: {fileID: 0}
+  _queueManager: {fileID: 0}
+  _hudManager: {fileID: 0}
+  _logEvents: 1

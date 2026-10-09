@@ -238,7 +238,6 @@ namespace SteamRush.Features.Runner
         }
 
         [Header("Knockback Settings (GDD v1.2)")]
-        [SerializeField] private float _knockbackDistance = 1.8f;
         [SerializeField] private float _knockbackDuration = 0.45f;
         private float _knockbackTimer = 999f;
 
@@ -251,7 +250,6 @@ namespace SteamRush.Features.Runner
         {
             _knockbackTimer = 0f;
             if (duration > 0f) _knockbackDuration = duration;
-            if (distance > 0f) _knockbackDistance = distance;
         }
 
         /// <summary>

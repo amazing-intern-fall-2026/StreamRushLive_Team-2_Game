@@ -16,7 +16,7 @@ namespace StreamRushLive.Features.Gifts
     public class AntiCarGiftConfig
     {
         [Tooltip("Display name of vehicle tier")]
-        public string vehicleName = "Xe";
+        public string vehicleName = "Vehicle";
 
         [Tooltip("Anti team energy cost to deploy this vehicle (default: 100).")]
         public int energyCost = 100;
@@ -133,6 +133,8 @@ namespace StreamRushLive.Features.Gifts
         [Header("Interactive Gifts")]
         [Tooltip("Celebration dance duration when viewer donates Gift Dance (seconds).")]
         [SerializeField] private float _giftDanceDuration = 5f;
+        [Tooltip("Icon displayed on top banner notification when Meme Dance gift is sent.")]
+        [SerializeField] private Sprite _giftDanceIcon;
 
         [Header("References")]
         [SerializeField] private ChatLaneRunnerController _runnerController;
@@ -229,7 +231,7 @@ namespace StreamRushLive.Features.Gifts
             if (_obstacleSpawner == null)
                 _obstacleSpawner = FindFirstObjectByType<SingleObstacleSpawner>();
 
-            if (_giftDanceController == null)
+            if (_giftDanceController == null || !_giftDanceController.gameObject.activeInHierarchy)
             {
                 if (_runnerController != null)
                 {
@@ -240,11 +242,34 @@ namespace StreamRushLive.Features.Gifts
                     _giftDanceController = FindFirstObjectByType<GiftDanceController>();
             }
 
+            if (_giftDanceController != null)
+            {
+                _giftDanceController.EnsureInitialized();
+            }
+
+            if (_giftDanceIcon == null)
+            {
+                _giftDanceIcon = GetGiftDanceIcon();
+            }
+
             if (_weatherManager == null)
                 _weatherManager = FindFirstObjectByType<WeatherHazardManager>();
 
             if (_hudManager == null)
                 _hudManager = FindFirstObjectByType<HUDManager>();
+        }
+
+        private Sprite GetGiftDanceIcon()
+        {
+            if (_giftDanceIcon != null) return _giftDanceIcon;
+#if UNITY_EDITOR
+            _giftDanceIcon = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/Textures/TikTokGifts/dance.png");
+            if (_giftDanceIcon == null)
+            {
+                _giftDanceIcon = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/Textures/TikTokGifts/6037.png");
+            }
+#endif
+            return _giftDanceIcon;
         }
 
         private void SyncSettingsToSubsystems()
@@ -380,7 +405,7 @@ namespace StreamRushLive.Features.Gifts
             {
                 if (!_obstacleSpawner.IsUnlimitedModeActive)
                 {
-                    _obstacleSpawner.ActivateUnlimitedMode();
+                    _obstacleSpawner.ActivateUnlimitedMode(duration);
                     _hudManager?.ShowAntiAction(sender, $"Unlimited Cars ({duration:F0}s)");
                     _hudManager?.ShowStatusPopup($"[{sender}] CAR STORM!", false);
                     Debug.Log($"[GiftManager] {sender} -> Activated Unlimited Cars ({duration:F0}s).");
@@ -396,13 +421,14 @@ namespace StreamRushLive.Features.Gifts
         /// <summary>
         /// Activates Pickup Truck Phase.
         /// </summary>
-        public bool ActivatePickupTruckPhase(string sender = "Red Team")
+        public bool ActivatePickupTruckPhase(string sender = "Red Team", float customDuration = -1f)
         {
             ResolveReferences();
+            float duration = customDuration > 0f ? customDuration : _vehiclePhaseDuration;
             if (_obstacleSpawner != null)
             {
-                _obstacleSpawner.ActivatePickupTruckPhase();
-                _hudManager?.ShowAntiAction(sender, $"Animals Phase ({_vehiclePhaseDuration:F0}s)");
+                _obstacleSpawner.ActivatePickupTruckPhase(duration);
+                _hudManager?.ShowAntiAction(sender, $"Animals Phase ({duration:F0}s)");
                 _hudManager?.ShowStatusPopup($"[{sender}] Animals Phase!", false);
                 AudioManager.Instance?.PlaySFX(SFXType.PickupHorn, 0.9f);
                 return true;
@@ -414,13 +440,14 @@ namespace StreamRushLive.Features.Gifts
         /// <summary>
         /// Activates Train Phase.
         /// </summary>
-        public bool ActivateHeavyTruckPhase(string sender = "Red Team")
+        public bool ActivateHeavyTruckPhase(string sender = "Red Team", float customDuration = -1f)
         {
             ResolveReferences();
+            float duration = customDuration > 0f ? customDuration : _vehiclePhaseDuration;
             if (_obstacleSpawner != null)
             {
-                _obstacleSpawner.ActivateHeavyTruckPhase();
-                _hudManager?.ShowAntiAction(sender, $"Train Phase ({_vehiclePhaseDuration:F0}s)");
+                _obstacleSpawner.ActivateHeavyTruckPhase(duration);
+                _hudManager?.ShowAntiAction(sender, $"Train Phase ({duration:F0}s)");
                 _hudManager?.ShowStatusPopup($"[{sender}] Train Phase!", false);
                 AudioManager.Instance?.PlaySFX(SFXType.HeavyTruckHorn, 1.0f);
                 return true;
@@ -484,24 +511,25 @@ namespace StreamRushLive.Features.Gifts
         }
 
         /// <summary>
-        /// Triggers celebration Gift Dance for runner.
+        /// Triggers celebration Gift Dance for runner and displays donor notification on HUD.
         /// </summary>
         public bool TriggerGiftDance(string sender = "Viewer", float customDuration = -1f)
         {
             ResolveReferences();
+            float duration = customDuration > 0f ? customDuration : _giftDanceDuration;
+            string displayName = !string.IsNullOrEmpty(sender) ? sender : "Viewer";
+
+            // Always display donor notification on HUD Top Banner & Fan Feed
+            _hudManager?.ShowFanAction(displayName, $"Dance ({duration:F0}s)");
+            _hudManager?.ShowStatusPopup($"[{displayName}] Meme Dance!", true, GetGiftDanceIcon());
+            Debug.Log($"[GiftManager] {displayName} -> Activated Gift Dance ({duration:F0}s).");
+
             if (_giftDanceController != null)
             {
-                float duration = customDuration > 0f ? customDuration : _giftDanceDuration;
-                if (_giftDanceController.TriggerDance(duration))
-                {
-                    _hudManager?.ShowFanAction(sender, $"Dance ({duration:F0}s)");
-                    _hudManager?.ShowStatusPopup($"[{sender}] Meme Dance!", true);
-                    Debug.Log($"[GiftManager] {sender} -> Activated Gift Dance ({duration:F0}s).");
-                    return true;
-                }
+                _giftDanceController.TriggerDance(duration);
             }
 
-            return false;
+            return true;
         }
 
         /// <summary>

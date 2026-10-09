@@ -73,8 +73,16 @@ namespace SteamRush.Features.UI.Views
             }
         }
 
+        private int _lastClickFrame = -1;
+        private float _lastClickTime = -1f;
+
         public void OnButtonClicked()
         {
+            if (Time.frameCount == _lastClickFrame) return;
+            if (Time.unscaledTime - _lastClickTime < 0.15f) return;
+            _lastClickFrame = Time.frameCount;
+            _lastClickTime = Time.unscaledTime;
+
             var mgr = PreGameConfigManager.Instance;
             if (mgr != null)
             {

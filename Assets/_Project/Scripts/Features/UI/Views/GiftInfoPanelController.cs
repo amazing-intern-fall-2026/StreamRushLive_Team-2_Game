@@ -53,8 +53,10 @@ namespace SteamRush.Features.UI.Views
         [Tooltip("Auto-sort mode for gift cards on UI (default: displays strictly in element order).")]
         [SerializeField] private GiftSortOption _sortOption = GiftSortOption.ByElementOrder;
 
+#if UNITY_EDITOR
         [Tooltip("Auto-arrange and re-align gift cards when modified in Inspector or Runtime.")]
         [SerializeField] private bool _autoArrangeOnChanged = true;
+#endif
 
         [Header("Card Configuration")]
         [SerializeField] private float _cardSpacing = 8f;
@@ -720,7 +722,7 @@ namespace SteamRush.Features.UI.Views
                 GiftActionType.Red_SpawnHeavyTruck => "Train",
                 GiftActionType.Red_UnlimitedCars => "Unlimited Cars",
                 GiftActionType.Red_EnergyBottle => "+500 Energy",
-                GiftActionType.Special_GiftDance => "Meme Dance",
+                GiftActionType.Special_GiftDance => "Dance",
                 GiftActionType.Special_RainHazard => "Rain Hazard",
                 GiftActionType.Follow_Runner => "Runner",
                 GiftActionType.Special_VIPRelayTicket => "Runner",
@@ -731,37 +733,8 @@ namespace SteamRush.Features.UI.Views
 
         private Sprite GetOfficialTikTokGiftIcon(int giftId, string giftName)
         {
-            string dir = "Assets/_Project/Textures/TikTokGifts";
-
-#if UNITY_EDITOR
-            if (giftId > 0)
-            {
-                string idPath = $"{dir}/{giftId}.png";
-                Sprite idSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(idPath);
-                if (idSprite != null) return idSprite;
-            }
-
-            string lower = (giftName ?? "").ToLowerInvariant();
-            if (lower.Contains("follow") || lower.Contains("runner") || lower.Contains("friend"))
-            {
-                Sprite addFriend = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Violet Theme Ui/White Icons/White AddFriend.png");
-                if (addFriend != null) return addFriend;
-                if (HudTheme.Current != null && HudTheme.Current.iconUser != null) return HudTheme.Current.iconUser;
-                return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/vip.png");
-            }
-            if (lower.Contains("like") || lower.Contains("tap") || lower.Contains("heart")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/heart.png");
-            if (lower.Contains("rose")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/rose.png");
-            if (lower.Contains("tiktok")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/tiktok.png");
-            if (lower.Contains("heart")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/heart.png");
-            if (lower.Contains("dumbbell") || lower.Contains("weight")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/dumbbell.png");
-            if (lower.Contains("donut")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/donut.png");
-            if (lower.Contains("cap") || lower.Contains("hat")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/cap.png");
-            if (lower.Contains("lion")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/lion.png");
-            if (lower.Contains("dance")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/dance.png");
-            if (lower.Contains("vip") || lower.Contains("ticket") || lower.Contains("star")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/vip.png");
-            if (lower.Contains("rain") || lower.Contains("umbrella")) return UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/rain.png");
-#endif
-            return _fallbackIcon;
+            Sprite resolved = PreGameConfig.PreGameGiftIconResolver.ResolveGiftIcon(giftId, giftName);
+            return resolved != null ? resolved : _fallbackIcon;
         }
 
         /// <summary>

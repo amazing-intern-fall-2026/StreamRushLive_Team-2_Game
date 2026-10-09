@@ -64,7 +64,10 @@ namespace SteamRush.Features.StreamIntegration
 
         private void OnChatReceived(TikTokChatEvent evt)
         {
-            EnsureReferences();
+            if (_factionManager == null || _hudManager == null || _runnerController == null)
+            {
+                EnsureReferences();
+            }
 
             if (string.IsNullOrEmpty(evt.Comment) || string.IsNullOrEmpty(evt.UserId))
             {
@@ -81,7 +84,7 @@ namespace SteamRush.Features.StreamIntegration
                 {
                     Debug.Log($"[TikTokChatAdapter] {displayName} ({evt.UserId}) is not following - ignored chat command: '{evt.Comment}'.");
                 }
-                _hudManager?.ShowStatusPopup($"[{displayName}] Follow to play!", false);
+                ShowPopup($"[{displayName}] Follow to play!", false);
                 return;
             }
 

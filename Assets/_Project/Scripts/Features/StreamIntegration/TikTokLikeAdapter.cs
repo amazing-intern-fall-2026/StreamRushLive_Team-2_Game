@@ -81,6 +81,20 @@ namespace SteamRush.Features.StreamIntegration
             int newSteps = _likesPerEnergyStep > 0 ? evt.TotalLike / _likesPerEnergyStep : 0;
             _processedLikeStepsByUser.TryGetValue(evt.UserId, out int oldSteps);
 
+            // Baseline initialization:
+            // TikTok sends cumulative likes for the entire room duration.
+            // On the first like event seen for a user in this session, establish their baseline
+            // so we DO NOT award retroactive energy for likes sent before this game session started.
+            if (!_processedLikeStepsByUser.ContainsKey(evt.UserId))
+            {
+                _processedLikeStepsByUser[evt.UserId] = newSteps;
+                if (_logEvents)
+                {
+                    Debug.Log($"[TikTokLikeAdapter] Session baseline recorded for {evt.DisplayName ?? evt.UserId}: {evt.TotalLike} total likes ({newSteps} steps).");
+                }
+                return;
+            }
+
             if (newSteps <= oldSteps)
             {
                 return;

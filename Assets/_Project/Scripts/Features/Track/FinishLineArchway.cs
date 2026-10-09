@@ -56,14 +56,37 @@ namespace SteamRush.Track
             }
         }
 
+        public void ResetArchway()
+        {
+            if (_archwayInstance != null)
+            {
+                Destroy(_archwayInstance);
+                _archwayInstance = null;
+            }
+            _spawned = false;
+            _crossed = false;
+        }
+
         private void HandleProgressChanged(float currentLegDistanceMeters, float totalDistanceMeters, float goalProgress)
         {
-            if (_spawned || progressTracker == null) return;
+            if (progressTracker == null) return;
+
+            // In infinite mode, ensure archway is never spawned and despawned if active
+            if (progressTracker.GoalDistanceMeters >= 900000000f)
+            {
+                if (_archwayInstance != null)
+                {
+                    ResetArchway();
+                }
+                return;
+            }
+
+            if (_spawned) return;
 
             float remaining = progressTracker.GoalDistanceMeters - totalDistanceMeters;
-            if (remaining <= earlyAppearDistanceMeters)
+            if (remaining <= earlyAppearDistanceMeters && remaining > 0f)
             {
-                SpawnArchway(Mathf.Max(remaining, 0f));
+                SpawnArchway(remaining);
             }
         }
 

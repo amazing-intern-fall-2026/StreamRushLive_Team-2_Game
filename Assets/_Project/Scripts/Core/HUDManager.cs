@@ -11,7 +11,6 @@ namespace SteamRush.Features.UI
         [SerializeField] private EnergyBarController energyBar;
         [SerializeField] private RunnerNameplateController runnerNameplate;
         [SerializeField] private StatusPopupSpawner statusPopupSpawner;
-        [SerializeField] private GiftToastQueue giftToastQueue;
         [SerializeField] private GiftToastQueue topBannerQueue;
 
         [Header("Dual-Wing Action Feeds")]

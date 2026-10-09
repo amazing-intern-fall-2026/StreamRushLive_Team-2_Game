@@ -664,50 +664,5 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        private void OnGUI()
-        {
-            if (!isRunning) return;
-
-            var factionMgr = FindFirstObjectByType<FactionTugOfWarManager>();
-            int fanCount = factionMgr != null ? factionMgr.FanMemberCount : initialFanCount;
-            int antiCount = factionMgr != null ? factionMgr.AntiMemberCount : initialAntiCount;
-
-            GUIStyle boxStyle = new GUIStyle(GUI.skin.box)
-            {
-                fontSize = 11,
-                fontStyle = FontStyle.Bold,
-                alignment = TextAnchor.MiddleCenter
-            };
-            boxStyle.normal.textColor = Color.white;
-
-            int boxWidth = 590;
-            GUI.color = new Color(0.1f, 0.1f, 0.15f, 0.88f);
-            GUI.Box(new Rect(Screen.width - boxWidth - 10, 10, boxWidth, 28), "", boxStyle);
-            GUI.color = Color.white;
-
-            GUIStyle redDotStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 12,
-                fontStyle = FontStyle.Bold,
-                alignment = TextAnchor.MiddleLeft
-            };
-            redDotStyle.normal.textColor = new Color(1f, 0.25f, 0.25f);
-            GUI.Label(new Rect(Screen.width - boxWidth, 12, 55, 24), "[LIVE]", redDotStyle);
-
-            GUIStyle textStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 11,
-                fontStyle = FontStyle.Bold,
-                alignment = TextAnchor.MiddleLeft
-            };
-            textStyle.normal.textColor = Color.white;
-
-            string likesText = totalRoomLikes >= 1000 ? $"{(totalRoomLikes / 1000f):F1}k" : totalRoomLikes.ToString();
-            string viewersText = SteamRush.Features.UI.FactionTugOfWarUI.FormatNumberShorthand(totalRoomViewers);
-            string followerInfo = enableMockFollowers ? " | <color=#00FF88>Follower: ON (O)</color>" : " | <color=#888888>Follower: OFF (O)</color>";
-            string delayInfo = enableStreamDelay ? $" | <color=#FFD700>Delay: {((streamDelayMin + streamDelayMax) * 0.5f):F1}s (K)</color>" : " | <color=#888888>Delay: 0s (K)</color>";
-            string info = $"{viewersText} Viewers | <color=#FF4D88>Likes: {likesText}</color> | <color=#38B6FF>Blue: {SteamRush.Features.UI.FactionTugOfWarUI.FormatNumberShorthand(fanCount)}</color> vs <color=#FF4D4D>Red: {SteamRush.Features.UI.FactionTugOfWarUI.FormatNumberShorthand(antiCount)}</color>{followerInfo}{delayInfo}";
-            GUI.Label(new Rect(Screen.width - boxWidth + 55, 12, boxWidth - 60, 24), info, textStyle);
-        }
     }
 }
