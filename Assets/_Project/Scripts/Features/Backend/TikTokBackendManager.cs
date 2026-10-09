@@ -35,7 +35,7 @@ namespace SteamRush.Features.Backend
         }
 
         public const string DefaultGitRepo = BackendInstaller.DefaultGitRepo;
-        public const string DefaultEulerApiKey = "";
+        public const string DefaultEulerApiKey = "euler_YTJkMTExNjY3ZjFiODZjZDczOWJhZGZjNzRiYTFhMDAzMzM5OGY1ZjQ3MGFkOTdiNzA0Mzgx";
         public const int DefaultHttpPort = 9091;
         public const int DefaultSocketPort = 3001;
 

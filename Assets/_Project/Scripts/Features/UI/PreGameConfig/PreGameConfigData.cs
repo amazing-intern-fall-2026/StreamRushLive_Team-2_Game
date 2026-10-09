@@ -165,7 +165,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         // === E. TIKTOK LIVE BACKEND & PORT CONFIG ===
         public int backendPort = 9091;
         public int backendSocketPort = 3001;
-        public string eulerApiKey = "";
+        public string eulerApiKey = "euler_YTJkMTExNjY3ZjFiODZjZDczOWJhZGZjNzRiYTFhMDAzMzM5OGY1ZjQ3MGFkOTdiNzA0Mzgx";
         public string backendDirectory = GetDefaultBackendDirectory();
 
         public static string GetDefaultBackendDirectory()
@@ -220,7 +220,7 @@ namespace SteamRush.Features.UI.PreGameConfig
                 enableSimulatedLikes = false,
                 enableSimulatedFollowers = false,
                 enableSimulatedStreamDelay = false,
-                eulerApiKey = "",
+                eulerApiKey = "euler_YTJkMTExNjY3ZjFiODZjZDczOWJhZGZjNzRiYTFhMDAzMzM5OGY1ZjQ3MGFkOTdiNzA0Mzgx",
                 backendDirectory = GetDefaultBackendDirectory(),
                 gifts = new List<PreGameGiftItemConfig>
                 {

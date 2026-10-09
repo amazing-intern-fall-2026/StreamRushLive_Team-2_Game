@@ -13598,7 +13598,6 @@ MonoBehaviour:
   _btnResetDefaults: {fileID: 9064209472217126796}
   _btnSaveConfig: {fileID: 1778367832661815040}
   _btnTestMode: {fileID: 6264651284345669299}
-  _btnGoLive: {fileID: 2478715446337270473}
   _btnClose: {fileID: 2035892944721313022}
 --- !u!114 &6543302040620315088
 MonoBehaviour:
@@ -13614,28 +13613,28 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.UI.PreGameConfig.PreGameGeneralSettingsView
   _inputUsername: {fileID: 8750398332577109235}
   _inputTargetDistance: {fileID: 138604086822165098}
-  _toggleInfiniteDistance: {fileID: 0}
-  _inputLaneCost: {fileID: 0}
-  _inputJumpCost: {fileID: 0}
-  _inputFreeControlDuration: {fileID: 0}
-  _inputSprintDuration: {fileID: 0}
-  _toggleAutoSpawnCar: {fileID: 0}
-  _inputMaxCars: {fileID: 0}
-  _inputDistancePenalty: {fileID: 0}
-  _inputSedanEnergyPenalty: {fileID: 0}
-  _inputPickupEnergyPenalty: {fileID: 0}
-  _inputHeavyEnergyPenalty: {fileID: 0}
-  _toggleLiveDemoMaster: {fileID: 0}
-  _toggleSimulatedChats: {fileID: 0}
-  _toggleSimulatedGifts: {fileID: 0}
-  _toggleSimulatedLikes: {fileID: 0}
-  _toggleSimulatedFollowers: {fileID: 0}
-  _toggleSimulatedDelay: {fileID: 0}
-  _toggleShowHowToPlayGuide: {fileID: 0}
-  _toggleShowGiftInfoPanel: {fileID: 0}
-  _toggleShowStopwatch: {fileID: 0}
-  _toggleShowTimerCircles: {fileID: 0}
-  _toggleDebugUI: {fileID: 0}
+  _toggleInfiniteDistance: {fileID: 277792461510667412}
+  _inputLaneCost: {fileID: 7931729881924810454}
+  _inputJumpCost: {fileID: 8529086638541950359}
+  _inputFreeControlDuration: {fileID: 3307806321828378314}
+  _inputSprintDuration: {fileID: 5604914787928322385}
+  _toggleAutoSpawnCar: {fileID: 6033702265742854080}
+  _inputMaxCars: {fileID: 1121708518730020988}
+  _inputDistancePenalty: {fileID: 6596781973902132020}
+  _inputSedanEnergyPenalty: {fileID: 2153944696960155325}
+  _inputPickupEnergyPenalty: {fileID: 3203554549770523555}
+  _inputHeavyEnergyPenalty: {fileID: 8882471670887672000}
+  _toggleLiveDemoMaster: {fileID: 4915612251351070497}
+  _toggleSimulatedChats: {fileID: 3235596574301751937}
+  _toggleSimulatedGifts: {fileID: 6658349308202445213}
+  _toggleSimulatedLikes: {fileID: 5242843323089224118}
+  _toggleSimulatedFollowers: {fileID: 4864759855721167755}
+  _toggleSimulatedDelay: {fileID: 1719984088889036885}
+  _toggleShowHowToPlayGuide: {fileID: 4441509525234773692}
+  _toggleShowGiftInfoPanel: {fileID: 1834185852329705855}
+  _toggleShowStopwatch: {fileID: 5041528474385146507}
+  _toggleShowTimerCircles: {fileID: 6081501199917786347}
+  _toggleDebugUI: {fileID: 6520751195692189337}
 --- !u!114 &-1568071269356923700
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13662,17 +13661,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fcc777349e198de48b2419c7d7a4855c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.UI.PreGameConfig.PreGameBackendSettingsView
-  _inputBackendPort: {fileID: 0}
-  _inputBackendSocketPort: {fileID: 0}
-  _inputEulerApiKey: {fileID: 0}
-  _inputBackendDir: {fileID: 0}
-  _txtBackendStatus: {fileID: 0}
+  _inputBackendPort: {fileID: 1555349278060512562}
+  _inputBackendSocketPort: {fileID: 4497270349497040194}
+  _inputEulerApiKey: {fileID: 5910136301235329924}
+  _inputBackendDir: {fileID: 706219281262112925}
+  _txtBackendStatus: {fileID: 7574463866554051244}
   _btnBrowseBackendDir: {fileID: 4198826100496460076}
   _btnCheckPort: {fileID: 5219779182775181346}
   _btnStartBackend: {fileID: 5177444537992501061}
   _btnSetupBackend: {fileID: 7419278388523676265}
   _btnStopBackend: {fileID: 5186674270015644485}
-  _btnGetEulerKey: {fileID: 0}
+  _btnGetEulerKey: {fileID: 8410307278085845533}
 --- !u!114 &7588342877067374992
 MonoBehaviour:
   m_ObjectHideFlags: 0

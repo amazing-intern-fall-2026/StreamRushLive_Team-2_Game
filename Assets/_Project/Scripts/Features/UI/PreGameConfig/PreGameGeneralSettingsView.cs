@@ -261,33 +261,41 @@ namespace SteamRush.Features.UI.PreGameConfig
             foreach (var t in root.GetComponentsInChildren<Transform>(true))
             {
                 string n = t.name;
+
+                // 1. Inputs
                 if (_inputUsername == null && (n == "Input_Username" || n == "InputUsername")) _inputUsername = t.GetComponent<TMP_InputField>();
                 if (_inputTargetDistance == null && (n == "Input_Distance" || n == "InputTargetDistance")) _inputTargetDistance = t.GetComponent<TMP_InputField>();
-                if (_toggleInfiniteDistance == null && (n == "Toggle_Infinite" || n == "ToggleInfinite")) _toggleInfiniteDistance = t.GetComponent<Toggle>();
+                if (_toggleInfiniteDistance == null && (n.Contains("Infinite Run") || n == "Toggle_Infinite" || n == "ToggleInfinite")) _toggleInfiniteDistance = t.GetComponentInChildren<Toggle>(true);
 
-                if (_inputLaneCost == null && n.Contains("LaneCost")) _inputLaneCost = t.GetComponent<TMP_InputField>();
-                if (_inputJumpCost == null && n.Contains("JumpCost")) _inputJumpCost = t.GetComponent<TMP_InputField>();
-                if (_inputFreeControlDuration == null && n.Contains("FreeControl")) _inputFreeControlDuration = t.GetComponent<TMP_InputField>();
-                if (_inputSprintDuration == null && n.Contains("Sprint")) _inputSprintDuration = t.GetComponent<TMP_InputField>();
+                if (_inputLaneCost == null && (n.Contains("Lane change energy cost") || n.Contains("LaneCost"))) _inputLaneCost = t.GetComponentInChildren<TMP_InputField>(true);
+                if (_inputJumpCost == null && (n.Contains("Jump energy cost") || n.Contains("JumpCost"))) _inputJumpCost = t.GetComponentInChildren<TMP_InputField>(true);
+                if (_inputFreeControlDuration == null && (n.Contains("Freedom Charm duration") || n.Contains("FreeControl"))) _inputFreeControlDuration = t.GetComponentInChildren<TMP_InputField>(true);
+                if (_inputSprintDuration == null && (n.Contains("Sprint Boost duration") || n.Contains("Sprint"))) _inputSprintDuration = t.GetComponentInChildren<TMP_InputField>(true);
 
-                if (_toggleAutoSpawnCar == null && n.Contains("AutoSpawn")) _toggleAutoSpawnCar = t.GetComponent<Toggle>();
-                if (_inputMaxCars == null && n.Contains("MaxCars")) _inputMaxCars = t.GetComponent<TMP_InputField>();
-                if (_inputDistancePenalty == null && n.Contains("DistancePenalty")) _inputDistancePenalty = t.GetComponent<TMP_InputField>();
-                if (_inputSedanEnergyPenalty == null && n.Contains("Sedan")) _inputSedanEnergyPenalty = t.GetComponent<TMP_InputField>();
-                if (_inputPickupEnergyPenalty == null && n.Contains("Pickup")) _inputPickupEnergyPenalty = t.GetComponent<TMP_InputField>();
-                if (_inputHeavyEnergyPenalty == null && n.Contains("Heavy")) _inputHeavyEnergyPenalty = t.GetComponent<TMP_InputField>();
+                // 2. Anti-Faction
+                if (_toggleAutoSpawnCar == null && (n.Contains("Auto-spawn car") || n.Contains("AutoSpawn"))) _toggleAutoSpawnCar = t.GetComponentInChildren<Toggle>(true);
+                if (_inputMaxCars == null && (n.Contains("Max concurrent cars") || n.Contains("MaxCars"))) _inputMaxCars = t.GetComponentInChildren<TMP_InputField>(true);
 
-                if (_toggleLiveDemoMaster == null && n.Contains("LiveDemoMaster")) _toggleLiveDemoMaster = t.GetComponent<Toggle>();
-                if (_toggleSimulatedChats == null && n.Contains("SimulatedChats")) _toggleSimulatedChats = t.GetComponent<Toggle>();
-                if (_toggleSimulatedGifts == null && n.Contains("SimulatedGifts")) _toggleSimulatedGifts = t.GetComponent<Toggle>();
-                if (_toggleSimulatedLikes == null && n.Contains("SimulatedLikes")) _toggleSimulatedLikes = t.GetComponent<Toggle>();
-                if (_toggleSimulatedFollowers == null && n.Contains("SimulatedFollowers")) _toggleSimulatedFollowers = t.GetComponent<Toggle>();
-                if (_toggleSimulatedDelay == null && n.Contains("SimulatedDelay")) _toggleSimulatedDelay = t.GetComponent<Toggle>();
-                if (_toggleShowHowToPlayGuide == null && n.Contains("HowToPlay")) _toggleShowHowToPlayGuide = t.GetComponent<Toggle>();
-                if (_toggleShowGiftInfoPanel == null && n.Contains("GiftInfo")) _toggleShowGiftInfoPanel = t.GetComponent<Toggle>();
-                if (_toggleShowStopwatch == null && n.Contains("Stopwatch")) _toggleShowStopwatch = t.GetComponent<Toggle>();
-                if (_toggleShowTimerCircles == null && n.Contains("TimerCircles")) _toggleShowTimerCircles = t.GetComponent<Toggle>();
-                if (_toggleDebugUI == null && n.Contains("DebugUI")) _toggleDebugUI = t.GetComponent<Toggle>();
+                // 3. Collision Penalties
+                if (_inputDistancePenalty == null && (n.Contains("Distance penalty on crash") || n.Contains("DistancePenalty"))) _inputDistancePenalty = t.GetComponentInChildren<TMP_InputField>(true);
+                if (_inputSedanEnergyPenalty == null && (n.Contains("Energy lost on Sedan hit") || n.Contains("Sedan"))) _inputSedanEnergyPenalty = t.GetComponentInChildren<TMP_InputField>(true);
+                if (_inputPickupEnergyPenalty == null && (n.Contains("Energy lost on Hunting Beast hit") || n.Contains("Pickup"))) _inputPickupEnergyPenalty = t.GetComponentInChildren<TMP_InputField>(true);
+                if (_inputHeavyEnergyPenalty == null && (n.Contains("Energy lost on Train hit") || n.Contains("Heavy"))) _inputHeavyEnergyPenalty = t.GetComponentInChildren<TMP_InputField>(true);
+
+                // 4. Offline Simulation
+                if (_toggleLiveDemoMaster == null && (n.Contains("Auto live simulation") || n.Contains("LiveDemoMaster"))) _toggleLiveDemoMaster = t.GetComponentInChildren<Toggle>(true);
+                if (_toggleSimulatedChats == null && (n.Contains("Simulate chat comments") || n.Contains("SimulatedChats"))) _toggleSimulatedChats = t.GetComponentInChildren<Toggle>(true);
+                if (_toggleSimulatedGifts == null && (n.Contains("Simulate viewer gifts") || n.Contains("SimulatedGifts"))) _toggleSimulatedGifts = t.GetComponentInChildren<Toggle>(true);
+                if (_toggleSimulatedLikes == null && (n.Contains("Simulate continuous hearts") || n.Contains("SimulatedLikes"))) _toggleSimulatedLikes = t.GetComponentInChildren<Toggle>(true);
+                if (_toggleSimulatedFollowers == null && (n.Contains("Simulate baton handover") || n.Contains("SimulatedFollowers"))) _toggleSimulatedFollowers = t.GetComponentInChildren<Toggle>(true);
+                if (_toggleSimulatedDelay == null && (n.Contains("Simulate stream broadcast delay") || n.Contains("SimulatedDelay"))) _toggleSimulatedDelay = t.GetComponentInChildren<Toggle>(true);
+
+                // 5. HUD & Overlay Display
+                if (_toggleShowHowToPlayGuide == null && (n.Contains("Show How-To-Play Guide") || n.Contains("HowToPlay"))) _toggleShowHowToPlayGuide = t.GetComponentInChildren<Toggle>(true);
+                if (_toggleShowGiftInfoPanel == null && (n.Contains("Show Gift Info Panel") || n.Contains("GiftInfo"))) _toggleShowGiftInfoPanel = t.GetComponentInChildren<Toggle>(true);
+                if (_toggleShowStopwatch == null && (n.Contains("Show Match Timer") || n.Contains("Stopwatch"))) _toggleShowStopwatch = t.GetComponentInChildren<Toggle>(true);
+                if (_toggleShowTimerCircles == null && (n.Contains("Show Skill & Buff Timer Circles") || n.Contains("TimerCircles"))) _toggleShowTimerCircles = t.GetComponentInChildren<Toggle>(true);
+                if (_toggleDebugUI == null && (n.Contains("Show Debug UI in game") || n.Contains("DebugUI"))) _toggleDebugUI = t.GetComponentInChildren<Toggle>(true);
             }
         }
     }

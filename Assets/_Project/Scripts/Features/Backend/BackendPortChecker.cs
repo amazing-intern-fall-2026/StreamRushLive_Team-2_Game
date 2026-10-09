@@ -12,8 +12,36 @@ namespace SteamRush.Features.Backend
     /// </summary>
     public class BackendPortChecker : MonoBehaviour
     {
+        public static bool ProbeTcpPort(int port, int timeoutMs = 800)
+        {
+            try
+            {
+                using (var client = new TcpClient())
+                {
+                    var asyncResult = client.BeginConnect("127.0.0.1", port, null, null);
+                    bool success = asyncResult.AsyncWaitHandle.WaitOne(timeoutMs);
+                    if (success && client.Connected)
+                    {
+                        client.EndConnect(asyncResult);
+                        return true;
+                    }
+                }
+            }
+            catch { }
+            return false;
+        }
+
         public void CheckPort(int port, Action<bool, string> onComplete)
         {
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                bool open = ProbeTcpPort(port, 1000);
+                string msg = open ? $"Port {port} is OPEN (Listening)" : $"Port {port} is CLOSED (No response)";
+                onComplete?.Invoke(open, msg);
+                return;
+            }
+#endif
             StartCoroutine(CheckPortCoroutine(port, onComplete));
         }
 

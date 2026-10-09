@@ -128,77 +128,69 @@ namespace SteamRush.Features.UI.PreGameConfig
 
         public void CheckPorts(int httpPort, int socketPort)
         {
-            if (_txtBackendStatus != null)
-            {
-                _txtBackendStatus.text = "<color=#FCDA21>Checking ports...</color>";
-            }
+            UpdateStatus("<color=#FCDA21>Checking ports...</color>");
 
             TikTokBackendManager.Instance.CheckPort(socketPort, (socketOpen, _) =>
             {
                 TikTokBackendManager.Instance.CheckPort(httpPort, (httpOpen, _) =>
                 {
-                    if (_txtBackendStatus != null)
-                    {
-                        string sStatus = socketOpen ? "<color=#76D12C>OPEN</color>" : "<color=#FF4D57>CLOSED</color>";
-                        string hStatus = httpOpen ? "<color=#76D12C>OPEN</color>" : "<color=#FF4D57>CLOSED</color>";
-                        _txtBackendStatus.text = $"Status: Socket {socketPort}: {sStatus} | HTTP {httpPort}: {hStatus}";
-                    }
+                    string sStatus = socketOpen ? "<color=#76D12C>OPEN</color>" : "<color=#FF4D57>CLOSED</color>";
+                    string hStatus = httpOpen ? "<color=#76D12C>OPEN</color>" : "<color=#FF4D57>CLOSED</color>";
+                    UpdateStatus($"Status: Socket {socketPort}: {sStatus} | HTTP {httpPort}: {hStatus}");
                 });
             });
         }
 
         public void StartBackend(string dir, int httpPort, int socketPort, string apiKey)
         {
-            if (_txtBackendStatus != null)
-            {
-                _txtBackendStatus.text = "<color=#FCDA21>Launching backend & testing ports...</color>";
-            }
+            UpdateStatus("<color=#FCDA21>Launching backend & testing ports...</color>");
+            Debug.Log($"[PreGameBackendSettingsView] Starting backend: dir='{dir}', http={httpPort}, socket={socketPort}");
 
             TikTokBackendManager.Instance.StartBackend(dir, httpPort, socketPort, apiKey, (success, msg) =>
             {
-                if (_txtBackendStatus != null)
-                {
-                    _txtBackendStatus.text = success ? $"<color=#76D12C>[OK] {msg}</color>" : $"<color=#FF4D57>[ERROR] {msg}</color>";
-                }
+                UpdateStatus(success ? $"<color=#76D12C>[OK] {msg}</color>" : $"<color=#FF4D57>[ERROR] {msg}</color>");
+                if (success)
+                    Debug.Log($"<color=#76D12C>[PreGameBackendSettingsView] {msg}</color>");
+                else
+                    Debug.LogError($"[PreGameBackendSettingsView] {msg}");
             });
         }
 
         public void SetupBackend(string dir, int httpPort, int socketPort, string apiKey)
         {
-            if (_txtBackendStatus != null)
-            {
-                _txtBackendStatus.text = "<color=#FCDA21>Checking Bun runtime (bun --version)...</color>";
-            }
+            UpdateStatus("<color=#FCDA21>Kiểm tra Bun runtime (bun --version)...</color>");
+            Debug.Log($"[PreGameBackendSettingsView] Auto Setup started: dir='{dir}', http={httpPort}, socket={socketPort}");
 
             TikTokBackendManager.Instance.SetupBackendFromGit(dir, httpPort, socketPort, apiKey, (success, msg) =>
             {
-                if (_txtBackendStatus != null)
-                {
-                    _txtBackendStatus.text = success ? $"<color=#76D12C>[OK] {msg}</color>" : $"<color=#FF4D57>[ERROR] {msg}</color>";
-                }
+                UpdateStatus(success ? $"<color=#76D12C>[OK] {msg}</color>" : $"<color=#FF4D57>[ERROR] {msg}</color>");
+                if (success)
+                    Debug.Log($"<color=#76D12C>[PreGameBackendSettingsView] Setup complete: {msg}</color>");
+                else
+                    Debug.LogError($"[PreGameBackendSettingsView] Setup failed: {msg}");
             }, progressMsg =>
             {
-                if (_txtBackendStatus != null)
-                {
-                    _txtBackendStatus.text = $"<color=#FCDA21>{progressMsg}</color>";
-                }
+                UpdateStatus($"<color=#FCDA21>{progressMsg}</color>");
+                Debug.Log($"[PreGameBackendSettingsView] Setup progress: {progressMsg}");
             });
         }
 
         public void StopBackend(int httpPort, int socketPort)
         {
-            if (_txtBackendStatus != null)
-            {
-                _txtBackendStatus.text = "<color=#FCDA21>Stopping backend...</color>";
-            }
+            UpdateStatus("<color=#FCDA21>Stopping backend...</color>");
 
             TikTokBackendManager.Instance.StopBackend(httpPort, socketPort, (success, msg) =>
             {
-                if (_txtBackendStatus != null)
-                {
-                    _txtBackendStatus.text = success ? $"<color=#76D12C>[OK] {msg}</color>" : $"<color=#FF4D57>[ERROR] {msg}</color>";
-                }
+                UpdateStatus(success ? $"<color=#76D12C>[OK] {msg}</color>" : $"<color=#FF4D57>[ERROR] {msg}</color>");
             });
+        }
+
+        private void UpdateStatus(string message)
+        {
+            if (_txtBackendStatus != null)
+            {
+                _txtBackendStatus.text = message;
+            }
         }
 
         public void AutoWireIfNull(Transform root)
@@ -207,6 +199,34 @@ namespace SteamRush.Features.UI.PreGameConfig
             foreach (var t in root.GetComponentsInChildren<Transform>(true))
             {
                 string n = t.name;
+
+                // 1. Search by row containers and extract input components
+                if (_inputBackendPort == null && n.Contains("Backend HTTP Port"))
+                {
+                    _inputBackendPort = t.GetComponentInChildren<TMP_InputField>(true);
+                }
+
+                if (_inputBackendSocketPort == null && (n.Contains("Socket.IO Port") || n.Contains("SocketPort")))
+                {
+                    _inputBackendSocketPort = t.GetComponentInChildren<TMP_InputField>(true);
+                }
+
+                if (_inputEulerApiKey == null && (n.Contains("Euler API Key") || n.Contains("EulerKey") || n.Contains("ApiKey")))
+                {
+                    _inputEulerApiKey = t.GetComponentInChildren<TMP_InputField>(true);
+                }
+
+                if (_inputBackendDir == null && (n.Contains("Backend Folder Path") || n.Contains("BackendDir") || n.Contains("Directory")))
+                {
+                    _inputBackendDir = t.GetComponentInChildren<TMP_InputField>(true);
+                }
+
+                if (_txtBackendStatus == null && (n == "TxtStatus" || n.Contains("BackendStatus")))
+                {
+                    _txtBackendStatus = t.GetComponent<TextMeshProUGUI>() ?? t.GetComponentInChildren<TextMeshProUGUI>(true);
+                }
+
+                // 2. Fallbacks for direct names
                 if (_inputBackendPort == null && n.Contains("Port") && !n.Contains("Socket") && !n.Contains("Btn"))
                     _inputBackendPort = t.GetComponent<TMP_InputField>();
                 if (_inputBackendSocketPort == null && n.Contains("SocketPort"))
@@ -215,20 +235,19 @@ namespace SteamRush.Features.UI.PreGameConfig
                     _inputEulerApiKey = t.GetComponent<TMP_InputField>();
                 if (_inputBackendDir == null && (n.Contains("BackendDir") || n.Contains("Directory")))
                     _inputBackendDir = t.GetComponent<TMP_InputField>();
-                if (_txtBackendStatus == null && n.Contains("BackendStatus"))
-                    _txtBackendStatus = t.GetComponent<TextMeshProUGUI>();
 
-                if (_btnBrowseBackendDir == null && n.Contains("Browse"))
+                // 3. Action Buttons
+                if (_btnBrowseBackendDir == null && (n.Contains("Browse") || n == "BtnBrowseDir"))
                     _btnBrowseBackendDir = t.GetComponent<Button>();
                 if (_btnCheckPort == null && n.Contains("CheckPort"))
                     _btnCheckPort = t.GetComponent<Button>();
                 if (_btnStartBackend == null && n.Contains("StartBackend"))
                     _btnStartBackend = t.GetComponent<Button>();
-                if (_btnSetupBackend == null && n.Contains("SetupBackend"))
+                if (_btnSetupBackend == null && (n.Contains("SetupBackend") || n.Contains("Setup")))
                     _btnSetupBackend = t.GetComponent<Button>();
                 if (_btnStopBackend == null && n.Contains("StopBackend"))
                     _btnStopBackend = t.GetComponent<Button>();
-                if (_btnGetEulerKey == null && n.Contains("GetEulerKey"))
+                if (_btnGetEulerKey == null && (n.Contains("GetEulerKey") || n == "BtnOpenWeb"))
                     _btnGetEulerKey = t.GetComponent<Button>();
             }
         }

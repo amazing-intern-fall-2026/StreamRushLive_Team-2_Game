@@ -18,12 +18,24 @@ namespace SteamRush.Features.Backend
         public static string GetBunExecutablePath()
         {
             string userHome = System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile);
-            string bunHome = Path.Combine(userHome, @".bun\bin\bun.exe");
-            if (File.Exists(bunHome)) return bunHome;
+            if (string.IsNullOrEmpty(userHome))
+                userHome = System.Environment.GetEnvironmentVariable("USERPROFILE") ?? "";
+
+            if (!string.IsNullOrEmpty(userHome))
+            {
+                string bunHome = Path.Combine(userHome, @".bun\bin\bun.exe");
+                if (File.Exists(bunHome)) return bunHome;
+            }
 
             string localApp = System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData);
-            string bunLocal = Path.Combine(localApp, @"bun\bin\bun.exe");
-            if (File.Exists(bunLocal)) return bunLocal;
+            if (string.IsNullOrEmpty(localApp) && !string.IsNullOrEmpty(userHome))
+                localApp = Path.Combine(userHome, @"AppData\Local");
+
+            if (!string.IsNullOrEmpty(localApp))
+            {
+                string bunLocal = Path.Combine(localApp, @"bun\bin\bun.exe");
+                if (File.Exists(bunLocal)) return bunLocal;
+            }
 
             return "bun";
         }
@@ -204,10 +216,40 @@ namespace SteamRush.Features.Backend
                     Directory.CreateDirectory(backendPath);
                 }
 
+                string keyToWrite = eulerApiKey != null ? eulerApiKey.Trim() : "";
                 string envPath = Path.Combine(backendPath, ".env");
-                string content = $"PORT={port}\nEULER_API_KEY={eulerApiKey.Trim()}\n";
+
+                // If key is empty, check if existing .env has a non-empty key
+                if (string.IsNullOrEmpty(keyToWrite) && File.Exists(envPath))
+                {
+                    try
+                    {
+                        string[] lines = File.ReadAllLines(envPath);
+                        foreach (var line in lines)
+                        {
+                            if (line.StartsWith("EULER_API_KEY=", StringComparison.OrdinalIgnoreCase))
+                            {
+                                string existingVal = line.Substring("EULER_API_KEY=".Length).Trim();
+                                if (!string.IsNullOrEmpty(existingVal))
+                                {
+                                    keyToWrite = existingVal;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    catch { }
+                }
+
+                // If still empty, fallback to DefaultEulerApiKey
+                if (string.IsNullOrEmpty(keyToWrite))
+                {
+                    keyToWrite = TikTokBackendManager.DefaultEulerApiKey;
+                }
+
+                string content = $"PORT={port}\nEULER_API_KEY={keyToWrite}\n";
                 File.WriteAllText(envPath, content);
-                Debug.Log($"[BackendInstaller] Updated .env at: {envPath}");
+                Debug.Log($"[BackendInstaller] Updated .env at: {envPath} (EULER_API_KEY: {(keyToWrite.Length > 10 ? keyToWrite.Substring(0, 10) + "..." : "SET")})");
                 return true;
             }
             catch (Exception ex)
@@ -218,14 +260,92 @@ namespace SteamRush.Features.Backend
             }
         }
 
+        public static string EnsureRunBatFile(string backendDir, int httpPort, int socketPort)
+        {
+            try
+            {
+                if (!Directory.Exists(backendDir)) Directory.CreateDirectory(backendDir);
+                string batPath = Path.Combine(backendDir, "run_backend.bat");
+                string bunExe = GetBunExecutablePath();
+
+                string content = $@"@echo off
+title TikTok Live Backend - HTTP {httpPort} - Socket {socketPort}
+echo ===================================================
+echo   TikTok Live Backend Runner
+echo   HTTP Port: {httpPort}
+echo   Socket Port: {socketPort}
+echo ===================================================
+cd /d ""{backendDir}""
+""{bunExe}"" run dev
+pause
+";
+                File.WriteAllText(batPath, content);
+                return batPath;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[BackendInstaller] Could not create run_backend.bat: {ex.Message}");
+                return string.Empty;
+            }
+        }
+
+        public static void DeleteDirectorySafely(string targetDir)
+        {
+            if (string.IsNullOrEmpty(targetDir) || !Directory.Exists(targetDir)) return;
+            try
+            {
+                var dir = new DirectoryInfo(targetDir);
+                foreach (var file in dir.GetFiles("*", SearchOption.AllDirectories))
+                {
+                    file.Attributes = FileAttributes.Normal;
+                }
+                dir.Delete(true);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[BackendInstaller] DeleteDirectorySafely warning: {ex.Message}. Falling back to cmd...");
+                try
+                {
+                    var psi = new ProcessStartInfo("cmd.exe", $"/c rd /s /q \"{targetDir}\"")
+                    {
+                        CreateNoWindow = true,
+                        UseShellExecute = false
+                    };
+                    using (var p = Process.Start(psi))
+                    {
+                        p?.WaitForExit(5000);
+                    }
+                }
+                catch { }
+            }
+        }
+
         public void SetupBackendFromGit(string destinationDir, int httpPort, int socketPort, string eulerApiKey, Action<bool, string> onComplete, Action<string> onProgress = null)
         {
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                var enumerator = SetupBackendFromGitCoroutine(destinationDir, httpPort, socketPort, eulerApiKey, onComplete, onProgress);
+                UnityEditor.EditorApplication.CallbackFunction updateCallback = null;
+                updateCallback = () =>
+                {
+                    if (enumerator == null || !enumerator.MoveNext())
+                    {
+                        UnityEditor.EditorApplication.update -= updateCallback;
+                    }
+                };
+                UnityEditor.EditorApplication.update += updateCallback;
+                return;
+            }
+#endif
             StartCoroutine(SetupBackendFromGitCoroutine(destinationDir, httpPort, socketPort, eulerApiKey, onComplete, onProgress));
         }
 
         private IEnumerator SetupBackendFromGitCoroutine(string destinationDir, int httpPort, int socketPort, string eulerApiKey, Action<bool, string> onComplete, Action<string> onProgress = null)
         {
             string targetFolder = string.IsNullOrWhiteSpace(destinationDir) ? TikTokBackendManager.GetDefaultBackendDirectory() : destinationDir;
+            // Cache Application.dataPath on main thread before ThreadPool execution!
+            string mainThreadDataPath = Application.dataPath;
 
             bool isDone = false;
             bool isSuccess = false;
@@ -245,7 +365,7 @@ namespace SteamRush.Features.Backend
             {
                 try
                 {
-                    ReportProgress("Checking Bun runtime (bun --version)...");
+                    ReportProgress("Kiểm tra Bun runtime (bun --version)...");
                     if (!EnsureBunInstalled(ReportProgress, out string bunVersion))
                     {
                         isSuccess = false;
@@ -253,7 +373,7 @@ namespace SteamRush.Features.Backend
                         return;
                     }
 
-                    ReportProgress($"Bun runtime ready (v{bunVersion}). Preparing backend directory...");
+                    ReportProgress($"Bun runtime sẵn sàng (v{bunVersion}). Chuẩn bị thư mục backend...");
 
                     if (!Directory.Exists(targetFolder))
                     {
@@ -263,7 +383,7 @@ namespace SteamRush.Features.Backend
                     string serverTsPath = Path.Combine(targetFolder, "src", "server.ts");
                     if (File.Exists(serverTsPath))
                     {
-                        resultMessage = $"Backend files already exist in target directory. Bun v{bunVersion} ready.";
+                        ReportProgress($"Mã nguồn backend đã tồn tại trong '{targetFolder}'.");
                         isSuccess = true;
                     }
                     else
@@ -271,20 +391,19 @@ namespace SteamRush.Features.Backend
                         string localRef = @"D:\Download\TikTok-Live_Dev_Nhom5-main\backend";
                         if (Directory.Exists(localRef) && File.Exists(Path.Combine(localRef, "src", "server.ts")))
                         {
-                            ReportProgress("Copying backend files from local reference folder...");
+                            ReportProgress("Sao chép mã nguồn backend từ thư mục tham chiếu cục bộ...");
                             CopyDirectory(localRef, targetFolder);
                             isSuccess = true;
-                            resultMessage = "Backend copied from local reference directory.";
                         }
                         else
                         {
-                            ReportProgress("Cloning backend repository from GitHub...");
+                            ReportProgress("Đang clone repository backend từ GitHub...");
                             string parentDir = Directory.GetParent(targetFolder)?.FullName;
-                            if (string.IsNullOrEmpty(parentDir)) parentDir = Application.dataPath;
+                            if (string.IsNullOrEmpty(parentDir)) parentDir = mainThreadDataPath;
                             if (!Directory.Exists(parentDir)) Directory.CreateDirectory(parentDir);
 
                             string cloneDir = Path.Combine(parentDir, "TikTok-Live_Dev_Nhom5_Temp");
-                            if (Directory.Exists(cloneDir)) Directory.Delete(cloneDir, true);
+                            DeleteDirectorySafely(cloneDir);
 
                             string cloneCmd = $"clone {DefaultGitRepo} \"{cloneDir}\"";
                             var psi = new ProcessStartInfo("git", cloneCmd)
@@ -298,28 +417,48 @@ namespace SteamRush.Features.Backend
 
                             using (var p = Process.Start(psi))
                             {
-                                p.WaitForExit(60000);
+                                var errOutput = new System.Text.StringBuilder();
+                                p.ErrorDataReceived += (s, e) =>
+                                {
+                                    if (!string.IsNullOrEmpty(e.Data))
+                                    {
+                                        errOutput.AppendLine(e.Data);
+                                        ReportProgress($"Git: {e.Data}");
+                                    }
+                                };
+                                p.OutputDataReceived += (s, e) =>
+                                {
+                                    if (!string.IsNullOrEmpty(e.Data)) ReportProgress($"Git: {e.Data}");
+                                };
+                                p.BeginErrorReadLine();
+                                p.BeginOutputReadLine();
+
+                                bool exited = p.WaitForExit(90000);
+                                if (!exited)
+                                {
+                                    try { p.Kill(); } catch { }
+                                }
+
                                 if (p.ExitCode == 0)
                                 {
                                     string clonedBackend = Path.Combine(cloneDir, "backend");
                                     if (Directory.Exists(clonedBackend))
                                     {
-                                        ReportProgress("Copying cloned backend files into target folder...");
+                                        ReportProgress("Sao chép các tệp backend đã clone vào thư mục đích...");
                                         CopyDirectory(clonedBackend, targetFolder);
+                                        DeleteDirectorySafely(cloneDir);
                                         isSuccess = true;
-                                        resultMessage = "Backend cloned from GitHub successfully.";
                                     }
                                     else
                                     {
                                         isSuccess = false;
-                                        resultMessage = "Cloned repository does not contain 'backend' folder.";
+                                        resultMessage = "Repository đã clone không chứa thư mục 'backend'.";
                                     }
                                 }
                                 else
                                 {
-                                    string err = p.StandardError.ReadToEnd();
                                     isSuccess = false;
-                                    resultMessage = $"Git clone failed: {err}";
+                                    resultMessage = $"Git clone thất bại: {errOutput}";
                                 }
                             }
                         }
@@ -327,32 +466,47 @@ namespace SteamRush.Features.Backend
 
                     if (isSuccess)
                     {
-                        ReportProgress("Updating .env configuration...");
-                        WriteEnvFile(targetFolder, httpPort, eulerApiKey, out string _);
+                        ReportProgress("Cập nhật file cấu hình .env & run_backend.bat...");
+                        WriteEnvFile(targetFolder, httpPort, eulerApiKey, out string envErr);
+                        EnsureRunBatFile(targetFolder, httpPort, socketPort);
 
                         string nodeModules = Path.Combine(targetFolder, "node_modules");
                         if (!Directory.Exists(nodeModules))
                         {
-                            ReportProgress("Installing dependencies via Bun (bun install)...");
+                            ReportProgress("Cài đặt dependencies qua Bun (bun install)...");
                             string bunExe = GetBunExecutablePath();
                             var bunPsi = new ProcessStartInfo("cmd.exe", $"/c cd /d \"{targetFolder}\" && \"{bunExe}\" install")
                             {
                                 WorkingDirectory = targetFolder,
                                 UseShellExecute = false,
-                                CreateNoWindow = true
+                                CreateNoWindow = true,
+                                RedirectStandardOutput = true,
+                                RedirectStandardError = true
                             };
                             using (var bp = Process.Start(bunPsi))
                             {
+                                bp.OutputDataReceived += (s, e) =>
+                                {
+                                    if (!string.IsNullOrEmpty(e.Data)) ReportProgress($"Bun: {e.Data}");
+                                };
+                                bp.ErrorDataReceived += (s, e) =>
+                                {
+                                    if (!string.IsNullOrEmpty(e.Data)) ReportProgress($"Bun: {e.Data}");
+                                };
+                                bp.BeginOutputReadLine();
+                                bp.BeginErrorReadLine();
                                 bp?.WaitForExit(120000);
                             }
                         }
-                        resultMessage = $"Backend setup finished successfully! Bun v{bunVersion} is ready.";
+
+                        resultMessage = $"Auto Setup hoàn tất thành công! Backend sẵn sàng (HTTP: {httpPort}, Socket: {socketPort}).";
                     }
                 }
                 catch (Exception ex)
                 {
                     isSuccess = false;
-                    resultMessage = $"Setup error: {ex.Message}";
+                    resultMessage = $"Lỗi Setup: {ex.Message}";
+                    Debug.LogError($"[BackendInstaller] Setup exception: {ex}");
                 }
                 finally
                 {

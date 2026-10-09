@@ -46,6 +46,22 @@ namespace SteamRush.Features.Backend
             BackendPortChecker portChecker,
             Action<bool, string> onComplete)
         {
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                var enumerator = StartBackendCoroutine(backendDir, httpPort, socketPort, eulerApiKey, portChecker, onComplete);
+                UnityEditor.EditorApplication.CallbackFunction updateCallback = null;
+                updateCallback = () =>
+                {
+                    if (enumerator == null || !enumerator.MoveNext())
+                    {
+                        UnityEditor.EditorApplication.update -= updateCallback;
+                    }
+                };
+                UnityEditor.EditorApplication.update += updateCallback;
+                return;
+            }
+#endif
             StartCoroutine(StartBackendCoroutine(backendDir, httpPort, socketPort, eulerApiKey, portChecker, onComplete));
         }
 
@@ -124,11 +140,8 @@ namespace SteamRush.Features.Backend
 
             while (elapsed < maxWaitTime)
             {
-                if (portChecker != null)
-                {
-                    yield return StartCoroutine(ProbePort(portChecker, socketPort, ok => socketOpen = ok));
-                    yield return StartCoroutine(ProbePort(portChecker, httpPort, ok => httpOpen = ok));
-                }
+                socketOpen = BackendPortChecker.ProbeTcpPort(socketPort, 400);
+                httpOpen = BackendPortChecker.ProbeTcpPort(httpPort, 400);
 
                 if (socketOpen || httpOpen)
                 {
@@ -149,25 +162,24 @@ namespace SteamRush.Features.Backend
             }
         }
 
-        private IEnumerator ProbePort(BackendPortChecker portChecker, int port, Action<bool> callback)
-        {
-            bool done = false;
-            portChecker.CheckPort(port, (ok, _) =>
-            {
-                callback(ok);
-                done = true;
-            });
-
-            float wait = 1.5f;
-            while (!done && wait > 0f)
-            {
-                wait -= Time.unscaledDeltaTime;
-                yield return null;
-            }
-        }
-
         public void StopBackend(int httpPort, int socketPort, BackendPortChecker portChecker, Action<bool, string> onComplete)
         {
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                var enumerator = StopBackendCoroutine(httpPort, socketPort, portChecker, onComplete);
+                UnityEditor.EditorApplication.CallbackFunction updateCallback = null;
+                updateCallback = () =>
+                {
+                    if (enumerator == null || !enumerator.MoveNext())
+                    {
+                        UnityEditor.EditorApplication.update -= updateCallback;
+                    }
+                };
+                UnityEditor.EditorApplication.update += updateCallback;
+                return;
+            }
+#endif
             StartCoroutine(StopBackendCoroutine(httpPort, socketPort, portChecker, onComplete));
         }
 
@@ -179,11 +191,7 @@ namespace SteamRush.Features.Backend
 
             yield return new WaitForSecondsRealtime(1.0f);
 
-            bool socketOpen = false;
-            if (portChecker != null)
-            {
-                yield return StartCoroutine(ProbePort(portChecker, socketPort, ok => socketOpen = ok));
-            }
+            bool socketOpen = BackendPortChecker.ProbeTcpPort(socketPort, 400);
 
             if (!socketOpen)
             {
@@ -214,22 +222,7 @@ namespace SteamRush.Features.Backend
 
         private string EnsureRunBatFile(string backendDir, int httpPort, int socketPort)
         {
-            string batPath = Path.Combine(backendDir, "run_backend.bat");
-            string bunExe = BackendInstaller.GetBunExecutablePath();
-
-            string content = $@"@echo off
-title TikTok Live Backend (Port HTTP: {httpPort} | Socket: {socketPort})
-echo ===================================================
-echo   TikTok Live Backend Runner
-echo   HTTP Port: {httpPort}
-echo   Socket Port: {socketPort}
-echo ===================================================
-cd /d ""{backendDir}""
-""{bunExe}"" run dev
-pause
-";
-            File.WriteAllText(batPath, content);
-            return batPath;
+            return BackendInstaller.EnsureRunBatFile(backendDir, httpPort, socketPort);
         }
     }
 }
