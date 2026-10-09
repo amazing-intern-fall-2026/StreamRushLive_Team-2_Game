@@ -74,6 +74,7 @@ namespace SteamRush.Features.StreamIntegration
         public string CurrentRoomId { get; private set; }
         public string ServerUrl => _serverUrl;
         public string TikTokUniqueId => _tiktokUniqueId;
+        public string NormalizedUniqueId => NormalizeUniqueId(_tiktokUniqueId);
 
         public string HostDisplayName => _profileSync != null ? _profileSync.HostDisplayName : string.Empty;
         public Sprite HostAvatarSprite => _profileSync != null ? _profileSync.HostAvatarSprite : null;
@@ -426,7 +427,18 @@ namespace SteamRush.Features.StreamIntegration
 
         private void OnRawTikTokDisconnected(SocketIOResponse response)
         {
-            string reason = response != null ? response.ToString() : "Disconnected";
+            string reason = "Disconnected";
+            if (response != null)
+            {
+                try
+                {
+                    reason = response.GetValue<string>();
+                }
+                catch
+                {
+                    reason = response.ToString();
+                }
+            }
             Debug.LogWarning($"[TikTokLiveClient] TikTok Live disconnected: {reason}");
             IsTikTokLiveConnected = false;
             CurrentRoomId = "";

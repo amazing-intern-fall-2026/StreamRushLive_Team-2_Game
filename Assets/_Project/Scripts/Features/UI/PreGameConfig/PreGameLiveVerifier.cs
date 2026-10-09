@@ -178,6 +178,20 @@ namespace SteamRush.Features.UI.PreGameConfig
             EventBus.Subscribe(onConn);
             EventBus.Subscribe(onDisc);
 
+            // If already actively connected to this channel, mark verified immediately
+            if (client.IsConnected && client.IsTikTokLiveConnected &&
+                string.Equals(client.NormalizedUniqueId, username, StringComparison.OrdinalIgnoreCase))
+            {
+                EventBus.Unsubscribe(onConn);
+                EventBus.Unsubscribe(onDisc);
+                _verifiedUsername = username;
+                SetLiveVerifiedUI(true, "CONNECTED");
+                onComplete?.Invoke(true, "CONNECTED");
+                if (_btnCheckLive != null) _btnCheckLive.interactable = true;
+                _checkLiveCoroutine = null;
+                yield break;
+            }
+
             client.ConnectWithUsername(username);
 
             float timeout = 12f;

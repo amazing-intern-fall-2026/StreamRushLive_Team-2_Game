@@ -128,19 +128,29 @@ namespace SteamRush.Features.StreamIntegration
             if (json == null) return;
 
             string nick = ReadStringWithFallback(json,
-                "roomInfo.owner.nickname",
-                "owner.nickname",
-                "data.owner.nickname",
                 "nickname",
+                "hostDisplayName",
+                "roomInfo.data.owner.nickname",
+                "roomInfo.owner.nickname",
+                "data.owner.nickname",
+                "owner.nickname",
                 "data.user.nickname");
 
             string avt = ReadStringWithFallback(json,
+                "avatarUrl",
+                "hostAvatarUrl",
+                "roomInfo.data.owner.avatar_large.url_list[2]",
+                "roomInfo.data.owner.avatar_large.url_list[1]",
+                "roomInfo.data.owner.avatar_large.url_list[0]",
+                "roomInfo.data.owner.avatar_medium.url_list[2]",
+                "roomInfo.data.owner.avatar_medium.url_list[0]",
+                "roomInfo.data.owner.avatar_thumb.url_list[2]",
+                "roomInfo.data.owner.avatar_thumb.url_list[0]",
+                "roomInfo.owner.avatar_large.url_list[0]",
                 "roomInfo.owner.avatar_thumb.url_list[0]",
-                "roomInfo.owner.avatarThumb.urlList[0]",
+                "owner.avatar_large.url_list[0]",
                 "owner.avatar_thumb.url_list[0]",
-                "data.owner.avatar_thumb.url_list[0]",
-                "data.user.profilePictureUrl",
-                "avatarUrl");
+                "data.user.profilePictureUrl");
 
             if (!string.IsNullOrEmpty(nick))
             {
@@ -163,12 +173,65 @@ namespace SteamRush.Features.StreamIntegration
 
         private IEnumerator FetchTikTokHostProfileRoutine(string uniqueId)
         {
-            string profileUrl = $"https://www.tiktok.com/@{uniqueId}";
+            string cleanId = NormalizeUniqueId(uniqueId);
+            if (string.IsNullOrEmpty(cleanId)) yield break;
+
+            // 1. Try querying local backend API first (uses Euler API, reliably gets nickname & avatar)
+            int httpPort = 9091;
+            string backendApiUrl = $"http://localhost:{httpPort}/api/streamer/{cleanId}";
+            bool backendSuccess = false;
+
+            using (UnityWebRequest apiReq = UnityWebRequest.Get(backendApiUrl))
+            {
+                apiReq.timeout = 5;
+                yield return apiReq.SendWebRequest();
+
+                if (apiReq.result == UnityWebRequest.Result.Success)
+                {
+                    string fetchedNick = null;
+                    string fetchedAvatar = null;
+
+                    try
+                    {
+                        JObject obj = JObject.Parse(apiReq.downloadHandler.text);
+                        fetchedNick = obj.Value<string>("nickname");
+                        fetchedAvatar = obj.Value<string>("avatarUrl");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"[TikTokProfileSync] Error parsing backend streamer response: {ex.Message}");
+                    }
+
+                    if (!string.IsNullOrEmpty(fetchedNick))
+                    {
+                        _hostDisplayName = fetchedNick;
+                        backendSuccess = true;
+                    }
+
+                    if (!string.IsNullOrEmpty(fetchedAvatar))
+                    {
+                        yield return StartCoroutine(DownloadAvatarTextureRoutine(fetchedAvatar, sprite =>
+                        {
+                            _hostAvatarSprite = sprite;
+                            ApplyHostProfileToRunner();
+                        }));
+                        yield break;
+                    }
+                    else if (backendSuccess)
+                    {
+                        ApplyHostProfileToRunner();
+                        yield break;
+                    }
+                }
+            }
+
+            // 2. Fallback: query web profile if backend was offline or didn't return avatar
+            string profileUrl = $"https://www.tiktok.com/@{cleanId}";
             using (UnityWebRequest webReq = UnityWebRequest.Get(profileUrl))
             {
                 webReq.SetRequestHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
                 webReq.SetRequestHeader("Accept-Language", "en-US,en;q=0.9");
-                webReq.timeout = 8;
+                webReq.timeout = 6;
                 yield return webReq.SendWebRequest();
 
                 if (webReq.result == UnityWebRequest.Result.Success)
@@ -179,28 +242,17 @@ namespace SteamRush.Features.StreamIntegration
 
                     if (!string.IsNullOrEmpty(rawNick))
                     {
-                        try
-                        {
-                            _hostDisplayName = Regex.Unescape(rawNick);
-                        }
-                        catch
-                        {
-                            _hostDisplayName = rawNick;
-                        }
+                        try { _hostDisplayName = Regex.Unescape(rawNick); } catch { _hostDisplayName = rawNick; }
                     }
-                    else
+                    else if (string.IsNullOrEmpty(_hostDisplayName))
                     {
-                        _hostDisplayName = uniqueId;
+                        _hostDisplayName = cleanId;
                     }
 
                     if (!string.IsNullOrEmpty(rawAvatar))
                     {
                         string avatarUrl = rawAvatar;
-                        try
-                        {
-                            avatarUrl = Regex.Unescape(rawAvatar);
-                        }
-                        catch { }
+                        try { avatarUrl = Regex.Unescape(rawAvatar); } catch { }
 
                         yield return StartCoroutine(DownloadAvatarTextureRoutine(avatarUrl, sprite =>
                         {
@@ -215,11 +267,10 @@ namespace SteamRush.Features.StreamIntegration
                 }
                 else
                 {
-                    if (_logEvents)
+                    if (string.IsNullOrEmpty(_hostDisplayName))
                     {
-                        Debug.LogWarning($"[TikTokProfileSync] Failed to load TikTok web profile @{uniqueId}: {webReq.error}. Using unique ID as runner name.");
+                        _hostDisplayName = cleanId;
                     }
-                    _hostDisplayName = uniqueId;
                     ApplyHostProfileToRunner();
                 }
             }
@@ -227,6 +278,14 @@ namespace SteamRush.Features.StreamIntegration
 
         private IEnumerator DownloadAvatarTextureRoutine(string avatarUrl, Action<Sprite> onLoaded)
         {
+            if (string.IsNullOrEmpty(avatarUrl)) yield break;
+
+            // Prefer JPEG/PNG over WebP since UnityWebRequestTexture does not support WebP natively
+            if (avatarUrl.Contains(".webp") && !avatarUrl.Contains(".jpeg") && !avatarUrl.Contains(".jpg"))
+            {
+                avatarUrl = avatarUrl.Replace(".webp", ".jpeg");
+            }
+
             using (UnityWebRequest imgReq = UnityWebRequestTexture.GetTexture(avatarUrl))
             {
                 imgReq.timeout = 10;

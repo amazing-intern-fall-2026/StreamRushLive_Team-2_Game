@@ -467,6 +467,7 @@ pause
                     if (isSuccess)
                     {
                         ReportProgress("Updating configuration (.env & run_backend.bat)...");
+                        EnsureBackendSourcePatches(targetFolder);
                         WriteEnvFile(targetFolder, httpPort, eulerApiKey, out string envErr);
                         EnsureRunBatFile(targetFolder, httpPort, socketPort);
 
@@ -549,6 +550,36 @@ pause
                 if (dirName == "node_modules" || dirName == ".git") continue;
                 string destSubDir = Path.Combine(targetDir, dirName);
                 CopyDirectory(subDir, destSubDir);
+            }
+        }
+
+        private static void EnsureBackendSourcePatches(string targetFolder)
+        {
+            try
+            {
+                string socketsIndexPath = Path.Combine(targetFolder, "src", "sockets", "index.ts");
+                if (File.Exists(socketsIndexPath))
+                {
+                    string content = File.ReadAllText(socketsIndexPath);
+                    // Remove duplicate connect() call that causes 'Already connecting!'
+                    const string duplicateCallCrLf = "tikTokConnectionWrapper.connect();\r\n            } catch (err: any) {";
+                    const string duplicateCallLf = "tikTokConnectionWrapper.connect();\n            } catch (err: any) {";
+                    const string replacement = "} catch (err: any) {";
+                    if (content.Contains(duplicateCallCrLf))
+                    {
+                        content = content.Replace(duplicateCallCrLf, replacement);
+                        File.WriteAllText(socketsIndexPath, content);
+                    }
+                    else if (content.Contains(duplicateCallLf))
+                    {
+                        content = content.Replace(duplicateCallLf, replacement);
+                        File.WriteAllText(socketsIndexPath, content);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[BackendInstaller] Could not patch backend source: {ex.Message}");
             }
         }
     }
