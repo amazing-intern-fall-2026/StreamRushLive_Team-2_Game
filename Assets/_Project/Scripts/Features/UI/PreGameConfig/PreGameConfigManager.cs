@@ -162,6 +162,12 @@ namespace SteamRush.Features.UI.PreGameConfig
                 // Ensure all default gifts exist even if config was loaded from an older version
                 SyncWithDefaultGifts();
 
+                // Migrate old default path D:\Download\backendLiveGame to AppData Local
+                if (string.IsNullOrEmpty(CurrentConfig.backendDirectory) || CurrentConfig.backendDirectory == @"D:\Download\backendLiveGame")
+                {
+                    CurrentConfig.backendDirectory = PreGameConfigData.GetDefaultBackendDirectory();
+                }
+
                 // Sanitize legacy target distance values
                 if (CurrentConfig.finiteTargetDistanceMeters <= 0f || CurrentConfig.finiteTargetDistanceMeters >= 900000000f)
                 {

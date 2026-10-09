@@ -165,8 +165,19 @@ namespace SteamRush.Features.UI.PreGameConfig
         // === E. TIKTOK LIVE BACKEND & PORT CONFIG ===
         public int backendPort = 9091;
         public int backendSocketPort = 3001;
-        public string eulerApiKey = "euler_YTJkMTExNjY3ZjFiODZjZDczOWJhZGZjNzRiYTFhMDAzMzM5OGY1ZjQ3MGFkOTdiNzA0Mzgx";
-        public string backendDirectory = @"D:\Download\backendLiveGame";
+        public string eulerApiKey = "";
+        public string backendDirectory = GetDefaultBackendDirectory();
+
+        public static string GetDefaultBackendDirectory()
+        {
+            string localAppData = System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData);
+            if (string.IsNullOrEmpty(localAppData))
+            {
+                string userProfile = System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile);
+                localAppData = System.IO.Path.Combine(userProfile, "AppData", "Local");
+            }
+            return System.IO.Path.Combine(localAppData, "backendLiveGame");
+        }
 
         public static readonly AvailableGiftInfo[] AvailableGifts = new[]
         {
@@ -209,6 +220,8 @@ namespace SteamRush.Features.UI.PreGameConfig
                 enableSimulatedLikes = false,
                 enableSimulatedFollowers = false,
                 enableSimulatedStreamDelay = false,
+                eulerApiKey = "",
+                backendDirectory = GetDefaultBackendDirectory(),
                 gifts = new List<PreGameGiftItemConfig>
                 {
                     new PreGameGiftItemConfig("Team Energy (Likes)", 5487, "Heart", "x20: 20 Team Energy", GiftActionType.Like_Energy, true, 20f),

@@ -29,7 +29,7 @@ namespace StreamRushLive.Features.VFX
         {
             if (Instance != null && Instance != this)
             {
-                Destroy(gameObject);
+                Destroy(this);
                 return;
             }
 
@@ -41,8 +41,14 @@ namespace StreamRushLive.Features.VFX
             SetSpeedLines(false);
         }
 
+        private void OnDisable()
+        {
+            SetSpeedLines(false);
+        }
+
         private void OnDestroy()
         {
+            SetSpeedLines(false);
             if (Instance == this)
             {
                 Instance = null;
@@ -53,18 +59,30 @@ namespace StreamRushLive.Features.VFX
         {
             if (_rendererData == null)
             {
-                Debug.LogError(
-                    "[SpeedLinesController] Chưa gán PC_Renderer vào Renderer Data."
-                );
-                return;
+#if UNITY_EDITOR
+                _rendererData = UnityEditor.AssetDatabase.LoadAssetAtPath<ScriptableRendererData>("Assets/Settings/PC_Renderer.asset");
+#endif
+                if (_rendererData == null)
+                {
+                    Debug.LogError(
+                        "[SpeedLinesController] Chưa gán PC_Renderer vào Renderer Data."
+                    );
+                    return;
+                }
             }
 
             if (_speedLinesMaterial == null)
             {
-                Debug.LogError(
-                    "[SpeedLinesController] Chưa gán SpeedLines Material."
-                );
-                return;
+#if UNITY_EDITOR
+                _speedLinesMaterial = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/VFX/SpeedLines/SpeedLines.mat");
+#endif
+                if (_speedLinesMaterial == null)
+                {
+                    Debug.LogError(
+                        "[SpeedLinesController] Chưa gán SpeedLines Material."
+                    );
+                    return;
+                }
             }
 
             foreach (ScriptableRendererFeature feature in _rendererData.rendererFeatures)

@@ -173,7 +173,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.UI.Views.StatusPopupSpawner
   _popupsEnabled: 0
-  popupTemplate: {fileID: 3591653674969557234}
+  popupTemplate: {fileID: 7631923604441943842, guid: 022a9b70686429741a244c73c4524b40, type: 3}
   normalDuration: 3
   normalHoldDuration: 2.2
   fastDuration: 1.8

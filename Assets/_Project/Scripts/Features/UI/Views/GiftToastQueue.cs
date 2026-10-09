@@ -17,16 +17,14 @@ namespace SteamRush.Features.UI.Views
         private void Awake()
         {
             _active.Clear();
-            if (toastTemplate != null && toastTemplate.transform.parent != null)
+            Transform parent = (toastTemplate != null && toastTemplate.transform.parent != null) ? toastTemplate.transform.parent : transform;
+            for (int i = parent.childCount - 1; i >= 0; i--)
             {
-                Transform parent = toastTemplate.transform.parent;
-                for (int i = parent.childCount - 1; i >= 0; i--)
+                Transform child = parent.GetChild(i);
+                if (toastTemplate != null && child == toastTemplate.transform) continue;
+                if (child.name.Contains("(Clone)"))
                 {
-                    Transform child = parent.GetChild(i);
-                    if (child != toastTemplate.transform && child.name.Contains("(Clone)"))
-                    {
-                        Destroy(child.gameObject);
-                    }
+                    Destroy(child.gameObject);
                 }
             }
         }
@@ -52,7 +50,8 @@ namespace SteamRush.Features.UI.Views
                 }
             }
 
-            GiftToastController instance = Instantiate(toastTemplate, toastTemplate.transform.parent);
+            Transform container = (toastTemplate.transform.parent != null) ? toastTemplate.transform.parent : transform;
+            GiftToastController instance = Instantiate(toastTemplate, container);
             instance.gameObject.SetActive(true);
             instance.transform.SetAsFirstSibling(); // Prepend to top so older items push downward
             instance.Dismissed += OnToastDismissed;

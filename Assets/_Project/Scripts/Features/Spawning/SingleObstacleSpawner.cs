@@ -36,10 +36,6 @@ namespace StreamRushLive.Features.Spawning
             set => carDrivingSpeed = Mathf.Max(0f, value);
         }
 
-        [HideInInspector] [SerializeField] private GameObject shieldItemPrefab;
-        [HideInInspector] [SerializeField] private GameObject energyBuffItemPrefab;
-        [HideInInspector] [SerializeField] private GameObject laserIndicatorPrefab;
-
         [Tooltip("Player transform reference for spawn calculation.")]
         [SerializeField] private Transform playerReference;
 

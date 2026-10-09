@@ -110,7 +110,8 @@ namespace SteamRush.Features.UI.Views
                     break;
                 }
 
-                StatusPopupController instance = Instantiate(popupTemplate, popupTemplate.transform.parent);
+                Transform container = (popupTemplate.transform.parent != null) ? popupTemplate.transform.parent : transform;
+                StatusPopupController instance = Instantiate(popupTemplate, container);
                 instance.gameObject.SetActive(true);
 
                 // Accelerate pacing if queue is backed up

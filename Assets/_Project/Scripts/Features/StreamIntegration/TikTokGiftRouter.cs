@@ -110,6 +110,15 @@ namespace SteamRush.Features.StreamIntegration
             EnsureReferences();
         }
 
+        private void Start()
+        {
+            EnsureReferences();
+            if (_showByElementOrder && _giftPanelController != null)
+            {
+                _giftPanelController.SortOption = GiftSortOption.ByElementOrder;
+            }
+        }
+
         private void OnEnable()
         {
             EnsureReferences();
