@@ -168,6 +168,11 @@ namespace SteamRush.Features.UI.PreGameConfig
                     CurrentConfig.backendDirectory = PreGameConfigData.GetDefaultBackendDirectory();
                 }
 
+                if (!string.IsNullOrEmpty(CurrentConfig.tiktokUsername) && CurrentConfig.tiktokUsername.Equals("Username", StringComparison.OrdinalIgnoreCase))
+                {
+                    CurrentConfig.tiktokUsername = "";
+                }
+
                 // Sanitize legacy target distance values
                 if (CurrentConfig.finiteTargetDistanceMeters <= 0f || CurrentConfig.finiteTargetDistanceMeters >= 900000000f)
                 {

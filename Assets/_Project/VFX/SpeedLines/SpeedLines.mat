@@ -42,6 +42,6 @@ Material:
     - _TextureContrast: 5
     - _TransitionValue: 0.4
     m_Colors:
-    - _Color: {r: 766.9963, g: 766.9963, b: 766.9963, a: 1}
+    - _Color: {r: 194.62363, g: 384.3739, b: 1004.6789, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

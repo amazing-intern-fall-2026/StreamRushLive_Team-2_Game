@@ -202,11 +202,7 @@ namespace SteamRush.Features.UI.PreGameConfig
             _giftsTableView?.RebuildGiftsList(data.gifts);
             _backendSettingsView?.BindConfig(data);
 
-            bool hasSavedUser = !string.IsNullOrEmpty(data.tiktokUsername);
-            string initialStatus = hasSavedUser
-                ? "SAVED (@" + data.tiktokUsername + ")"
-                : "NOT VERIFIED";
-            _liveVerifier?.SetLiveVerifiedUI(hasSavedUser, initialStatus);
+            _liveVerifier?.SetLiveVerifiedUI(false, "NOT VERIFIED");
 
             SwitchTab(true);
         }

@@ -40,6 +40,16 @@ namespace SteamRush.Features.UI.PreGameConfig
                 _btnGoLive.onClick.RemoveAllListeners();
                 _btnGoLive.onClick.AddListener(() => onGoLiveClicked?.Invoke());
             }
+
+            SetLiveVerifiedUI(false, "NOT VERIFIED");
+        }
+
+        private void OnEnable()
+        {
+            if (!_isLiveVerified)
+            {
+                SetLiveVerifiedUI(false, "NOT VERIFIED");
+            }
         }
 
         public void OnUsernameChanged(string newUsername)

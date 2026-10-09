@@ -109,7 +109,7 @@ namespace SteamRush.Features.UI.PreGameConfig
 
             if (_inputUsername != null)
             {
-                _inputUsername.text = string.IsNullOrEmpty(data.tiktokUsername) ? "Username" : data.tiktokUsername;
+                _inputUsername.text = "";
             }
 
             if (_toggleInfiniteDistance != null)
@@ -167,7 +167,8 @@ namespace SteamRush.Features.UI.PreGameConfig
 
             if (_inputUsername != null)
             {
-                data.tiktokUsername = _inputUsername.text.Trim().TrimStart('@');
+                string raw = _inputUsername.text.Trim().TrimStart('@');
+                data.tiktokUsername = (string.IsNullOrEmpty(raw) || raw.Equals("Username", StringComparison.OrdinalIgnoreCase)) ? "" : raw;
             }
 
             if (_toggleInfiniteDistance != null && _toggleInfiniteDistance.isOn)
