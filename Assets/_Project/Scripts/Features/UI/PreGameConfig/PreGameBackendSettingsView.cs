@@ -158,7 +158,7 @@ namespace SteamRush.Features.UI.PreGameConfig
 
         public void SetupBackend(string dir, int httpPort, int socketPort, string apiKey)
         {
-            UpdateStatus("<color=#FCDA21>Kiểm tra Bun runtime (bun --version)...</color>");
+            UpdateStatus("<color=#FCDA21>Checking Bun runtime (bun --version)...</color>");
             Debug.Log($"[PreGameBackendSettingsView] Auto Setup started: dir='{dir}', http={httpPort}, socket={socketPort}");
 
             TikTokBackendManager.Instance.SetupBackendFromGit(dir, httpPort, socketPort, apiKey, (success, msg) =>

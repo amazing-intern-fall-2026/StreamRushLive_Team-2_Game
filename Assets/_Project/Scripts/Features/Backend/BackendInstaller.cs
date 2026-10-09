@@ -365,7 +365,7 @@ pause
             {
                 try
                 {
-                    ReportProgress("Kiểm tra Bun runtime (bun --version)...");
+                    ReportProgress("Checking Bun runtime (bun --version)...");
                     if (!EnsureBunInstalled(ReportProgress, out string bunVersion))
                     {
                         isSuccess = false;
@@ -373,7 +373,7 @@ pause
                         return;
                     }
 
-                    ReportProgress($"Bun runtime sẵn sàng (v{bunVersion}). Chuẩn bị thư mục backend...");
+                    ReportProgress($"Bun runtime ready (v{bunVersion}). Preparing backend directory...");
 
                     if (!Directory.Exists(targetFolder))
                     {
@@ -383,7 +383,7 @@ pause
                     string serverTsPath = Path.Combine(targetFolder, "src", "server.ts");
                     if (File.Exists(serverTsPath))
                     {
-                        ReportProgress($"Mã nguồn backend đã tồn tại trong '{targetFolder}'.");
+                        ReportProgress($"Backend source files already exist in '{targetFolder}'.");
                         isSuccess = true;
                     }
                     else
@@ -391,13 +391,13 @@ pause
                         string localRef = @"D:\Download\TikTok-Live_Dev_Nhom5-main\backend";
                         if (Directory.Exists(localRef) && File.Exists(Path.Combine(localRef, "src", "server.ts")))
                         {
-                            ReportProgress("Sao chép mã nguồn backend từ thư mục tham chiếu cục bộ...");
+                            ReportProgress("Copying backend source files from local reference folder...");
                             CopyDirectory(localRef, targetFolder);
                             isSuccess = true;
                         }
                         else
                         {
-                            ReportProgress("Đang clone repository backend từ GitHub...");
+                            ReportProgress("Cloning backend repository from GitHub...");
                             string parentDir = Directory.GetParent(targetFolder)?.FullName;
                             if (string.IsNullOrEmpty(parentDir)) parentDir = mainThreadDataPath;
                             if (!Directory.Exists(parentDir)) Directory.CreateDirectory(parentDir);
@@ -444,7 +444,7 @@ pause
                                     string clonedBackend = Path.Combine(cloneDir, "backend");
                                     if (Directory.Exists(clonedBackend))
                                     {
-                                        ReportProgress("Sao chép các tệp backend đã clone vào thư mục đích...");
+                                        ReportProgress("Copying cloned backend files into target folder...");
                                         CopyDirectory(clonedBackend, targetFolder);
                                         DeleteDirectorySafely(cloneDir);
                                         isSuccess = true;
@@ -452,13 +452,13 @@ pause
                                     else
                                     {
                                         isSuccess = false;
-                                        resultMessage = "Repository đã clone không chứa thư mục 'backend'.";
+                                        resultMessage = "Cloned repository does not contain 'backend' folder.";
                                     }
                                 }
                                 else
                                 {
                                     isSuccess = false;
-                                    resultMessage = $"Git clone thất bại: {errOutput}";
+                                    resultMessage = $"Git clone failed: {errOutput}";
                                 }
                             }
                         }
@@ -466,14 +466,14 @@ pause
 
                     if (isSuccess)
                     {
-                        ReportProgress("Cập nhật file cấu hình .env & run_backend.bat...");
+                        ReportProgress("Updating configuration (.env & run_backend.bat)...");
                         WriteEnvFile(targetFolder, httpPort, eulerApiKey, out string envErr);
                         EnsureRunBatFile(targetFolder, httpPort, socketPort);
 
                         string nodeModules = Path.Combine(targetFolder, "node_modules");
                         if (!Directory.Exists(nodeModules))
                         {
-                            ReportProgress("Cài đặt dependencies qua Bun (bun install)...");
+                            ReportProgress("Installing dependencies via Bun (bun install)...");
                             string bunExe = GetBunExecutablePath();
                             var bunPsi = new ProcessStartInfo("cmd.exe", $"/c cd /d \"{targetFolder}\" && \"{bunExe}\" install")
                             {
@@ -499,13 +499,13 @@ pause
                             }
                         }
 
-                        resultMessage = $"Auto Setup hoàn tất thành công! Backend sẵn sàng (HTTP: {httpPort}, Socket: {socketPort}).";
+                        resultMessage = $"Auto Setup completed successfully! Backend ready (HTTP: {httpPort}, Socket: {socketPort}).";
                     }
                 }
                 catch (Exception ex)
                 {
                     isSuccess = false;
-                    resultMessage = $"Lỗi Setup: {ex.Message}";
+                    resultMessage = $"Setup error: {ex.Message}";
                     Debug.LogError($"[BackendInstaller] Setup exception: {ex}");
                 }
                 finally
