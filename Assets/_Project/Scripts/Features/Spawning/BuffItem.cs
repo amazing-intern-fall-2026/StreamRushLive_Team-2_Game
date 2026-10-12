@@ -22,7 +22,7 @@ namespace StreamRushLive.Features.Spawning
 
         public override void OnCollected(GameObject collector)
         {
-            EnergySystem energy = FindFirstObjectByType<EnergySystem>();
+            RunnerEnergySystem energy = FindFirstObjectByType<RunnerEnergySystem>();
             if (energy != null)
             {
                 energy.AddEnergy(energyRecoverAmount);

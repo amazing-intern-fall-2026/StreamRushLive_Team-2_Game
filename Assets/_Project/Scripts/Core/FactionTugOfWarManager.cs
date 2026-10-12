@@ -14,9 +14,19 @@ namespace SteamRush.Features.StreamIntegration
 
     /// <summary>
     /// Manages the tug-of-war balance between Fan and Anti factions, member memberships, and ability costs.
+    /// Acts as the coordinator / arbiter between the two FactionEnergyPools (Blue & Red).
     /// </summary>
     public class FactionTugOfWarManager : MonoBehaviour
     {
+        [Header("Faction Energy Pools (Shared Component)")]
+        [Tooltip("Energy pool for Team Blue (Fan faction).")]
+        [SerializeField] private FactionEnergyPool _blueTeamPool;
+        [Tooltip("Energy pool for Team Red (Anti faction).")]
+        [SerializeField] private FactionEnergyPool _redTeamPool;
+
+        public FactionEnergyPool BlueTeamPool => _blueTeamPool;
+        public FactionEnergyPool RedTeamPool => _redTeamPool;
+
         [Header("Auto Car Spawn Settings")]
         [Tooltip("If true, auto-spawns vehicle when Anti energy bar reaches 100% capacity.")]
         [SerializeField] private bool _autoSpawnOnFullEnergy = true;
@@ -82,8 +92,8 @@ namespace SteamRush.Features.StreamIntegration
         private int _fanLikes;
         private int _antiLikes;
 
-        public int FanLikes => _fanLikes;
-        public int AntiLikes => _antiLikes;
+        public int FanLikes => _blueTeamPool != null ? _blueTeamPool.CurrentEnergy : _fanLikes;
+        public int AntiLikes => _redTeamPool != null ? _redTeamPool.CurrentEnergy : _antiLikes;
         public int AntiCarThreshold => _antiCarThreshold;
         public int AntiCarCost => StreamRushLive.Features.Gifts.GiftManager.Instance != null 
             ? StreamRushLive.Features.Gifts.GiftManager.Instance.SedanCarCost 
@@ -113,27 +123,106 @@ namespace SteamRush.Features.StreamIntegration
             set => _fanEnergyGiftAmount = value; 
         }
 
+        /// <summary>
+        /// Tug-of-war balance ratio between Blue and Red: Blue / (Blue + Red). Returns 0.5f if both are 0.
+        /// </summary>
+        public float TugOfWarRatio
+        {
+            get
+            {
+                int blue = FanLikes;
+                int red = AntiLikes;
+                int total = blue + red;
+                return total > 0 ? (float)blue / total : 0.5f;
+            }
+        }
+
         private void Awake()
         {
-            _fanLikes = _initialFanLikes > 0 ? _initialFanLikes : 100;
-            _antiLikes = _initialAntiLikes;
-
             var ui = FindFirstObjectByType<SteamRush.Features.UI.FactionTugOfWarUI>();
             if (ui != null && ui.AntiMaxValue > 0)
             {
                 _antiCarThreshold = ui.AntiMaxValue;
             }
             _antiCarCost = _antiCarLaneCost;
+
+            EnsureEnergyPools();
+        }
+
+        private void EnsureEnergyPools()
+        {
+            int initialFan = _initialFanLikes > 0 ? _initialFanLikes : 100;
+            int initialAnti = _initialAntiLikes > 0 ? _initialAntiLikes : 200;
+            int maxFan = GetFanEnergyMax();
+            int maxAnti = GetAntiEnergyMax();
+
+            if (_blueTeamPool == null)
+            {
+                var pools = GetComponents<FactionEnergyPool>();
+                foreach (var p in pools)
+                {
+                    if (p.Faction == FactionType.Fan) { _blueTeamPool = p; break; }
+                }
+                if (_blueTeamPool == null)
+                {
+                    _blueTeamPool = gameObject.AddComponent<FactionEnergyPool>();
+                    _blueTeamPool.Initialize(FactionType.Fan, initialFan, maxFan);
+                }
+            }
+            else
+            {
+                _blueTeamPool.Initialize(FactionType.Fan, initialFan, maxFan);
+            }
+
+            if (_redTeamPool == null)
+            {
+                var pools = GetComponents<FactionEnergyPool>();
+                foreach (var p in pools)
+                {
+                    if (p.Faction == FactionType.Anti) { _redTeamPool = p; break; }
+                }
+                if (_redTeamPool == null)
+                {
+                    _redTeamPool = gameObject.AddComponent<FactionEnergyPool>();
+                    _redTeamPool.Initialize(FactionType.Anti, initialAnti, maxAnti);
+                }
+            }
+            else
+            {
+                _redTeamPool.Initialize(FactionType.Anti, initialAnti, maxAnti);
+            }
+
+            _fanLikes = _blueTeamPool.CurrentEnergy;
+            _antiLikes = _redTeamPool.CurrentEnergy;
+
+            _blueTeamPool.OnEnergyChanged += (curr, max) => SyncFactionValues();
+            _redTeamPool.OnEnergyChanged += (curr, max) =>
+            {
+                SyncFactionValues();
+                CheckAntiCarThreshold();
+            };
         }
 
         private void Start()
         {
-            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+            SyncFactionValues();
             _factionMemberCountsChanged.Invoke(FanMemberCount, AntiMemberCount);
+        }
+
+        private void SyncFactionValues()
+        {
+            _fanLikes = _blueTeamPool != null ? _blueTeamPool.CurrentEnergy : _fanLikes;
+            _antiLikes = _redTeamPool != null ? _redTeamPool.CurrentEnergy : _antiLikes;
+            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
         }
 
         public int GetAntiEnergyMax()
         {
+            if (_redTeamPool != null && _redTeamPool.MaxEnergy > 0)
+            {
+                return _redTeamPool.MaxEnergy;
+            }
+
             var ui = FindFirstObjectByType<SteamRush.Features.UI.FactionTugOfWarUI>();
             if (ui != null && ui.AntiMaxValue > 0)
             {
@@ -145,6 +234,11 @@ namespace SteamRush.Features.StreamIntegration
 
         public int GetFanEnergyMax()
         {
+            if (_blueTeamPool != null && _blueTeamPool.MaxEnergy > 0)
+            {
+                return _blueTeamPool.MaxEnergy;
+            }
+
             var ui = FindFirstObjectByType<SteamRush.Features.UI.FactionTugOfWarUI>();
             if (ui != null && ui.FanMaxValue > 0)
             {
@@ -166,7 +260,7 @@ namespace SteamRush.Features.StreamIntegration
 
         private void Update()
         {
-            if (_autoSpawnOnFullEnergy && _antiLikes >= GetAntiEnergyMax())
+            if (_autoSpawnOnFullEnergy && _redTeamPool != null && _redTeamPool.IsFull)
             {
                 if (Time.time - _lastAutoSpawnAttemptTime >= AUTO_SPAWN_RETRY_INTERVAL)
                 {
@@ -189,45 +283,46 @@ namespace SteamRush.Features.StreamIntegration
             }
 
             FactionType faction = GetFaction(userId);
-
-            if (faction == FactionType.Fan)
-            {
-                int maxFan = GetFanEnergyMax();
-                _fanLikes = Mathf.Clamp(_fanLikes + 1, 0, maxFan);
-            }
-            else
-            {
-                int maxAnti = GetAntiEnergyMax();
-                _antiLikes = Mathf.Clamp(_antiLikes + 1, 0, maxAnti);
-                CheckAntiCarThreshold();
-            }
-
-            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+            AddLikes(faction, 1);
         }
 
         public void AddLikes(FactionType faction, int amount = 1)
         {
             if (amount <= 0) return;
 
-            int maxFan = GetFanEnergyMax();
-            int maxAnti = GetAntiEnergyMax();
-
             if (faction == FactionType.Fan)
             {
-                _fanLikes = Mathf.Clamp(_fanLikes + amount, 0, maxFan);
+                if (_blueTeamPool != null)
+                {
+                    _blueTeamPool.AddEnergy(amount);
+                }
+                else
+                {
+                    int maxFan = GetFanEnergyMax();
+                    _fanLikes = Mathf.Clamp(_fanLikes + amount, 0, maxFan);
+                    SyncFactionValues();
+                }
             }
             else
             {
-                _antiLikes = Mathf.Clamp(_antiLikes + amount, 0, maxAnti);
-                CheckAntiCarThreshold();
+                if (_redTeamPool != null)
+                {
+                    _redTeamPool.AddEnergy(amount);
+                }
+                else
+                {
+                    int maxAnti = GetAntiEnergyMax();
+                    _antiLikes = Mathf.Clamp(_antiLikes + amount, 0, maxAnti);
+                    SyncFactionValues();
+                    CheckAntiCarThreshold();
+                }
             }
-
-            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
         }
 
         private void CheckAntiCarThreshold()
         {
-            if (_antiLikes >= GetAntiEnergyMax())
+            bool isFull = _redTeamPool != null ? _redTeamPool.IsFull : (_antiLikes >= GetAntiEnergyMax());
+            if (isFull)
             {
                 TryAutoSpawnCarFromFullEnergy();
             }
@@ -242,7 +337,8 @@ namespace SteamRush.Features.StreamIntegration
             if (!_autoSpawnOnFullEnergy) return false;
 
             int maxThreshold = GetAntiEnergyMax();
-            if (_antiLikes < maxThreshold)
+            bool isFull = _redTeamPool != null ? _redTeamPool.IsFull : (_antiLikes >= maxThreshold);
+            if (!isFull)
             {
                 return false;
             }
@@ -267,8 +363,15 @@ namespace SteamRush.Features.StreamIntegration
             }
 
             // Successfully spawned! Deduct the required energy cost for this vehicle
-            _antiLikes = Mathf.Max(0, _antiLikes - carCost);
-            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+            if (_redTeamPool != null)
+            {
+                _redTeamPool.TryConsumeEnergy(carCost);
+            }
+            else
+            {
+                _antiLikes = Mathf.Max(0, _antiLikes - carCost);
+                SyncFactionValues();
+            }
 
             // Audio & HUD announcements
             PlayCarSpawnSFX(targetTier);
@@ -276,7 +379,7 @@ namespace SteamRush.Features.StreamIntegration
             hud?.ShowAntiAction("Red Team", $"Full Energy -> {targetTier} (-{carCost})");
             hud?.ShowStatusPopup($"Full Energy -> {targetTier} (-{carCost} Energy)", false);
 
-            Debug.Log($"[FactionTugOfWarManager] Red Energy FULL ({maxThreshold})! Auto-spawned [{targetTier}] and deducted {carCost} energy. Remaining: {_antiLikes}");
+            Debug.Log($"[FactionTugOfWarManager] Red Energy FULL ({maxThreshold})! Auto-spawned [{targetTier}] and deducted {carCost} energy. Remaining: {AntiLikes}");
             return true;
         }
 
@@ -299,14 +402,15 @@ namespace SteamRush.Features.StreamIntegration
 
         public bool TryConsumeFanEnergy(int amount)
         {
-            if (_fanLikes <= 0)
+            if (_blueTeamPool != null)
             {
-                return false;
+                return _blueTeamPool.TryConsumeEnergy(amount);
             }
 
+            if (_fanLikes <= 0) return false;
             int toDeduct = Mathf.Min(amount, _fanLikes);
             _fanLikes -= toDeduct;
-            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+            SyncFactionValues();
             return _fanLikes > 0;
         }
 
@@ -317,6 +421,12 @@ namespace SteamRush.Features.StreamIntegration
         public bool TryConsumeFanEnergyPercent(float percent)
         {
             if (percent <= 0f) return true;
+
+            if (_blueTeamPool != null)
+            {
+                return _blueTeamPool.TryConsumePercent(percent);
+            }
+
             int maxFan = GetFanEnergyMax();
             int pointsToDeduct = Mathf.RoundToInt((percent / 100f) * maxFan);
             return TryConsumeFanEnergy(pointsToDeduct);
@@ -324,13 +434,14 @@ namespace SteamRush.Features.StreamIntegration
 
         public bool TrySpendFanEnergy(int cost)
         {
-            if (_fanLikes <= 0 || _fanLikes < cost)
+            if (_blueTeamPool != null)
             {
-                return false;
+                return _blueTeamPool.TryConsumeEnergy(cost);
             }
 
+            if (_fanLikes <= 0 || _fanLikes < cost) return false;
             _fanLikes = Mathf.Max(0, _fanLikes - cost);
-            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+            SyncFactionValues();
             return true;
         }
 
@@ -342,40 +453,49 @@ namespace SteamRush.Features.StreamIntegration
                 return true;
             }
 
-            if (_antiLikes <= 0 || _antiLikes < cost)
+            if (_redTeamPool != null)
             {
-                return false;
+                return _redTeamPool.TryConsumeEnergy(cost);
             }
 
+            if (_antiLikes <= 0 || _antiLikes < cost) return false;
             _antiLikes = Mathf.Max(0, _antiLikes - cost);
-            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+            SyncFactionValues();
             return true;
         }
 
         public void DebugAdjustFanEnergy(int delta)
         {
-            int max = GetFanEnergyMax();
-            _fanLikes = Mathf.Clamp(_fanLikes + delta, 0, max);
-            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+            if (_blueTeamPool != null)
+            {
+                _blueTeamPool.AddEnergy(delta);
+            }
+            else
+            {
+                int max = GetFanEnergyMax();
+                _fanLikes = Mathf.Clamp(_fanLikes + delta, 0, max);
+                SyncFactionValues();
+            }
         }
 
         public void DebugAdjustAntiEnergy(int delta)
         {
-            int max = GetAntiEnergyMax();
-            _antiLikes = Mathf.Clamp(_antiLikes + delta, 0, max);
-            if (delta > 0)
+            if (_redTeamPool != null)
             {
-                CheckAntiCarThreshold();
+                _redTeamPool.AddEnergy(delta);
             }
-            _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
+            else
+            {
+                int max = GetAntiEnergyMax();
+                _antiLikes = Mathf.Clamp(_antiLikes + delta, 0, max);
+                if (delta > 0) CheckAntiCarThreshold();
+                SyncFactionValues();
+            }
         }
 
         public bool OnChatCommand(string userId, string message)
         {
-            if (string.IsNullOrEmpty(message))
-            {
-                return false;
-            }
+            if (string.IsNullOrEmpty(message)) return false;
 
             string normalized = message.Trim().ToLowerInvariant();
 
@@ -409,33 +529,24 @@ namespace SteamRush.Features.StreamIntegration
 
         public void OnDonateReceived(string userId, bool isTrapGift)
         {
-            if (!_followerGate.CanSendCommand(userId))
-            {
-                return;
-            }
+            if (!_followerGate.CanSendCommand(userId)) return;
 
             SetFaction(userId, isTrapGift ? FactionType.Anti : FactionType.Fan);
         }
 
         public bool TrySpawnAntiObstacleCar(string userId, int laneIndex)
         {
-            if (!_followerGate.CanSendCommand(userId))
-            {
-                return false;
-            }
+            if (!_followerGate.CanSendCommand(userId)) return false;
 
             var spawner = FindFirstObjectByType<StreamRushLive.Features.Spawning.SingleObstacleSpawner>();
             bool isUnlimited = spawner != null && spawner.IsUnlimitedModeActive;
 
             if (!isUnlimited)
             {
-                if (_antiLikes <= 0 || _antiLikes < _antiCarLaneCost)
+                if (!TrySpendAntiEnergy(_antiCarLaneCost))
                 {
                     return false;
                 }
-
-                _antiLikes -= _antiCarLaneCost;
-                _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
             }
 
             EventBus.Publish(new RequestCarSpawnEvent(laneIndex));
@@ -449,10 +560,7 @@ namespace SteamRush.Features.StreamIntegration
 
         public bool TryActivateFanGift(string userId, int laneIndex = 0, bool isShield = false)
         {
-            if (!_followerGate.CanSendCommand(userId))
-            {
-                return false;
-            }
+            if (!_followerGate.CanSendCommand(userId)) return false;
 
             if (isShield)
             {
@@ -460,15 +568,9 @@ namespace SteamRush.Features.StreamIntegration
                     ? StreamRushLive.Features.Gifts.GiftManager.Instance.ShieldEnergyCost 
                     : _fanItemLaneCost;
 
-                if (cost > 0 && _fanLikes < cost)
+                if (cost > 0 && !TrySpendFanEnergy(cost))
                 {
                     return false;
-                }
-
-                if (cost > 0)
-                {
-                    _fanLikes -= cost;
-                    _factionValuesChanged.Invoke(_fanLikes, _antiLikes);
                 }
 
                 if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)

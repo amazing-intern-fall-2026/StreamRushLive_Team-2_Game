@@ -10,7 +10,8 @@ using SteamRush.Core;
 namespace SteamRush.Features.Runner
 {
     /// <summary>
-    /// Manages the queue of followers participating as runners.
+    /// Manages the queue of followers participating as runners in the roadside baton handover relay.
+    /// Following on stream immediately queues viewers or spawns them ahead on the sidewalk as the next runner.
     /// </summary>
     public class ChatRunnerQueueManager : MonoBehaviour
     {
@@ -37,8 +38,6 @@ namespace SteamRush.Features.Runner
         public Sprite CurrentRunnerAvatar => _currentRunnerAvatar != null ? _currentRunnerAvatar : _defaultAvatar;
 
         [Header("Roadside Character Handover")]
-        [Tooltip("Enable roadside waiting character for baton pass handover.")]
-        [SerializeField] private bool _enableRoadsideHandover = true;
         [Tooltip("Distance in meters ahead of the runner to spawn the roadside waiting proxy.")]
         [SerializeField] private float _spawnAheadMeters = 35f;
         [Tooltip("Prefab representing the roadside waiting handover proxy.")]
@@ -58,11 +57,9 @@ namespace SteamRush.Features.Runner
         [Tooltip("List of character model prefabs from PolygonCity.")]
         [SerializeField] private List<GameObject> _outfitVariants = new List<GameObject>();
 
-        [Header("VIP Ticket (F10) - Nameplate Color")]
-        [Tooltip("Default name color on the roadside character nameplate.")]
-        [SerializeField] private Color _normalNameColor = Color.white;
-        [Tooltip("Name color when the roadside character is a VIP ticket holder.")]
-        [SerializeField] private Color _vipNameColor = Color.yellow;
+        [Header("Roadside Nameplate Settings")]
+        [Tooltip("Name color on the roadside character nameplate.")]
+        [SerializeField] private Color _nameColor = Color.white;
 
         [Header("Roadside Visual Highlight")]
         [Tooltip("Material used for roadside waiting character outline (e.g. Cyan/Blue).")]
@@ -71,15 +68,11 @@ namespace SteamRush.Features.Runner
         [SerializeField] private Color _roadsideOutlineColor = new Color(0.15f, 0.75f, 1f, 1f); // Electric Cyan Blue
         [SerializeField] private float _roadsideOutlineWidth = 0.015f;
 
-        private readonly HashSet<string> _vipFollowerIds = new HashSet<string>();
-
         [Serializable] public class WaitingStateChangedEvent : UnityEvent<bool> { }
         [SerializeField] private WaitingStateChangedEvent _waitingStateChanged = new WaitingStateChangedEvent();
         public WaitingStateChangedEvent WaitingStateChanged => _waitingStateChanged;
 
-        private readonly Queue<string> _vipQueue = new Queue<string>();
-        private readonly Queue<(string userId, bool isVip)> _followerQueue = new Queue<(string, bool)>();
-        private readonly FollowerGate _followerGate = new FollowerGate();
+        private readonly Queue<string> _followerQueue = new Queue<string>();
 
         private float _distanceSinceLastLeg;
         private bool _isWaitingForFollower;
@@ -90,33 +83,29 @@ namespace SteamRush.Features.Runner
         private string _currentOutfitName = "";
         private GameObject _pendingNextOutfit;
         private string _pendingNextRunnerId = "";
-        private bool _pendingNextRunnerIsVip;
 
         public string CurrentRunnerId { get; private set; }
-        public bool CurrentRunnerIsVip { get; private set; }
+        public bool CurrentRunnerIsVip => false;
         public bool IsWaitingForFollower => _isWaitingForFollower;
-        public int QueuedCount => _vipQueue.Count + _followerQueue.Count;
-        public int VipQueuedCount => _vipQueue.Count;
+        public int QueuedCount => _followerQueue.Count;
+        public int VipQueuedCount => 0;
         public float LegProgress => _distanceSinceLastLeg;
         public float LegDistanceMeters => _legDistanceMeters;
 
+        public event Action<string, int> OnRunnerChanged;
+
         /// <summary>
         /// Peeks the next runner in queue or the roadside waiting runner.
-        /// Prioritizes VIP proxy or the first person in VIP queue.
         /// </summary>
         public (string name, bool isVip)? PeekNextRunner()
         {
             if (_proxySpawnedForCurrentLeg && !string.IsNullOrEmpty(_pendingNextRunnerId))
             {
-                return (_pendingNextRunnerId, _pendingNextRunnerIsVip);
-            }
-            if (_vipQueue.Count > 0)
-            {
-                return (_vipQueue.Peek(), true);
+                return (_pendingNextRunnerId, false);
             }
             if (_followerQueue.Count > 0)
             {
-                return _followerQueue.Peek();
+                return (_followerQueue.Peek(), false);
             }
             return null;
         }
@@ -143,19 +132,12 @@ namespace SteamRush.Features.Runner
             set => _pauseWhenQueueEmpty = value;
         }
 
-        public bool EnableRoadsideHandover
-        {
-            get => _enableRoadsideHandover;
-            set => _enableRoadsideHandover = value;
-        }
-
         /// <summary>
-        /// Clears follower and VIP queues and destroys any active roadside proxy.
+        /// Clears follower queue and destroys any active roadside proxy.
         /// </summary>
         public void ClearQueue(bool clearActiveRoadsideProxy = true)
         {
             _followerQueue.Clear();
-            _vipQueue.Clear();
             if (clearActiveRoadsideProxy && _activeProxy != null)
             {
                 Destroy(_activeProxy);
@@ -192,20 +174,9 @@ namespace SteamRush.Features.Runner
             {
                 _currentRunnerAvatar = avatarSprite;
             }
-            CurrentRunnerIsVip = isVip;
             UpdateRunnerHud();
             OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
         }
-
-        private void OnDestroy()
-        {
-            if (Instance == this)
-            {
-                Instance = null;
-            }
-        }
-
-        public event Action<string, int> OnRunnerChanged;
 
         private void Awake()
         {
@@ -269,16 +240,14 @@ namespace SteamRush.Features.Runner
             {
                 foreach (var f in _initialFollowers)
                 {
-                    _followerQueue.Enqueue((f, false));
+                    _followerQueue.Enqueue(f);
                 }
             }
             else
             {
                 _followerQueue.Clear();
-                _vipQueue.Clear();
             }
 
-            // An bang cho khi khoi dong
             _isWaitingForFollower = false;
             _waitingStateChanged.Invoke(false);
 
@@ -286,84 +255,34 @@ namespace SteamRush.Features.Runner
             OnRunnerChanged?.Invoke(CurrentRunnerId, _followerQueue.Count);
         }
 
-        // Called from StreamIntegration on new follow events if allowed by FollowerGate.
-        public void TryEnqueueFollower(string userId)
+        private void OnDestroy()
         {
-            if (!_followerGate.CanJoinQueue(userId))
+            if (Instance == this)
             {
-                return;
-            }
-
-            _followerQueue.Enqueue((userId, false));
-            UpdateNextRunnerHud();
-            OnRunnerChanged?.Invoke(CurrentRunnerId, _followerQueue.Count);
-
-            if (_isWaitingForFollower)
-            {
-                ResumeFromWaiting();
+                Instance = null;
             }
         }
 
-        // ===== [VIP Baton Pass] VIP Queue & Instant Baton Pass =====
         /// <summary>
-        /// VIP Ticket: Spawns roadside handover proxy immediately ahead of runner without waiting for leg distance.
-        /// If a regular proxy is present, replaces it with VIP immediately.
-        /// If another VIP proxy is already active, enqueues into VIP queue.
+        /// Backwards compatibility forwarder for legacy callers.
         /// </summary>
+        [Obsolete("TryEnqueueFollower is legacy. Use EnqueueFollowerAsRunner instead.")]
+        public void TryEnqueueFollower(string userId)
+        {
+            EnqueueFollowerAsRunner(userId);
+        }
+
+        /// <summary>
+        /// Backwards compatibility forwarder for legacy callers.
+        /// </summary>
+        [Obsolete("TryEnqueuePriorityFollower is legacy. Use EnqueueFollowerAsRunner instead.")]
         public void TryEnqueuePriorityFollower(string userId)
         {
-            if (string.IsNullOrEmpty(userId)) return;
-
-            _vipFollowerIds.Add(userId);
-            AudioManager.Instance?.PlaySFX(SFXType.BatonHandover);
-
-            if (_enableRoadsideHandover)
-            {
-                if (_activeProxy == null)
-                {
-                    // No active proxy -> Spawn VIP proxy immediately ahead of runner
-                    SpawnRoadsideProxyInternal(userId, true);
-                }
-                else if (!_pendingNextRunnerIsVip)
-                {
-                    // Existing normal proxy -> Replace with VIP proxy immediately
-                    if (!string.IsNullOrEmpty(_pendingNextRunnerId))
-                    {
-                        List<(string userId, bool isVip)> tempQueue = new List<(string, bool)>(_followerQueue);
-                        _followerQueue.Clear();
-                        _followerQueue.Enqueue((_pendingNextRunnerId, false));
-                        foreach (var item in tempQueue) _followerQueue.Enqueue(item);
-                    }
-                    SpawnRoadsideProxyInternal(userId, true);
-                }
-                else
-                {
-                    // Another VIP proxy active -> Enqueue into VIP queue
-                    _vipQueue.Enqueue(userId);
-                }
-            }
-            else
-            {
-                CurrentRunnerId = userId;
-                CurrentRunnerIsVip = true;
-                _distanceSinceLastLeg = 0f;
-                PickPendingNextOutfit();
-                SwapRunnerOutfit(_pendingNextOutfit != null ? _pendingNextOutfit.name : "");
-                UpdateRunnerHud();
-            }
-
-            UpdateNextRunnerHud();
-            OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
-
-            if (_isWaitingForFollower)
-            {
-                ResumeFromWaiting();
-            }
+            EnqueueFollowerAsRunner(userId);
         }
 
         /// <summary>
         /// When a viewer follows, they immediately get queued or spawned ahead as the next roadside handover runner.
-        /// Replaces the former VIP ticket gift mechanism so following is all that is required to become runner.
         /// </summary>
         public void EnqueueFollowerAsRunner(string userId)
         {
@@ -371,26 +290,15 @@ namespace SteamRush.Features.Runner
 
             AudioManager.Instance?.PlaySFX(SFXType.StreamNewFollower);
 
-            if (_enableRoadsideHandover)
+            if (_activeProxy == null)
             {
-                if (_activeProxy == null)
-                {
-                    // No proxy currently waiting -> spawn roadside waiting character immediately ahead of runner
-                    SpawnRoadsideProxyInternal(userId, false);
-                }
-                else
-                {
-                    // A proxy is already standing on the sidewalk -> queue this follower as the next runner
-                    _followerQueue.Enqueue((userId, false));
-                }
+                // No proxy currently waiting -> spawn roadside waiting character immediately ahead of runner
+                SpawnRoadsideProxyInternal(userId);
             }
             else
             {
-                _followerQueue.Enqueue((userId, false));
-                if (_distanceSinceLastLeg >= _legDistanceMeters)
-                {
-                    AdvanceToNextRunner();
-                }
+                // A proxy is already standing on the sidewalk -> queue this follower as the next runner
+                _followerQueue.Enqueue(userId);
             }
 
             UpdateNextRunnerHud();
@@ -401,7 +309,6 @@ namespace SteamRush.Features.Runner
                 ResumeFromWaiting();
             }
         }
-        // ===== [VIP Baton Pass] END =====
 
         private void Update()
         {
@@ -411,58 +318,49 @@ namespace SteamRush.Features.Runner
             }
 
             _distanceSinceLastLeg += _worldSpeedManager.CurrentSpeed * Time.deltaTime;
-
-            if (_enableRoadsideHandover)
-            {
-                UpdateRoadsideHandover();
-            }
-            else
-            {
-                if (_distanceSinceLastLeg >= _legDistanceMeters)
-                {
-                    _distanceSinceLastLeg -= _legDistanceMeters;
-                    AdvanceToNextRunner();
-                }
-            }
+            UpdateRoadsideHandover();
         }
 
         private void UpdateRoadsideHandover()
         {
-            // 1. Prioritize VIP queue: Spawn immediately if VIP waiting in queue
-            if (_activeProxy == null && _vipQueue.Count > 0)
+            // 1. If no active proxy, spawn next runner if available in queue
+            if (_activeProxy == null && _followerQueue.Count > 0)
             {
-                string nextVip = _vipQueue.Dequeue();
-                SpawnRoadsideProxyInternal(nextVip, true);
+                string nextRunner = _followerQueue.Dequeue();
+                SpawnRoadsideProxyInternal(nextRunner);
+            }
+            // Or auto replenish mock if enabled
+            else if (_activeProxy == null && _followerQueue.Count == 0 && _autoReplenishMockQueue)
+            {
+                float triggerDistance = Mathf.Max(0f, _legDistanceMeters - _spawnAheadMeters);
+                if (_distanceSinceLastLeg >= triggerDistance)
+                {
+                    string mockRunner = "Follower_" + UnityEngine.Random.Range(100, 999);
+                    SpawnRoadsideProxyInternal(mockRunner);
+                }
             }
 
-            // 2. Regular leg: Spawn proxy when reaching designated leg threshold
-            float triggerDistance = Mathf.Max(0f, _legDistanceMeters - _spawnAheadMeters);
-            if (_distanceSinceLastLeg >= triggerDistance && !_proxySpawnedForCurrentLeg && _activeProxy == null && _vipQueue.Count == 0)
-            {
-                TrySpawnRoadsideProxy();
-            }
-
-            // 3. Complete handover when runner reaches or passes proxy position
+            // 2. Complete handover when runner passes proxy position
             if (_activeProxy != null && _runnerTransform != null && _activeProxy.transform.position.x < _runnerTransform.position.x - 2f)
             {
                 ExecuteRoadsideHandover();
             }
-            else if (_activeProxy == null && _distanceSinceLastLeg >= _legDistanceMeters && _vipQueue.Count == 0)
+            // 3. Check empty queue hold if leg distance reached and queue is completely empty
+            else if (_activeProxy == null && _distanceSinceLastLeg >= _legDistanceMeters && _followerQueue.Count == 0)
             {
-                if (_followerQueue.Count == 0 && !_autoReplenishMockQueue && !_pauseWhenQueueEmpty)
+                if (_pauseWhenQueueEmpty)
                 {
-                    _distanceSinceLastLeg = 0f;
+                    EnterWaitingState();
                 }
                 else
                 {
-                    _distanceSinceLastLeg -= _legDistanceMeters;
-                    AdvanceToNextRunner();
+                    _distanceSinceLastLeg = 0f;
                 }
             }
         }
 
         /// <summary>
-        /// Called by RoadsideHandoverTrigger when the runner contacts the proxy.
+        /// Called by RoadsideHandoverTrigger when the runner contacts the 12m trigger box.
         /// </summary>
         public void NotifyRunnerReachedProxy()
         {
@@ -474,39 +372,7 @@ namespace SteamRush.Features.Runner
             ExecuteRoadsideHandover();
         }
 
-        private void TrySpawnRoadsideProxy()
-        {
-            if (_runnerTransform == null) return;
-
-            string nextRunnerId;
-            bool nextRunnerIsVip;
-
-            if (_vipQueue.Count > 0)
-            {
-                nextRunnerId = _vipQueue.Dequeue();
-                nextRunnerIsVip = true;
-            }
-            else if (_followerQueue.Count == 0)
-            {
-                if (_autoReplenishMockQueue)
-                {
-                    nextRunnerId = "Follower_" + UnityEngine.Random.Range(100, 999);
-                    nextRunnerIsVip = false;
-                }
-                else
-                {
-                    return;
-                }
-            }
-            else
-            {
-                (nextRunnerId, nextRunnerIsVip) = _followerQueue.Dequeue();
-            }
-
-            SpawnRoadsideProxyInternal(nextRunnerId, nextRunnerIsVip);
-        }
-
-        private void SpawnRoadsideProxyInternal(string runnerId, bool isVip)
+        private void SpawnRoadsideProxyInternal(string runnerId)
         {
             if (_runnerTransform == null) return;
 
@@ -517,7 +383,6 @@ namespace SteamRush.Features.Runner
             }
 
             _pendingNextRunnerId = runnerId;
-            _pendingNextRunnerIsVip = isVip;
 
             PickPendingNextOutfit();
             if (_pendingNextOutfit == null) return;
@@ -593,8 +458,7 @@ namespace SteamRush.Features.Runner
             }
             ApplyNaturalStandingPose(characterInstance);
 
-            AttachNameplateToProxy(characterInstance, _pendingNextRunnerId, _pendingNextRunnerIsVip);
-
+            AttachNameplateToProxy(characterInstance, _pendingNextRunnerId);
             AttachRoadsideOutline(characterInstance);
 
             UpdateNextRunnerHud();
@@ -623,7 +487,6 @@ namespace SteamRush.Features.Runner
         private void ExecuteRoadsideHandover()
         {
             CurrentRunnerId = _pendingNextRunnerId;
-            CurrentRunnerIsVip = _pendingNextRunnerIsVip;
             _distanceSinceLastLeg = 0f;
             _proxySpawnedForCurrentLeg = false;
 
@@ -644,13 +507,13 @@ namespace SteamRush.Features.Runner
             }
 
             OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
-            Debug.Log($"[ChatRunnerQueueManager] Baton handover completed for: {CurrentRunnerId} (VIP={CurrentRunnerIsVip})!");
+            Debug.Log($"[ChatRunnerQueueManager] Baton handover completed for: {CurrentRunnerId}!");
 
-            // If VIP queue has waiting members, spawn next VIP proxy immediately
-            if (_enableRoadsideHandover && _vipQueue.Count > 0)
+            // If queue has more followers waiting, spawn next proxy ahead immediately
+            if (_followerQueue.Count > 0)
             {
-                string nextVip = _vipQueue.Dequeue();
-                SpawnRoadsideProxyInternal(nextVip, true);
+                string nextRunner = _followerQueue.Dequeue();
+                SpawnRoadsideProxyInternal(nextRunner);
             }
         }
 
@@ -681,7 +544,7 @@ namespace SteamRush.Features.Runner
             _pendingNextOutfit = null;
         }
 
-        private void AttachNameplateToProxy(GameObject proxyObj, string displayName, bool isVip)
+        private void AttachNameplateToProxy(GameObject proxyObj, string displayName)
         {
             if (_nameplatePrefab == null) return;
 
@@ -693,7 +556,7 @@ namespace SteamRush.Features.Runner
             if (tmp != null)
             {
                 tmp.text = displayName;
-                tmp.color = isVip ? _vipNameColor : _normalNameColor;
+                tmp.color = _nameColor;
             }
 
             var proxyCtrl = proxyObj.AddComponent<SteamRush.Relay.HandoverProxyController>();
@@ -761,43 +624,6 @@ namespace SteamRush.Features.Runner
             return clean;
         }
 
-        private void AdvanceToNextRunner()
-        {
-            if (_vipQueue.Count > 0)
-            {
-                CurrentRunnerId = _vipQueue.Dequeue();
-                CurrentRunnerIsVip = true;
-                UpdateRunnerHud();
-                OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
-                return;
-            }
-
-            if (_followerQueue.Count == 0)
-            {
-                if (_autoReplenishMockQueue)
-                {
-                    string autoFollower = "Follower_" + UnityEngine.Random.Range(100, 999);
-                    _followerQueue.Enqueue((autoFollower, false));
-                }
-                else if (_pauseWhenQueueEmpty)
-                {
-                    EnterWaitingState();
-                    return;
-                }
-                else
-                {
-                    _distanceSinceLastLeg = 0f;
-                    UpdateRunnerHud();
-                    return;
-                }
-            }
-
-            (CurrentRunnerId, CurrentRunnerIsVip) = _followerQueue.Dequeue();
-            UpdateRunnerHud();
-            OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
-        }
-
-        // Apply name/avatar/VIP status to runner nameplate via HUDManager facade
         private void UpdateRunnerHud()
         {
             if (_hudManager == null)
@@ -805,7 +631,7 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            _hudManager.UpdateRunnerInfo(CurrentRunnerId, CurrentRunnerAvatar, CurrentRunnerIsVip);
+            _hudManager.UpdateRunnerInfo(CurrentRunnerId, CurrentRunnerAvatar, false);
             _hudManager.UpdateRunnerTarget(_runnerTransform);
             UpdateNextRunnerHud();
         }
@@ -828,7 +654,6 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        // Empty Queue Hold: pauses world speed and notifies UI
         private void EnterWaitingState()
         {
             _isWaitingForFollower = true;
@@ -843,7 +668,6 @@ namespace SteamRush.Features.Runner
             OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
         }
 
-        // New follower arrived while waiting: resume speed, hide panel, pick next runner
         private void ResumeFromWaiting()
         {
             _isWaitingForFollower = false;
@@ -855,14 +679,9 @@ namespace SteamRush.Features.Runner
 
             _waitingStateChanged.Invoke(false);
 
-            if (_vipQueue.Count > 0)
+            if (_followerQueue.Count > 0)
             {
-                CurrentRunnerId = _vipQueue.Dequeue();
-                CurrentRunnerIsVip = true;
-            }
-            else if (_followerQueue.Count > 0)
-            {
-                (CurrentRunnerId, CurrentRunnerIsVip) = _followerQueue.Dequeue();
+                CurrentRunnerId = _followerQueue.Dequeue();
             }
             UpdateRunnerHud();
             OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);

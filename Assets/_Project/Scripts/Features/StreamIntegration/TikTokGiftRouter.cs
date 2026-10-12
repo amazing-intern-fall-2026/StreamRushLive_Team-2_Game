@@ -133,7 +133,7 @@ namespace SteamRush.Features.StreamIntegration
         public void EnsureReferences()
         {
             if (_giftManager == null) _giftManager = GiftManager.Instance ?? FindFirstObjectByType<GiftManager>();
-            if (_queueManager == null) _queueManager = FindFirstObjectByType<ChatRunnerQueueManager>();
+            if (_queueManager == null) _queueManager = ChatRunnerQueueManager.Instance ?? FindFirstObjectByType<ChatRunnerQueueManager>();
             if (_factionManager == null) _factionManager = FindFirstObjectByType<FactionTugOfWarManager>();
             if (_giftPanelController == null) _giftPanelController = FindFirstObjectByType<GiftInfoPanelController>();
             if (_hudManager == null) _hudManager = FindFirstObjectByType<HUDManager>();

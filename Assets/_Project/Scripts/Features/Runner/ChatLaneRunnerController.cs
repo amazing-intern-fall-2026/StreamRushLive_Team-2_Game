@@ -29,8 +29,8 @@ namespace SteamRush.Features.Runner
         [SerializeField] private float _fastTargetSpeed = 18f;
         [Tooltip("FactionTugOfWarManager reference for Fan energy costs.")]
         [SerializeField] private FactionTugOfWarManager _factionManager;
-        [Tooltip("EnergySystem reference for syncing lane change costs.")]
-        [SerializeField] private StreamRushLive.Features.Spawning.EnergySystem _energySystem;
+        [Tooltip("RunnerEnergySystem reference for syncing lane change costs.")]
+        [SerializeField] private StreamRushLive.Features.Spawning.RunnerEnergySystem _energySystem;
 
         [Header("Control Energy Costs (GDD v1.4.1 Section 2.2)")]
         [Tooltip("Fan energy cost per lane change (default: 10 points).")]
@@ -228,7 +228,7 @@ namespace SteamRush.Features.Runner
 
             if (_energySystem == null)
             {
-                _energySystem = FindFirstObjectByType<StreamRushLive.Features.Spawning.EnergySystem>();
+                _energySystem = FindFirstObjectByType<StreamRushLive.Features.Spawning.RunnerEnergySystem>();
             }
 
             if (_hudManager == null)
@@ -441,7 +441,7 @@ namespace SteamRush.Features.Runner
 
             if (_energySystem == null)
             {
-                _energySystem = FindFirstObjectByType<StreamRushLive.Features.Spawning.EnergySystem>();
+                _energySystem = FindFirstObjectByType<StreamRushLive.Features.Spawning.RunnerEnergySystem>();
             }
 
             if (_factionManager == null && _energySystem == null)

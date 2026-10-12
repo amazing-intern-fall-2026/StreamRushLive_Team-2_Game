@@ -8,12 +8,13 @@ using SteamRush.Features.Runner;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Manages Runner energy.
+    /// Manages Runner energy (Team Blue / Fan Runner stamina).
     /// Energy does not drain over time and sprint is free.
     /// Lane switching consumes energy (default -10 points).
     /// Obstacle collisions inflict energy penalty (-25%).
     /// </summary>
-    public class EnergySystem : MonoBehaviour
+    [UnityEngine.Scripting.APIUpdating.MovedFrom(true, null, "Assembly-CSharp", "EnergySystem")]
+    public class RunnerEnergySystem : MonoBehaviour
     {
         [Header("Energy Settings")]
         [SerializeField] private float maxEnergy = 100f;
@@ -161,5 +162,13 @@ namespace StreamRushLive.Features.Spawning
         {
             return currentEnergy;
         }
+    }
+
+    /// <summary>
+    /// Backwards compatibility alias for RunnerEnergySystem.
+    /// </summary>
+    [System.Obsolete("EnergySystem is obsolete. Please use RunnerEnergySystem instead.")]
+    public class EnergySystem : RunnerEnergySystem
+    {
     }
 }

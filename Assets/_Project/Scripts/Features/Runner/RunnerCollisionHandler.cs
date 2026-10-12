@@ -132,7 +132,7 @@ namespace SteamRush.Features.Runner
 
             if (obj.CompareTag("Buff") || obj.name.Contains("Buff"))
             {
-                EnergySystem energy = FindFirstObjectByType<EnergySystem>();
+                RunnerEnergySystem energy = FindFirstObjectByType<RunnerEnergySystem>();
                 if (energy != null)
                 {
                     energy.AddEnergy(20f);
@@ -260,7 +260,7 @@ namespace SteamRush.Features.Runner
                 if (col != null) col.isTrigger = true;
             }
 
-            EnergySystem energySystem = FindFirstObjectByType<EnergySystem>();
+            RunnerEnergySystem energySystem = FindFirstObjectByType<RunnerEnergySystem>();
             if (energySystem != null && penalty > 0f)
             {
                 float deduction = (penalty / 100f) * energySystem.MaxEnergy;

@@ -31,7 +31,7 @@ Assets/_Project/Scripts/
 | Tên Script | Vai trò & Trách nhiệm chính |
 | :--- | :--- |
 | **`EventBus.cs`** | **Hệ thống Publish / Subscribe tĩnh Decoupled.** Cho phép các module giao tiếp mà không cần tham chiếu trực tiếp nhau. Ví dụ: Khi phe Anti đủ like, `FactionTugOfWarManager` phát `RequestCarSpawnEvent`, `ChatRunnerCarSpawnAdapter` lắng nghe và yêu cầu Spawner thả xe. |
-| **`EnergySystem.cs`** | **Hệ thống quản lý Năng lượng của Runner.** Năng lượng không tự tiêu hao theo thời gian và không trừ khi bứt tốc (Sprint là miễn phí). Thay vào đó, mỗi khi Runner đổi làn sẽ bị trừ năng lượng (mặc định -10 điểm / 1%) và bị phạt khi va chạm (-25%). Phát sự kiện `OnEnergyNormalizedChanged` cập nhật thanh năng lượng trên HUD. |
+| **`RunnerEnergySystem.cs`** | **Hệ thống quản lý Thể lực/Năng lượng của Runner (Team Blue).** Năng lượng không tự tiêu hao theo thời gian và không trừ khi bứt tốc (Sprint là miễn phí). Thay vào đó, mỗi khi Runner đổi làn sẽ bị trừ năng lượng (mặc định -10 điểm) và bị phạt khi va chạm (-25%). Phát sự kiện `OnEnergyNormalizedChanged` cập nhật thanh năng lượng trên HUD. (Có alias tương thích ngược `EnergySystem`). |
 | **`WorldSpeedManager.cs`** | **Bộ điều phối vận tốc của toàn bộ thế giới cuộn.** Điều chỉnh tốc độ cơ bản (8.0 m/s), bứt tốc Sprint (18.0 m/s), hãm trượt Slide, và hồi phục gia tốc mượt mà. Đặc biệt sở hữu hàm `TriggerReverseWorldKnockback(peakSpeed: -8.5m/s)` tạo xung lực cuộn ngược toàn bộ phố xá khi có va chạm mạnh. |
 
 ---
@@ -72,7 +72,8 @@ Assets/_Project/Scripts/
 
 | Tên Script | Vai trò & Trách nhiệm chính |
 | :--- | :--- |
-| **`FactionTugOfWarManager.cs`** | **Quản lý Đại chiến Kéo co (Fan vs Anti).** Phân chia khán giả theo cú pháp chat `#fan` (hoặc `#blue`) và `#anti` (hoặc `#red`). Đếm số lượng like và quà tặng. Khi phe Anti tích lũy đủ 500 tim, tự động kích hoạt sự kiện thả 1 xe ô tô cản đường Runner. |
+| **`FactionTugOfWarManager.cs`** | **Tổng điều phối Đại chiến Kéo co (Fan vs Anti).** Quản lý và so sánh tỷ lệ giữa 2 kho năng lượng `FactionEnergyPool` (Blue vs Red). Phân chia khán giả theo cú pháp chat (`blue`/`red`) hoặc quà tặng, đếm thành viên mỗi phe. Khi Red Pool đầy 100%, tự động kích hoạt sự kiện thả xe ô tô cản đường Runner. |
+| **`FactionEnergyPool.cs`** | **Bình chứa năng lượng chuẩn hóa dùng chung.** Được tái sử dụng cho cả Team Blue (Fan) và Team Red (Anti). Đảm nhiệm việc lưu trữ, cộng, trừ điểm và tính toán tỷ lệ % năng lượng độc lập cho từng phe. |
 | **`FollowerGate.cs`** | **Cổng kiểm soát quyền hạn Follower.** Đảm bảo chỉ những tài khoản đã bấm Follow kênh livestream mới có quyền can thiệp vào game (gửi lệnh chuyển làn, bứt tốc, hoặc xếp hàng chờ chạy tiếp sức). |
 | **`ChatRunnerCarSpawnAdapter.cs`** | **Bộ chuyển đổi sự kiện thả xe.** Lắng nghe `RequestCarSpawnEvent` từ `EventBus` khi phe Anti đủ điểm, rồi gọi trực tiếp `SingleObstacleSpawner.TriggerSpawnCarFromAntiLikes()` để sinh xe trên đường. |
 | **`ChatCommandSanitizer.cs`** | **Bộ chuẩn hóa chuỗi lệnh chat.** Tự động chuyển ký tự về chữ thường, cắt bỏ khoảng trắng thừa và dấu câu để bộ phân tích lệnh (`MockChatConsole` hoặc Stream Parser) nhận diện chính xác. |
@@ -121,7 +122,7 @@ flowchart TD
     
     Collision --> Speed["WorldSpeedManager: Reverse Knockback -8.5 m/s"]
     Collision --> Tracker["TrackProgressTracker: Phạt trừ 15m cự ly"]
-    Collision --> Energy["EnergySystem: Phạt trừ 25% Năng Lượng"]
+    Collision --> Energy["RunnerEnergySystem: Phạt trừ 25% Năng Lượng"]
     
     Tracker -- "Đạt mốc 100m" --> Handover["ChatRunnerQueueManager: Bàn giao Follower mới lên làm Runner"]
     Handover --> Nameplate["RunnerNameplateController: Đổi tên & Avatar trên đầu Runner"]
