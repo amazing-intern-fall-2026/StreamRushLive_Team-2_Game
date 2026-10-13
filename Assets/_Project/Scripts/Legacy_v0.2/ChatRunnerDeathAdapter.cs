@@ -1,3 +1,4 @@
+#pragma warning disable CS0618
 using UnityEngine;
 using SteamRush.Core;
 using SteamRush.Features.Runner;

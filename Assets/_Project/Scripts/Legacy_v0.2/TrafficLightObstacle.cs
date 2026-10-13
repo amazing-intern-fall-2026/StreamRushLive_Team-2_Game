@@ -57,7 +57,8 @@ namespace StreamRushLive.Features.Spawning
         {
             if (_hasTriggered) return;
 
-            bool isPlayer = other.CompareTag("Player") || other.GetComponentInParent<RunnerController>() != null;
+            bool isPlayer = other.CompareTag("Player") 
+                || other.GetComponentInParent<RunnerMovement>() != null;
             if (!isPlayer) return;
 
             _hasTriggered = true;

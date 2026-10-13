@@ -27,20 +27,20 @@ namespace SteamRush.Features.Runner
         public void Initialize(
             TMP_InputField inputField,
             Action onToggleDebug,
-            Action<int> onFanEnergyChanged,
-            Action<int> onAntiEnergyChanged,
+            Action<int> onBlueEnergyChanged,
+            Action<int> onRedEnergyChanged,
             Action onFreeControl,
             Action onLiveDemo,
             Action onFinishApproach)
         {
             chatInputField = inputField;
-            SetupVerticalDebugUI(onToggleDebug, onFanEnergyChanged, onAntiEnergyChanged, onFreeControl, onLiveDemo, onFinishApproach);
+            SetupVerticalDebugUI(onToggleDebug, onBlueEnergyChanged, onRedEnergyChanged, onFreeControl, onLiveDemo, onFinishApproach);
         }
 
         public void SetupVerticalDebugUI(
             Action onToggleDebug,
-            Action<int> onFanEnergyChanged,
-            Action<int> onAntiEnergyChanged,
+            Action<int> onBlueEnergyChanged,
+            Action<int> onRedEnergyChanged,
             Action onFreeControl,
             Action onLiveDemo,
             Action onFinishApproach)
@@ -87,7 +87,7 @@ namespace SteamRush.Features.Runner
 
                 if (_energyDebugPanelObj == null)
                 {
-                    CreateEnergyDebugButtons(canvas.transform, onFanEnergyChanged, onAntiEnergyChanged, onFreeControl, onLiveDemo, onFinishApproach);
+                    CreateEnergyDebugButtons(canvas.transform, onBlueEnergyChanged, onRedEnergyChanged, onFreeControl, onLiveDemo, onFinishApproach);
                 }
             }
 
@@ -96,8 +96,8 @@ namespace SteamRush.Features.Runner
 
         private void CreateEnergyDebugButtons(
             Transform canvasTransform,
-            Action<int> onFanEnergyChanged,
-            Action<int> onAntiEnergyChanged,
+            Action<int> onBlueEnergyChanged,
+            Action<int> onRedEnergyChanged,
             Action onFreeControl,
             Action onLiveDemo,
             Action onFinishApproach)
@@ -119,10 +119,10 @@ namespace SteamRush.Features.Runner
             hlg.childForceExpandWidth = true;
             hlg.childForceExpandHeight = true;
 
-            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_FanPlus", "Blue +1% [F6]", new Color(0.12f, 0.45f, 0.85f, 0.95f), () => onFanEnergyChanged?.Invoke(10));
-            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_FanMinus", "Blue -1% [Shift+F6]", new Color(0.08f, 0.25f, 0.55f, 0.95f), () => onFanEnergyChanged?.Invoke(-10));
-            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_AntiPlus", "Red +1% [F11]", new Color(0.85f, 0.28f, 0.15f, 0.95f), () => onAntiEnergyChanged?.Invoke(10));
-            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_AntiMinus", "Red -1% [Shift+F11]", new Color(0.55f, 0.15f, 0.08f, 0.95f), () => onAntiEnergyChanged?.Invoke(-10));
+            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_BluePlus", "Blue +1% [F6]", new Color(0.12f, 0.45f, 0.85f, 0.95f), () => onBlueEnergyChanged?.Invoke(10));
+            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_BlueMinus", "Blue -1% [Shift+F6]", new Color(0.08f, 0.25f, 0.55f, 0.95f), () => onBlueEnergyChanged?.Invoke(-10));
+            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_RedPlus", "Red +1% [F11]", new Color(0.85f, 0.28f, 0.15f, 0.95f), () => onRedEnergyChanged?.Invoke(10));
+            CreateDebugButton(_energyDebugPanelObj.transform, "Btn_RedMinus", "Red -1% [Shift+F11]", new Color(0.55f, 0.15f, 0.08f, 0.95f), () => onRedEnergyChanged?.Invoke(-10));
             CreateDebugButton(_energyDebugPanelObj.transform, "Btn_FreeControl", "Free 30s [Shift+F1]", new Color(0.08f, 0.65f, 0.72f, 0.95f), () => onFreeControl?.Invoke());
             CreateDebugButton(_energyDebugPanelObj.transform, "Btn_LiveDemo", "Bot Demo [L]", new Color(0.15f, 0.55f, 0.6f, 0.95f), () => onLiveDemo?.Invoke());
             CreateDebugButton(_energyDebugPanelObj.transform, "Btn_Finish", "Finish [F12]", new Color(0.92f, 0.65f, 0.1f, 0.95f), () => onFinishApproach?.Invoke());

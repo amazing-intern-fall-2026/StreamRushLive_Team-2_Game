@@ -73,12 +73,12 @@ namespace StreamRushLive.Features.Spawning
         [Tooltip("Pickup Truck / Heavy Truck Phase duration in seconds.")]
         [SerializeField] private float vehiclePhaseDuration = 60f;
 
-        private VehicleTier? _activeVehiclePhase;
+        private ObstacleType? _activeVehiclePhase;
         private float _vehiclePhaseRemainingTime;
         private Coroutine _vehiclePhaseCoroutine;
 
-        /// <summary>Current active special vehicle phase (null = default Sedan).</summary>
-        public VehicleTier? ActiveVehiclePhase => _activeVehiclePhase;
+        /// <summary>Current active special vehicle phase (null = default Sedan / Car).</summary>
+        public ObstacleType? ActiveVehiclePhase => _activeVehiclePhase;
 
         /// <summary>Indicates if a special vehicle phase is currently active.</summary>
         public bool IsVehiclePhaseActive => _activeVehiclePhase.HasValue;
@@ -189,10 +189,10 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Spawns vehicle of specified tier (SedanCar, PickupTruck, HeavyTruck).
+        /// Spawns vehicle of specified type (Car, Animals, Trains).
         /// Randomizes lane if laneIndex <= 0.
         /// </summary>
-        public bool TriggerSpawnCarTier(VehicleTier tier, int laneIndex = -1)
+        public bool TriggerSpawnCarTier(ObstacleType tier, int laneIndex = -1)
         {
             if (_spawningLocked) return false;
 
@@ -230,7 +230,12 @@ namespace StreamRushLive.Features.Spawning
             return true;
         }
 
-        public bool TriggerSpawnCarOnLane(int laneIndex, VehicleTier? tier = null)
+#pragma warning disable CS0618
+        [System.Obsolete("VehicleTier is deprecated. Use ObstacleType instead.")]
+        public bool TriggerSpawnCarTier(VehicleTier tier, int laneIndex = -1) => TriggerSpawnCarTier((ObstacleType)tier, laneIndex);
+#pragma warning restore CS0618
+
+        public bool TriggerSpawnCarOnLane(int laneIndex, ObstacleType? tier = null)
         {
             if (_spawningLocked) return false;
 
@@ -257,7 +262,12 @@ namespace StreamRushLive.Features.Spawning
             return true;
         }
 
-        public bool TriggerSpawnCarFromAntiLikes(VehicleTier? tier = null)
+#pragma warning disable CS0618
+        [System.Obsolete("VehicleTier is deprecated. Use ObstacleType instead.")]
+        public bool TriggerSpawnCarOnLane(int laneIndex, VehicleTier? tier) => TriggerSpawnCarOnLane(laneIndex, (ObstacleType?)tier);
+#pragma warning restore CS0618
+
+        public bool TriggerSpawnObstacleFromRedEnergy(ObstacleType? tier = null)
         {
             if (_spawningLocked) return false;
 
@@ -265,7 +275,7 @@ namespace StreamRushLive.Features.Spawning
 
             if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
             {
-                Debug.LogWarning($"[SingleObstacleSpawner] Max concurrent obstacles reached ({maxConcurrentObstacles})! Dropped Anti-Like spawn request.");
+                Debug.LogWarning($"[SingleObstacleSpawner] Max concurrent obstacles reached ({maxConcurrentObstacles})! Dropped Red Energy spawn request.");
                 return false;
             }
 
@@ -280,13 +290,24 @@ namespace StreamRushLive.Features.Spawning
 
             if (availableLanes.Count == 0)
             {
-                Debug.LogWarning("[SingleObstacleSpawner] No open lane available to spawn vehicle from Anti-Like.");
+                Debug.LogWarning("[SingleObstacleSpawner] No open lane available to spawn vehicle from Red Energy.");
                 return false;
             }
 
             int chosenLane = availableLanes[Random.Range(0, availableLanes.Count)];
             return TriggerSpawnCarOnLane(chosenLane, tier);
         }
+
+#pragma warning disable CS0618
+        [System.Obsolete("VehicleTier is deprecated. Use ObstacleType instead.")]
+        public bool TriggerSpawnObstacleFromRedEnergy(VehicleTier? tier) => TriggerSpawnObstacleFromRedEnergy((ObstacleType?)tier);
+
+        [System.Obsolete("Use TriggerSpawnObstacleFromRedEnergy instead.")]
+        public bool TriggerSpawnCarFromAntiLikes(ObstacleType? tier = null) => TriggerSpawnObstacleFromRedEnergy(tier);
+
+        [System.Obsolete("Use TriggerSpawnObstacleFromRedEnergy instead.")]
+        public bool TriggerSpawnCarFromAntiLikes(VehicleTier? tier) => TriggerSpawnObstacleFromRedEnergy((ObstacleType?)tier);
+#pragma warning restore CS0618
 
         /// <summary>
         /// Activates Unlimited Cars mode, bypassing maxConcurrentObstacles limit.
@@ -321,25 +342,25 @@ namespace StreamRushLive.Features.Spawning
         // ============================================================
 
         /// <summary>
-        /// Activates Pickup Truck Phase. Future spawned vehicles during this phase spawn as Pickup.
+        /// Activates Pickup Truck Phase. Future spawned vehicles during this phase spawn as Pickup / Animals.
         /// </summary>
         public void ActivatePickupTruckPhase(float customDuration = -1f)
         {
-            ActivateVehiclePhase(VehicleTier.PickupTruck, customDuration);
+            ActivateVehiclePhase(ObstacleType.Animals, customDuration);
         }
 
         /// <summary>
-        /// Activates Heavy Truck Phase. Future spawned vehicles during this phase spawn as Heavy Truck.
+        /// Activates Heavy Truck Phase. Future spawned vehicles during this phase spawn as Heavy Truck / Train.
         /// </summary>
         public void ActivateHeavyTruckPhase(float customDuration = -1f)
         {
-            ActivateVehiclePhase(VehicleTier.HeavyTruck, customDuration);
+            ActivateVehiclePhase(ObstacleType.Trains, customDuration);
         }
 
         /// <summary>
         /// Activates or transitions vehicle phase. Resets phase duration timer.
         /// </summary>
-        private void ActivateVehiclePhase(VehicleTier phase, float customDuration = -1f)
+        private void ActivateVehiclePhase(ObstacleType phase, float customDuration = -1f)
         {
             if (_vehiclePhaseCoroutine != null)
             {
@@ -361,7 +382,7 @@ namespace StreamRushLive.Features.Spawning
         /// <summary>
         /// Vehicle phase countdown coroutine. Returns to default Sedan upon completion.
         /// </summary>
-        private IEnumerator VehiclePhaseRoutine(VehicleTier phase)
+        private IEnumerator VehiclePhaseRoutine(ObstacleType phase)
         {
             while (_activeVehiclePhase.HasValue &&
                    _activeVehiclePhase.Value == phase &&
@@ -432,7 +453,7 @@ namespace StreamRushLive.Features.Spawning
             return false;
         }
 
-        private void SpawnCarOnSelectedLane(int laneIndex, float selectedLane, VehicleTier? tier = null)
+        private void SpawnCarOnSelectedLane(int laneIndex, float selectedLane, ObstacleType? tier = null)
         {
             if (playerReference == null)
             {
@@ -461,9 +482,9 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Resolves obstacle vehicle tier based on active phase and request parameters.
+        /// Resolves obstacle vehicle type based on active phase and request parameters.
         /// </summary>
-        private VehicleTier GetVehicleTierForSpawn(VehicleTier? requestedTier)
+        private ObstacleType GetVehicleTierForSpawn(ObstacleType? requestedTier)
         {
             if (requestedTier.HasValue)
             {
@@ -475,10 +496,10 @@ namespace StreamRushLive.Features.Spawning
                 return _activeVehiclePhase.Value;
             }
 
-            return VehicleTier.SedanCar;
+            return ObstacleType.Car;
         }
 
-        private GameObject InstantiateCar(ActiveObstacle obstacle, float selectedLane, VehicleTier? requestedTier)
+        private GameObject InstantiateCar(ActiveObstacle obstacle, float selectedLane, ObstacleType? requestedTier)
         {
             if (playerReference == null)
             {
@@ -493,7 +514,7 @@ namespace StreamRushLive.Features.Spawning
             }
 
             // Resolve tier at actual instantiation time
-            VehicleTier chosenTier = GetVehicleTierForSpawn(requestedTier);
+            ObstacleType chosenTier = GetVehicleTierForSpawn(requestedTier);
 
             // Instantiate vehicle at spawnDistanceAhead ahead of player
             Vector3 carSpawnPosition = new Vector3(
@@ -536,15 +557,15 @@ namespace StreamRushLive.Features.Spawning
 
             switch (chosenTier)
             {
-                case VehicleTier.HeavyTruck:
+                case ObstacleType.Trains:
                     box.size = new Vector3(2.6f, 3.2f, 7.5f);
                     box.center = new Vector3(0f, 1.6f, 0f);
                     break;
-                case VehicleTier.PickupTruck:
+                case ObstacleType.Animals:
                     box.size = new Vector3(2.5f, 2.2f, 5.5f);
                     box.center = new Vector3(0f, 1.1f, 0f);
                     break;
-                default: // SedanCar
+                default: // ObstacleType.Car
                     box.size = new Vector3(2.2f, 1.6f, 4.8f);
                     box.center = new Vector3(0f, 0.8f, 0f);
                     break;
@@ -566,12 +587,12 @@ namespace StreamRushLive.Features.Spawning
             return carInstance;
         }
 
-        public GameObject GetCarPrefab(VehicleTier tier)
+        public GameObject GetCarPrefab(ObstacleType tier)
         {
             List<GameObject> list = tier switch
             {
-                VehicleTier.HeavyTruck => heavyTruckPrefabs,
-                VehicleTier.PickupTruck => pickupTruckPrefabs,
+                ObstacleType.Trains => heavyTruckPrefabs,
+                ObstacleType.Animals => pickupTruckPrefabs,
                 _ => sedanCarPrefabs
             };
 
@@ -587,6 +608,11 @@ namespace StreamRushLive.Features.Spawning
             return GetCarPrefab();
         }
 
+#pragma warning disable CS0618
+        [System.Obsolete("VehicleTier is deprecated. Use ObstacleType instead.")]
+        public GameObject GetCarPrefab(VehicleTier tier) => GetCarPrefab((ObstacleType)tier);
+#pragma warning restore CS0618
+
         private GameObject GetCarPrefab()
         {
             if (vehiclePrefabs != null && vehiclePrefabs.Count > 0)
@@ -601,19 +627,19 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Activates direct gift actions on Runner/Fan team.
+        /// Activates direct gift actions on Runner / Blue team.
         /// </summary>
-        public bool TriggerActivateFanGift(int laneIndex = 0, bool isShield = false)
+        public bool TriggerActivateSupportGift(int laneIndex = 0, bool isShield = false)
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
             {
                 if (isShield)
                 {
-                    return StreamRushLive.Features.Gifts.GiftManager.Instance.ActivateShield("Phe Fan");
+                    return StreamRushLive.Features.Gifts.GiftManager.Instance.ActivateShield("Blue Team");
                 }
                 else
                 {
-                    StreamRushLive.Features.Gifts.GiftManager.Instance.AddBlueEnergy("Phe Fan");
+                    StreamRushLive.Features.Gifts.GiftManager.Instance.AddBlueEnergy("Blue Team");
                     return true;
                 }
             }
@@ -633,22 +659,22 @@ namespace StreamRushLive.Features.Spawning
             return false;
         }
 
-        /// <summary>
-        /// Backward compatibility alias.
-        /// </summary>
-        public bool TriggerSpawnFanItem(int laneIndex, bool isShield = false)
-            => TriggerActivateFanGift(laneIndex, isShield);
+        public bool TriggerActivateFanGift(int laneIndex = 0, bool isShield = false)
+            => TriggerActivateSupportGift(laneIndex, isShield);
 
-        private void InitializeCarMovement(GameObject carInstance, VehicleTier tier = VehicleTier.SedanCar)
+        public bool TriggerSpawnFanItem(int laneIndex, bool isShield = false)
+            => TriggerActivateSupportGift(laneIndex, isShield);
+
+        private void InitializeCarMovement(GameObject carInstance, ObstacleType tier = ObstacleType.Car)
         {
-            var drivingCar = carInstance.GetComponent<DrivingObstacleCar>();
-            if (drivingCar == null)
+            var dynamicObs = carInstance.GetComponent<DynamicObstacle>();
+            if (dynamicObs == null)
             {
-                drivingCar = carInstance.AddComponent<DrivingObstacleCar>();
+                dynamicObs = carInstance.AddComponent<DynamicObstacle>();
             }
 
-            drivingCar.ConfigureTier(tier);
-            drivingCar.Initialize(worldSpeedManager, drivingCar.DrivingSpeed);
+            dynamicObs.ConfigureTier(tier);
+            dynamicObs.Initialize(worldSpeedManager, dynamicObs.DrivingSpeed);
         }
 
         private void InitializeWorldMovement(GameObject instance)

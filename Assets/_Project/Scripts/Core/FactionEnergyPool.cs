@@ -11,7 +11,7 @@ namespace SteamRush.Features.StreamIntegration
     public class FactionEnergyPool : MonoBehaviour
     {
         [Header("Faction Configuration")]
-        [SerializeField] private FactionType _faction = FactionType.Fan;
+        [SerializeField] private FactionType _faction = FactionType.Blue;
         [SerializeField] private int _maxEnergy = 1000;
         [SerializeField] private int _initialEnergy = 100;
 

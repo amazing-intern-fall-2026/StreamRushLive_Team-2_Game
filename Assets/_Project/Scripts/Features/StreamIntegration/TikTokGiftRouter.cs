@@ -180,7 +180,7 @@ namespace SteamRush.Features.StreamIntegration
             EnsureReferences();
 
             string name = !string.IsNullOrEmpty(displayName) ? displayName : "Streamer";
-            FactionType faction = _factionManager != null ? _factionManager.GetFaction(name) : FactionType.Fan;
+            FactionType faction = _factionManager != null ? _factionManager.GetFaction(name) : FactionType.Blue;
 
             // Audio feedback per gift action
             if (mapping.action == GiftActionType.Like_Energy)
@@ -213,7 +213,7 @@ namespace SteamRush.Features.StreamIntegration
                 AudioManager.Instance?.PlaySFX(SFXType.StreamLike, 0.45f);
             }
 
-            FactionType faction = _factionManager != null ? _factionManager.GetFaction(evt.UserId) : FactionType.Fan;
+            FactionType faction = _factionManager != null ? _factionManager.GetFaction(evt.UserId) : FactionType.Blue;
 
             if (_logEvents)
             {
@@ -262,59 +262,32 @@ namespace SteamRush.Features.StreamIntegration
         }
 
         /// <summary>
-        /// Executes gift action by GiftActionType. Centrally managed by GiftManager.
+        /// Executes gift action by GiftActionType using IGiftAction command pattern.
         /// </summary>
         public void ExecuteActionByEnum(GiftActionType action, string displayName, FactionType faction, float customValue = -1f)
         {
             EnsureReferences();
-            switch (action)
+
+            var context = new GiftContext
             {
-                case GiftActionType.Blue_Shield:
-                    _giftManager?.ActivateShield(displayName, customValue);
-                    break;
-                case GiftActionType.Blue_SpeedBoost:
-                    _giftManager?.ActivateSprintBuff(displayName, customValue);
-                    break;
-                case GiftActionType.Blue_FreeControl:
-                    _giftManager?.ActivateFreeControl(displayName, customValue);
-                    break;
-                case GiftActionType.Blue_EnergyBottle:
-                    _giftManager?.AddBlueEnergy(displayName, customValue > 0f ? Mathf.RoundToInt(customValue) : -1);
-                    break;
-                case GiftActionType.Red_SpawnPickup:
-                    // Activates Pickup Truck Phase
-                    _giftManager?.ActivatePickupTruckPhase(displayName, customValue);
-                    break;
-                case GiftActionType.Red_SpawnHeavyTruck:
-                    // Activates Heavy Truck Phase
-                    _giftManager?.ActivateHeavyTruckPhase(displayName, customValue);
-                    break;
-                case GiftActionType.Red_UnlimitedCars:
-                    _giftManager?.ActivateUnlimitedCars(displayName, customValue);
-                    break;
-                case GiftActionType.Red_EnergyBottle:
-                    _giftManager?.AddRedEnergy(displayName, customValue > 0f ? Mathf.RoundToInt(customValue) : -1);
-                    break;
-                case GiftActionType.Special_GiftDance:
-                    _giftManager?.TriggerGiftDance(displayName, customValue);
-                    break;
-                case GiftActionType.Special_RainHazard:
-                    _giftManager?.ActivateRainHazard(displayName, customValue > 0f ? customValue : 60f);
-                    break;
-                case GiftActionType.Follow_Runner:
-                case GiftActionType.Special_VIPRelayTicket:
-                    _queueManager?.EnqueueFollowerAsRunner(displayName);
-                    ShowPopup($"Runner: [{displayName}]", true);
-                    break;
-                case GiftActionType.Like_Energy:
-                    int energy = customValue > 0f ? Mathf.RoundToInt(customValue) : 20;
-                    if (faction == FactionType.Fan)
-                        _factionManager?.AddLikes(FactionType.Fan, energy);
-                    else
-                        _factionManager?.AddLikes(FactionType.Anti, energy);
-                    break;
-                case GiftActionType.Dynamic_ByFaction:
-                    break;
+                SenderName = displayName,
+                Faction = faction,
+                CustomValue = customValue,
+                GiftManager = _giftManager,
+                QueueManager = _queueManager,
+                FactionManager = _factionManager,
+                ObstacleSpawner = _giftManager != null ? _giftManager.ObstacleSpawner : FindFirstObjectByType<SingleObstacleSpawner>(),
+                HudManager = _hudManager
+            };
+
+            var giftAction = GiftActionRegistry.GetAction(action);
+            if (giftAction != null)
+            {
+                giftAction.Execute(context);
+            }
+            else if (action != GiftActionType.Dynamic_ByFaction)
+            {
+                Debug.LogWarning($"[TikTokGiftRouter] No IGiftAction registered for action type: {action}");
             }
 
             if (_logEvents)
@@ -346,7 +319,7 @@ namespace SteamRush.Features.StreamIntegration
 
             if (evt.TotalCoins >= 100 || lowerName.Contains("lion") || lowerName.Contains("rocket"))
             {
-                if (faction == FactionType.Anti)
+                if (faction == FactionType.Red)
                 {
                     _giftManager?.ActivateUnlimitedCars(displayName, 60f);
                 }
@@ -357,7 +330,7 @@ namespace SteamRush.Features.StreamIntegration
                 return;
             }
 
-            if (faction == FactionType.Fan)
+            if (faction == FactionType.Blue)
             {
                 if (lowerName.Contains("shield") || lowerName.Contains("donut") || evt.TotalCoins >= 30)
                 {
@@ -384,7 +357,7 @@ namespace SteamRush.Features.StreamIntegration
                 }
                 else if (lowerName.Contains("car") || lowerName.Contains("sedan") || evt.TotalCoins >= 10)
                 {
-                    _giftManager?.SpawnAntiCar(VehicleTier.SedanCar, displayName);
+                    _giftManager?.SpawnObstacleVehicle(ObstacleType.Car, displayName);
                 }
                 else
                 {

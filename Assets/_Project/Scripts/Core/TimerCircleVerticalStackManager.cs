@@ -99,18 +99,20 @@ namespace SteamRush.Features.UI.Views
         #region Public Static API
 
         /// <summary>
-        /// Registers a Fan team buff timer circle in the left vertical stack.
+        /// Registers a Blue team buff timer circle in the left vertical stack.
         /// </summary>
-        public static void RegisterFanCircle(MonoBehaviour circle, RectTransform rect)
+        public static void RegisterBlueCircle(MonoBehaviour circle, RectTransform rect)
         {
             if (circle == null || rect == null) return;
             Instance.RegisterCircleInternal(circle, rect, isFanSide: true);
         }
 
+        public static void RegisterFanCircle(MonoBehaviour circle, RectTransform rect) => RegisterBlueCircle(circle, rect);
+
         /// <summary>
-        /// Unregisters a Fan team buff timer circle when expired or cancelled.
+        /// Unregisters a Blue team buff timer circle when expired or cancelled.
         /// </summary>
-        public static void UnregisterFanCircle(MonoBehaviour circle)
+        public static void UnregisterBlueCircle(MonoBehaviour circle)
         {
             if (circle == null) return;
             if (_instance != null)
@@ -119,19 +121,23 @@ namespace SteamRush.Features.UI.Views
             }
         }
 
+        public static void UnregisterFanCircle(MonoBehaviour circle) => UnregisterBlueCircle(circle);
+
         /// <summary>
-        /// Registers an Anti team hazard timer circle in the right vertical stack.
+        /// Registers a Red team hazard timer circle in the right vertical stack.
         /// </summary>
-        public static void RegisterAntiCircle(MonoBehaviour circle, RectTransform rect)
+        public static void RegisterRedCircle(MonoBehaviour circle, RectTransform rect)
         {
             if (circle == null || rect == null) return;
             Instance.RegisterCircleInternal(circle, rect, isFanSide: false);
         }
 
+        public static void RegisterAntiCircle(MonoBehaviour circle, RectTransform rect) => RegisterRedCircle(circle, rect);
+
         /// <summary>
-        /// Unregisters an Anti team hazard timer circle when expired.
+        /// Unregisters a Red team hazard timer circle when expired.
         /// </summary>
-        public static void UnregisterAntiCircle(MonoBehaviour circle)
+        public static void UnregisterRedCircle(MonoBehaviour circle)
         {
             if (circle == null) return;
             if (_instance != null)
@@ -139,6 +145,8 @@ namespace SteamRush.Features.UI.Views
                 _instance.UnregisterCircleInternal(circle, isFanSide: false);
             }
         }
+
+        public static void UnregisterAntiCircle(MonoBehaviour circle) => UnregisterRedCircle(circle);
 
         #endregion
 

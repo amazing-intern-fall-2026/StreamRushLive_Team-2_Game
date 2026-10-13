@@ -10,7 +10,7 @@ namespace SteamRush.Features.Runner
     /// Handles Jump, Slide/Duck (Tap vs Hold), and Sprint mechanics.
     /// </summary>
 
-    [RequireComponent(typeof(RunnerController))]
+    [RequireComponent(typeof(RunnerMovement))]
     public class RunnerInputHandler : MonoBehaviour
     {
         [Header("Slide Settings")]
@@ -19,7 +19,7 @@ namespace SteamRush.Features.Runner
         [Tooltip("Fixed duck hitbox duration for tap slide (default: 0.8s).")]
         [SerializeField] private float _slideTapDuckDuration = 0.8f;
 
-        private RunnerController _controller;
+        private RunnerMovement _movement;
         private WorldSpeedManager _speedManager;
         private ChatLaneRunnerController _chatLaneRunner;
 
@@ -32,7 +32,7 @@ namespace SteamRush.Features.Runner
 
         private void Awake()
         {
-            _controller = GetComponent<RunnerController>();
+            _movement = GetComponent<RunnerMovement>();
             _speedManager = FindFirstObjectByType<WorldSpeedManager>();
             _chatLaneRunner = GetComponent<ChatLaneRunnerController>();
         }
@@ -54,9 +54,39 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
+            HandleLaneChange();
             HandleJump();
             HandleSlideAndDuck();
             HandleSprint();
+        }
+
+        private void HandleLaneChange()
+        {
+            if (Keyboard.current.aKey.wasPressedThisFrame || Keyboard.current.leftArrowKey.wasPressedThisFrame)
+            {
+                if (_chatLaneRunner != null) _chatLaneRunner.ChangeLane(-1);
+                else _movement?.ShiftLane(-1);
+            }
+            else if (Keyboard.current.dKey.wasPressedThisFrame || Keyboard.current.rightArrowKey.wasPressedThisFrame)
+            {
+                if (_chatLaneRunner != null) _chatLaneRunner.ChangeLane(1);
+                else _movement?.ShiftLane(1);
+            }
+            else if (Keyboard.current.digit1Key.wasPressedThisFrame || Keyboard.current.numpad1Key.wasPressedThisFrame)
+            {
+                if (_chatLaneRunner != null) _chatLaneRunner.SetLane(0);
+                else _movement?.MoveToLane(0);
+            }
+            else if (Keyboard.current.digit2Key.wasPressedThisFrame || Keyboard.current.numpad2Key.wasPressedThisFrame)
+            {
+                if (_chatLaneRunner != null) _chatLaneRunner.SetLane(1);
+                else _movement?.MoveToLane(1);
+            }
+            else if (Keyboard.current.digit3Key.wasPressedThisFrame || Keyboard.current.numpad3Key.wasPressedThisFrame)
+            {
+                if (_chatLaneRunner != null) _chatLaneRunner.SetLane(2);
+                else _movement?.MoveToLane(2);
+            }
         }
 
         private void HandleJump()
@@ -73,7 +103,7 @@ namespace SteamRush.Features.Runner
                 }
                 else
                 {
-                    _controller.PerformJump();
+                    _movement.PerformJump();
                 }
             }
         }
@@ -109,13 +139,13 @@ namespace SteamRush.Features.Runner
                 }
 
                 // Hitbox: duck when grounded, fast fall when airborne
-                if (_controller.IsGrounded)
+                if (_movement.IsGrounded)
                 {
-                    _controller.SetDucking(true);
+                    _movement.SetDucking(true);
                 }
                 else
                 {
-                    _controller.PerformFastFall();
+                    _movement.PerformFastFall();
                 }
             }
             else
@@ -127,7 +157,7 @@ namespace SteamRush.Features.Runner
                     {
                         // Hold ended: stand upright, resume normal speed
                         _speedManager?.ReleaseSlide();
-                        _controller.SetDucking(false);
+                        _movement.SetDucking(false);
                     }
                     else
                     {
@@ -141,11 +171,11 @@ namespace SteamRush.Features.Runner
                 if (_tapDuckTimer > 0f)
                 {
                     _tapDuckTimer -= Time.deltaTime;
-                    _controller.SetDucking(true);
+                    _movement.SetDucking(true);
                 }
                 else
                 {
-                    _controller.SetDucking(false);
+                    _movement.SetDucking(false);
                 }
             }
 

@@ -27,7 +27,7 @@ namespace SteamRush.Features.Runner
             if (_hasTriggered) return;
 
             bool isPlayer = other.CompareTag("Player") 
-                || other.GetComponentInParent<RunnerController>() != null
+                || other.GetComponentInParent<RunnerMovement>() != null
                 || other.GetComponentInParent<ChatLaneRunnerController>() != null
                 || other.GetComponentInParent<RunnerCollisionHandler>() != null;
 

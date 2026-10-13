@@ -1,21 +1,31 @@
 namespace SteamRush.Features.Runner
 {
     using UnityEngine;
+    using SteamRush.Track;
     using StreamRushLive.Features.Spawning;
 
     /// <summary>
-    /// Physics controller for Runner: handles jumping, ducking, fast fall, and ground check.
-    /// Runner remains stationary on horizontal axes (treadmill paradigm).
-    /// Features forgiving hitboxes scaled from 3D mesh bounds (GDD v1.2).
+    /// Comprehensive movement controller for the Runner:
+    /// - Lateral 3-lane switching on the Z-axis (SmoothDamp).
+    /// - Vertical physics on the Y-axis (asymmetric manual gravity, jump, duck/slide, fast fall).
+    /// - Longitudinal surge & knockback on the X-axis.
+    /// - Forgiving hitboxes scaled from 3D mesh bounds.
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
-    public class RunnerController : MonoBehaviour
+    [UnityEngine.Scripting.APIUpdating.MovedFrom(true, null, "Assembly-CSharp", "RunnerController")]
+    public class RunnerMovement : MonoBehaviour
     {
-        [Header("Jump")]
+        [Header("Lane Settings (Z-Axis)")]
+        [Tooltip("Z positions of the 3 lanes: Left (+3.0) / Middle (0.0) / Right (-3.0) looking toward +X.")]
+        [SerializeField] private float[] _laneZPositions = { 3f, 0f, -3f };
+        [Tooltip("Lane change transition duration (default: 0.2s). Uses Mathf.SmoothDamp.")]
+        [SerializeField] private float _laneChangeSmoothTime = 0.2f;
+
+        [Header("Jump (Y-Axis)")]
         [Tooltip("Vertical jump velocity (default: +6.5 m/s).")]
         [SerializeField] private float _jumpVelocity = 6.5f;
 
-        [Header("Gravity")]
+        [Header("Gravity (Y-Axis)")]
         [Tooltip("Upward gravity rate in m/s² (positive value).")]
         [SerializeField] private float _risingGravity = 9.6f;
         [Tooltip("Downward gravity rate during fall in m/s² (positive value).")]
@@ -34,16 +44,38 @@ namespace SteamRush.Features.Runner
         [Tooltip("Raycast check distance below collider bottom.")]
         [SerializeField] private float _groundCheckDistance = 0.25f;
 
-
         [Header("Forgiving Hitbox")]
         [Tooltip("Automatically shrink collider relative to 3D mesh on Awake.")]
         [SerializeField] private bool _autoApplyForgivingHitbox = true;
         [Tooltip("Collider scale ratio relative to mesh bounds (default: 0.85).")]
         [SerializeField, Range(0.5f, 1f)] private float _hitboxToleranceRatio = 0.85f;
 
+        [Header("Knockback Settings (X-Axis)")]
+        [Tooltip("Runner knockback push distance in meters on obstacle collision.")]
+        [SerializeField] private float _knockbackDistance = 1.8f;
+        [Tooltip("Recovery duration to return to base position after knockback.")]
+        [SerializeField] private float _knockbackDuration = 0.45f;
+
         public Rigidbody RB { get; private set; }
         public bool IsGrounded { get; private set; }
         public bool IsDucking { get; private set; }
+
+        public int CurrentLaneIndex => _currentLaneIndex;
+        public float[] LaneZPositions => _laneZPositions;
+        public int LaneCount => _laneZPositions != null ? _laneZPositions.Length : 0;
+        public float LaneChangeSmoothTime => _laneChangeSmoothTime;
+
+        public bool IsKnockingBack => _knockbackTimer < _knockbackTotalDuration;
+
+        private int _currentLaneIndex = 1; // Middle lane by default
+        private float _zVelocity;
+
+        private float _baseX;
+        private float _currentSurgeX;
+        private float _knockbackOffsetX;
+        private float _knockbackTimer = 999f;
+        private float _knockbackTotalDuration = 0.45f;
+        private float _knockbackStartOffset;
 
         private BoxCollider _boxCollider;
         private CapsuleCollider _capsuleCollider;
@@ -58,15 +90,16 @@ namespace SteamRush.Features.Runner
         private bool _isCollidingWithGround;
         private float _jumpCooldownTimer;
 
+        private WorldSpeedManager _speedManager;
+
         private void Awake()
         {
             RB = GetComponent<Rigidbody>();
-
-            // Disable Unity gravity - manual asymmetric gravity applied in FixedUpdate regardless of physics settings.
             RB.useGravity = false;
 
-            _animator = GetComponent<Animator>();
+            _speedManager = FindFirstObjectByType<WorldSpeedManager>() ?? WorldSpeedManager.Instance;
 
+            _animator = GetComponent<Animator>() ?? GetComponentInChildren<Animator>();
             if (_animator != null)
             {
                 _animator.applyRootMotion = false;
@@ -90,33 +123,38 @@ namespace SteamRush.Features.Runner
                 ApplyForgivingHitbox();
             }
 
-            // Cache upright dimensions after forgiving hitbox calculation
             if (_boxCollider != null)
             {
                 _standingBoxSize = _boxCollider.size;
                 _standingBoxCenter = _boxCollider.center;
+                _boxCollider.isTrigger = false;
             }
 
             if (_capsuleCollider != null)
             {
                 _standingCapsuleHeight = _capsuleCollider.height;
                 _standingCapsuleCenter = _capsuleCollider.center;
+                _capsuleCollider.isTrigger = false;
             }
 
-            // Constrain horizontal position: world scrolls around stationary runner
-            RB.constraints = RigidbodyConstraints.FreezePositionX
-                | RigidbodyConstraints.FreezePositionZ
-                | RigidbodyConstraints.FreezeRotationX
+            _baseX = transform.position.x;
+
+            // Constrain rotations only; position X/Y/Z are controlled by physics and MovePosition
+            RB.constraints = RigidbodyConstraints.FreezeRotationX
                 | RigidbodyConstraints.FreezeRotationY
                 | RigidbodyConstraints.FreezeRotationZ;
-
-            if (_boxCollider != null) _boxCollider.isTrigger = false;
-            if (_capsuleCollider != null) _capsuleCollider.isTrigger = false;
         }
 
-        /// <summary>
-        /// Calculates forgiving hitbox from child renderers, scaled by _hitboxToleranceRatio (default: 85%).
-        /// </summary>
+        private void Start()
+        {
+            if (_laneZPositions != null && _laneZPositions.Length > _currentLaneIndex)
+            {
+                Vector3 startPos = transform.position;
+                startPos.z = _laneZPositions[_currentLaneIndex];
+                RB.position = startPos;
+            }
+        }
+
         private void ApplyForgivingHitbox()
         {
             Renderer[] meshRenderers = GetComponentsInChildren<Renderer>();
@@ -128,7 +166,6 @@ namespace SteamRush.Features.Runner
                 worldBounds.Encapsulate(meshRenderers[i].bounds);
             }
 
-            // Convert world bounds to local space without rotation complications
             Vector3 localCenter = transform.InverseTransformPoint(worldBounds.center);
             Vector3 meshSize = worldBounds.size;
             float meshBottomY = localCenter.y - (meshSize.y / 2f);
@@ -157,20 +194,122 @@ namespace SteamRush.Features.Runner
             UpdateGroundCheck();
 
             if (_animator != null)
-                _animator.SetBool("isGrounded", IsGrounded);
-
-            if (_knockbackTimer < _knockbackDuration)
             {
-                _knockbackTimer += Time.deltaTime;
+                _animator.SetBool("isGrounded", IsGrounded);
             }
+
+            UpdateKnockback(Time.deltaTime);
+            UpdateSpeedSurge();
         }
 
         private void FixedUpdate()
         {
-            // Asymmetric manual gravity: risingGravity when moving up, fallingGravity when falling
+            // 1. Asymmetric manual vertical gravity
             float gravity = RB.linearVelocity.y > 0f ? _risingGravity : _fallingGravity;
             RB.linearVelocity += Vector3.down * gravity * Time.fixedDeltaTime;
+
+            // 2. Smooth lane movement (Z-axis) & longitudinal surge/knockback (X-axis)
+            UpdatePosition();
         }
+
+        private void UpdatePosition()
+        {
+            Vector3 pos = RB.position;
+
+            float targetZ = (_laneZPositions != null && _laneZPositions.Length > _currentLaneIndex)
+                ? _laneZPositions[_currentLaneIndex]
+                : pos.z;
+
+            float newZ = Mathf.SmoothDamp(pos.z, targetZ, ref _zVelocity, _laneChangeSmoothTime);
+            float newX = _baseX + _currentSurgeX + _knockbackOffsetX;
+
+            RB.MovePosition(new Vector3(newX, pos.y, newZ));
+        }
+
+        private void UpdateSpeedSurge()
+        {
+            if (_speedManager == null)
+            {
+                _speedManager = WorldSpeedManager.Instance ?? FindFirstObjectByType<WorldSpeedManager>();
+                if (_speedManager == null) return;
+            }
+
+            float currentSpeed = _speedManager.CurrentSpeed;
+            float baseSpeed = 8.0f;
+
+            float targetSurgeX = 0f;
+            bool isKnockedOrRecovering = _speedManager.IsReverseKnockingBack || _speedManager.IsRecovering || IsKnockingBack;
+            if (!isKnockedOrRecovering && currentSpeed > baseSpeed + 2f)
+            {
+                targetSurgeX = 1.6f;
+            }
+
+            _currentSurgeX = Mathf.Lerp(_currentSurgeX, targetSurgeX, Time.deltaTime * 7f);
+        }
+
+        #region Lane Switching (Z-Axis)
+
+        /// <summary>
+        /// Moves runner to an explicit lane index (0 = Left, 1 = Middle, 2 = Right).
+        /// Returns true if lane index changed.
+        /// </summary>
+        public bool MoveToLane(int targetIndex)
+        {
+            if (_laneZPositions == null || _laneZPositions.Length == 0) return false;
+
+            int clampedIndex = Mathf.Clamp(targetIndex, 0, _laneZPositions.Length - 1);
+            if (clampedIndex == _currentLaneIndex)
+            {
+                return false;
+            }
+
+            _currentLaneIndex = clampedIndex;
+            AudioManager.Instance?.PlaySFX(SFXType.RunnerLaneSwitch);
+            return true;
+        }
+
+        /// <summary>
+        /// Shifts runner lane by direction offset (-1 or +1).
+        /// Returns true if lane index changed.
+        /// </summary>
+        public bool ShiftLane(int direction)
+        {
+            return MoveToLane(_currentLaneIndex + direction);
+        }
+
+        /// <summary>
+        /// Identifies the closest lane index to a given Z world coordinate.
+        /// </summary>
+        public int GetClosestLaneIndex(float currentZ)
+        {
+            if (_laneZPositions == null || _laneZPositions.Length == 0) return 0;
+
+            int bestIndex = _currentLaneIndex;
+            float bestDist = float.MaxValue;
+            for (int i = 0; i < _laneZPositions.Length; i++)
+            {
+                float dist = Mathf.Abs(currentZ - _laneZPositions[i]);
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    bestIndex = i;
+                }
+            }
+            return bestIndex;
+        }
+
+        /// <summary>
+        /// Snaps current lane index to closest physical lane position.
+        /// </summary>
+        public void SnapToClosestLane()
+        {
+            _currentLaneIndex = GetClosestLaneIndex(RB.position.z);
+            _zVelocity = 0f;
+        }
+
+        #endregion
+
+        #region Vertical Physics (Y-Axis)
 
         /// <summary>Performs jump with fixed vertical velocity (+6.5 m/s).</summary>
         public void PerformJump()
@@ -188,6 +327,8 @@ namespace SteamRush.Features.Runner
                 _animator.ResetTrigger("Jump");
                 _animator.SetTrigger("Jump");
             }
+
+            AudioManager.Instance?.PlaySFX(SFXType.RunnerJump);
         }
 
         /// <summary>
@@ -204,13 +345,10 @@ namespace SteamRush.Features.Runner
         public void SetDucking(bool isDucking)
         {
             if (IsDucking == isDucking) return;
-
-            // Disallow starting duck while airborne; always allow standing up
             if (isDucking && !IsGrounded) return;
 
             IsDucking = isDucking;
 
-            // 1. Adjust BoxCollider keeping grounded foot position constant
             if (_boxCollider != null)
             {
                 float bottomY = _standingBoxCenter.y - (_standingBoxSize.y / 2f);
@@ -219,7 +357,6 @@ namespace SteamRush.Features.Runner
                 _boxCollider.center = new Vector3(_standingBoxCenter.x, bottomY + (newHeight / 2f), _standingBoxCenter.z);
             }
 
-            // 2. Adjust CapsuleCollider keeping grounded foot position constant
             if (_capsuleCollider != null)
             {
                 float bottomY = _standingCapsuleCenter.y - (_standingCapsuleHeight / 2f);
@@ -228,7 +365,6 @@ namespace SteamRush.Features.Runner
                 _capsuleCollider.center = new Vector3(_standingCapsuleCenter.x, bottomY + (newHeight / 2f), _standingCapsuleCenter.z);
             }
 
-            // 3. Visual feedback: compress model height while ducking
             if (_visualRoot != null)
             {
                 _visualRoot.localScale = isDucking
@@ -237,24 +373,39 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        [Header("Knockback Settings (GDD v1.2)")]
-        [SerializeField] private float _knockbackDuration = 0.45f;
-        private float _knockbackTimer = 999f;
+        #endregion
 
-        public bool IsKnockingBack => _knockbackTimer < _knockbackDuration;
+        #region Knockback & Collisions (X-Axis)
 
-        /// <summary>
-        /// Invoked on collision: records knockback state (GDD v1.2).
-        /// </summary>
         public void ApplyKnockback(float distance = -1f, float duration = -1f)
         {
+            _currentSurgeX = 0f;
+            float dist = distance >= 0f ? distance : _knockbackDistance;
+            _knockbackTotalDuration = duration > 0f ? duration : _knockbackDuration;
             _knockbackTimer = 0f;
-            if (duration > 0f) _knockbackDuration = duration;
+            _knockbackStartOffset = -dist;
+            _knockbackOffsetX = _knockbackStartOffset;
+            _zVelocity = 0f;
+
+            SnapToClosestLane();
+            AudioManager.Instance?.PlaySFX(SFXType.RunnerKnockback);
         }
 
-        /// <summary>
-        /// Switches player collider to trigger during i-frames to let obstacles pass through.
-        /// </summary>
+        private void UpdateKnockback(float dt)
+        {
+            if (_knockbackTimer < _knockbackTotalDuration)
+            {
+                _knockbackTimer += dt;
+                float progress = Mathf.Clamp01(_knockbackTimer / _knockbackTotalDuration);
+                float ease = 1f - (1f - progress) * (1f - progress);
+                _knockbackOffsetX = Mathf.Lerp(_knockbackStartOffset, 0f, ease);
+            }
+            else
+            {
+                _knockbackOffsetX = 0f;
+            }
+        }
+
         public void SetTriggerMode(bool isTrigger)
         {
             if (_boxCollider == null) _boxCollider = GetComponent<BoxCollider>();
@@ -278,25 +429,13 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        /// <summary>
-        /// Enables trigger mode while maintaining vertical physics for Hyper Dash.
-        /// </summary>
         public void SetHyperDashTriggerMode(bool isTrigger)
         {
-            if (_boxCollider != null)
-            {
-                _boxCollider.isTrigger = isTrigger;
-            }
-
-            if (_capsuleCollider != null)
-            {
-                _capsuleCollider.isTrigger = isTrigger;
-            }
+            if (_boxCollider != null) _boxCollider.isTrigger = isTrigger;
+            if (_capsuleCollider != null) _capsuleCollider.isTrigger = isTrigger;
 
             if (isTrigger)
             {
-                // Maintain gravity and jump physics during Hyper Dash
-                // Runner can still jump and fall normally.
                 RB.useGravity = false;
                 RB.constraints &= ~RigidbodyConstraints.FreezePositionY;
             }
@@ -306,6 +445,11 @@ namespace SteamRush.Features.Runner
                 RB.useGravity = false;
             }
         }
+
+        #endregion
+
+        #region Ground Check
+
         private void UpdateGroundCheck()
         {
             if (_jumpCooldownTimer > 0f)
@@ -405,5 +549,16 @@ namespace SteamRush.Features.Runner
                 _isCollidingWithGround = false;
             }
         }
+
+        #endregion
+    }
+
+    /// <summary>
+    /// Backwards compatibility alias for RunnerMovement.
+    /// Ensures all existing scene serializations and legacy references continue to work seamlessly.
+    /// </summary>
+    [System.Obsolete("RunnerController is obsolete. Please use RunnerMovement instead.")]
+    public class RunnerController : RunnerMovement
+    {
     }
 }

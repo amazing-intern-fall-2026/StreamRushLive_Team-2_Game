@@ -36,7 +36,7 @@ namespace StreamRushLive.Features.Spawning
         /// </summary>
         public void ActivateHeal()
         {
-            EnergySystem energy = FindFirstObjectByType<EnergySystem>();
+            RunnerEnergySystem energy = FindFirstObjectByType<RunnerEnergySystem>();
             if (energy != null)
             {
                 energy.AddEnergy(energyAmount);

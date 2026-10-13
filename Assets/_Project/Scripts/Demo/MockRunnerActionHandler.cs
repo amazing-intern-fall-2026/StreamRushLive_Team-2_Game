@@ -20,8 +20,8 @@ namespace SteamRush.Features.Runner
         [SerializeField] private SingleObstacleSpawner obstacleSpawner;
 
         private float ShieldDuration => StreamRushLive.Features.Gifts.GiftManager.Instance != null ? StreamRushLive.Features.Gifts.GiftManager.Instance.ShieldDuration : 15f;
-        private int FanEnergyBottleAmount => StreamRushLive.Features.Gifts.GiftManager.Instance != null ? StreamRushLive.Features.Gifts.GiftManager.Instance.BlueEnergyBottleAmount : 300;
-        private int AntiEnergyBottleAmount => StreamRushLive.Features.Gifts.GiftManager.Instance != null ? StreamRushLive.Features.Gifts.GiftManager.Instance.RedEnergyBottleAmount : 500;
+        private int BlueEnergyBottleAmount => StreamRushLive.Features.Gifts.GiftManager.Instance != null ? StreamRushLive.Features.Gifts.GiftManager.Instance.BlueEnergyBottleAmount : 300;
+        private int RedEnergyBottleAmount => StreamRushLive.Features.Gifts.GiftManager.Instance != null ? StreamRushLive.Features.Gifts.GiftManager.Instance.RedEnergyBottleAmount : 500;
 
         public void AutoWireReferences()
         {
@@ -47,7 +47,7 @@ namespace SteamRush.Features.Runner
             {
                 float duration = ShieldDuration > 0f ? ShieldDuration : 15f;
                 itemEffects.ActivateShield(duration);
-                hudManager?.ShowFanAction(sender, $"Shield ({duration:F0}s)");
+                hudManager?.ShowSupportAction(sender, $"Shield ({duration:F0}s)");
                 hudManager?.ShowStatusPopup($"Shield Activated ({duration:F0}s)!", true);
                 Debug.Log($"[MockRunnerActionHandler] {sender} gifted Shield ({duration:F0}s).");
             }
@@ -57,7 +57,7 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        public void MockActivateFanSprintBuff(string sender = "Blue Team")
+        public void MockActivateSprintBuff(string sender = "Blue Team")
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
             {
@@ -71,7 +71,7 @@ namespace SteamRush.Features.Runner
                 if (!chatLaneRunner.IsSprintBuffActive)
                 {
                     chatLaneRunner.ActivateSprintBuff(30f);
-                    hudManager?.ShowFanAction(sender, "Speed Boost (30s)");
+                    hudManager?.ShowSupportAction(sender, "Speed Boost (30s)");
                 }
             }
             else
@@ -79,6 +79,9 @@ namespace SteamRush.Features.Runner
                 Debug.LogWarning("[MockRunnerActionHandler] ChatLaneRunnerController not found.");
             }
         }
+
+        [System.Obsolete("Use MockActivateSprintBuff instead.")]
+        public void MockActivateFanSprintBuff(string sender = "Blue Team") => MockActivateSprintBuff(sender);
 
         public void MockActivateFreeControl(string sender = "Blue Team")
         {
@@ -92,7 +95,7 @@ namespace SteamRush.Features.Runner
             if (chatLaneRunner != null)
             {
                 chatLaneRunner.ActivateFreeControl(30f);
-                hudManager?.ShowFanAction(sender, "Free Control (30s)");
+                hudManager?.ShowSupportAction(sender, "Free Control (30s)");
                 hudManager?.ShowStatusPopup("Free Control Active (30s)!", true);
                 Debug.Log($"[MockRunnerActionHandler] {sender} activated Free-Control Buff (30s).");
             }
@@ -109,7 +112,7 @@ namespace SteamRush.Features.Runner
             {
                 bool newState = !chatLaneRunner.IsSprintBuffActive;
                 chatLaneRunner.SetSprintBuffDebug(newState);
-                hudManager?.ShowFanAction("DEBUG", newState ? "Sprint: ON" : "Sprint: OFF");
+                hudManager?.ShowSupportAction("DEBUG", newState ? "Sprint: ON" : "Sprint: OFF");
             }
         }
 
@@ -117,35 +120,35 @@ namespace SteamRush.Features.Runner
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
             {
-                StreamRushLive.Features.Gifts.GiftManager.Instance.SpawnAntiCar(StreamRushLive.Features.Spawning.VehicleTier.SedanCar, sender);
+                StreamRushLive.Features.Gifts.GiftManager.Instance.SpawnObstacleVehicle(StreamRushLive.Features.Spawning.ObstacleType.Car, sender);
                 return;
             }
 
             AutoWireReferences();
             bool isUnlimited = obstacleSpawner != null && obstacleSpawner.IsUnlimitedModeActive;
-            int cost = factionManager != null && factionManager.AntiCarLaneCost > 0 ? factionManager.AntiCarLaneCost : 100;
+            int cost = factionManager != null && factionManager.RedObstacleLaneCost > 0 ? factionManager.RedObstacleLaneCost : 100;
 
             if (!isUnlimited && factionManager != null)
             {
-                if (!factionManager.TrySpendAntiEnergy(cost))
+                if (!factionManager.TrySpendRedEnergy(cost))
                 {
-                    hudManager?.ShowAntiAction(sender, $"Need {cost} ({factionManager.AntiLikes})");
+                    hudManager?.ShowHazardAction(sender, $"Need {cost} ({factionManager.RedLikes})");
                     hudManager?.ShowStatusPopup("Out of Energy!", false);
-                    Debug.LogWarning($"[MockRunnerActionHandler] Red Team out of energy! Cannot spawn Sedan (Current: {factionManager.AntiLikes}, Need: {cost}).");
+                    Debug.LogWarning($"[MockRunnerActionHandler] Red Team out of energy! Cannot spawn Sedan (Current: {factionManager.RedLikes}, Need: {cost}).");
                     return;
                 }
             }
 
             if (obstacleSpawner != null)
             {
-                bool success = obstacleSpawner.TriggerSpawnCarTier(StreamRushLive.Features.Spawning.VehicleTier.SedanCar);
+                bool success = obstacleSpawner.TriggerSpawnCarTier(StreamRushLive.Features.Spawning.ObstacleType.Car);
                 if (success)
                 {
-                    hudManager?.ShowAntiAction(sender, "Spawned Sedan");
+                    hudManager?.ShowHazardAction(sender, "Spawned Sedan");
                 }
                 else if (!isUnlimited && factionManager != null)
                 {
-                    factionManager.AddAntiEnergy(cost);
+                    factionManager.AddRedEnergy(cost);
                 }
             }
         }
@@ -154,35 +157,35 @@ namespace SteamRush.Features.Runner
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
             {
-                StreamRushLive.Features.Gifts.GiftManager.Instance.SpawnAntiCar(StreamRushLive.Features.Spawning.VehicleTier.PickupTruck, sender);
+                StreamRushLive.Features.Gifts.GiftManager.Instance.SpawnObstacleVehicle(StreamRushLive.Features.Spawning.ObstacleType.Animals, sender);
                 return;
             }
 
             AutoWireReferences();
             bool isUnlimited = obstacleSpawner != null && obstacleSpawner.IsUnlimitedModeActive;
-            int cost = factionManager != null && factionManager.AntiCarLaneCost > 0 ? factionManager.AntiCarLaneCost : 100;
+            int cost = factionManager != null && factionManager.RedObstacleLaneCost > 0 ? factionManager.RedObstacleLaneCost : 100;
 
             if (!isUnlimited && factionManager != null)
             {
-                if (!factionManager.TrySpendAntiEnergy(cost))
+                if (!factionManager.TrySpendRedEnergy(cost))
                 {
-                    hudManager?.ShowAntiAction(sender, $"Need {cost} ({factionManager.AntiLikes})");
+                    hudManager?.ShowHazardAction(sender, $"Need {cost} ({factionManager.RedLikes})");
                     hudManager?.ShowStatusPopup("Out of Energy!", false);
-                    Debug.LogWarning($"[MockRunnerActionHandler] Red Team out of energy! Cannot spawn Pickup (Current: {factionManager.AntiLikes}, Need: {cost}).");
+                    Debug.LogWarning($"[MockRunnerActionHandler] Red Team out of energy! Cannot spawn Pickup (Current: {factionManager.RedLikes}, Need: {cost}).");
                     return;
                 }
             }
 
             if (obstacleSpawner != null)
             {
-                bool success = obstacleSpawner.TriggerSpawnCarTier(StreamRushLive.Features.Spawning.VehicleTier.PickupTruck);
+                bool success = obstacleSpawner.TriggerSpawnCarTier(StreamRushLive.Features.Spawning.ObstacleType.Animals);
                 if (success)
                 {
-                    hudManager?.ShowAntiAction(sender, "Spawned Pickup");
+                    hudManager?.ShowHazardAction(sender, "Spawned Pickup");
                 }
                 else if (!isUnlimited && factionManager != null)
                 {
-                    factionManager.AddAntiEnergy(cost);
+                    factionManager.AddRedEnergy(cost);
                 }
             }
         }
@@ -199,7 +202,7 @@ namespace SteamRush.Features.Runner
             if (obstacleSpawner != null)
             {
                 obstacleSpawner.ActivatePickupTruckPhase();
-                hudManager?.ShowAntiAction(sender, $"Animals Phase ({obstacleSpawner.VehiclePhaseDuration:F0}s)");
+                hudManager?.ShowHazardAction(sender, $"Animals Phase ({obstacleSpawner.VehiclePhaseDuration:F0}s)");
                 hudManager?.ShowStatusPopup($"Animals Phase Started ({obstacleSpawner.VehiclePhaseDuration:F0}s)", false);
             }
             else
@@ -212,35 +215,35 @@ namespace SteamRush.Features.Runner
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
             {
-                StreamRushLive.Features.Gifts.GiftManager.Instance.SpawnAntiCar(StreamRushLive.Features.Spawning.VehicleTier.HeavyTruck, sender);
+                StreamRushLive.Features.Gifts.GiftManager.Instance.SpawnObstacleVehicle(StreamRushLive.Features.Spawning.ObstacleType.Trains, sender);
                 return;
             }
 
             AutoWireReferences();
             bool isUnlimited = obstacleSpawner != null && obstacleSpawner.IsUnlimitedModeActive;
-            int cost = factionManager != null && factionManager.AntiCarLaneCost > 0 ? factionManager.AntiCarLaneCost : 100;
+            int cost = factionManager != null && factionManager.RedObstacleLaneCost > 0 ? factionManager.RedObstacleLaneCost : 100;
 
             if (!isUnlimited && factionManager != null)
             {
-                if (!factionManager.TrySpendAntiEnergy(cost))
+                if (!factionManager.TrySpendRedEnergy(cost))
                 {
-                    hudManager?.ShowAntiAction(sender, $"Need {cost} ({factionManager.AntiLikes})");
+                    hudManager?.ShowHazardAction(sender, $"Need {cost} ({factionManager.RedLikes})");
                     hudManager?.ShowStatusPopup("Out of Energy!", false);
-                    Debug.LogWarning($"[MockRunnerActionHandler] Red Team out of energy! Cannot spawn Heavy Truck (Current: {factionManager.AntiLikes}, Need: {cost}).");
+                    Debug.LogWarning($"[MockRunnerActionHandler] Red Team out of energy! Cannot spawn Heavy Truck (Current: {factionManager.RedLikes}, Need: {cost}).");
                     return;
                 }
             }
 
             if (obstacleSpawner != null)
             {
-                bool success = obstacleSpawner.TriggerSpawnCarTier(StreamRushLive.Features.Spawning.VehicleTier.HeavyTruck);
+                bool success = obstacleSpawner.TriggerSpawnCarTier(StreamRushLive.Features.Spawning.ObstacleType.Trains);
                 if (success)
                 {
-                    hudManager?.ShowAntiAction(sender, "Spawned Train");
+                    hudManager?.ShowHazardAction(sender, "Spawned Train");
                 }
                 else if (!isUnlimited && factionManager != null)
                 {
-                    factionManager.AddAntiEnergy(cost);
+                    factionManager.AddRedEnergy(cost);
                 }
             }
         }
@@ -257,7 +260,7 @@ namespace SteamRush.Features.Runner
             if (obstacleSpawner != null)
             {
                 obstacleSpawner.ActivateHeavyTruckPhase();
-                hudManager?.ShowAntiAction(sender, $"Train Phase ({obstacleSpawner.VehiclePhaseDuration:F0}s)");
+                hudManager?.ShowHazardAction(sender, $"Train Phase ({obstacleSpawner.VehiclePhaseDuration:F0}s)");
                 hudManager?.ShowStatusPopup($"Train Phase Started ({obstacleSpawner.VehiclePhaseDuration:F0}s)", false);
             }
             else
@@ -266,7 +269,7 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        public void MockFanEnergyBottle(string sender = "Viewer_Blue")
+        public void MockBlueEnergyBottle(string sender = "Viewer_Blue")
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
             {
@@ -277,13 +280,13 @@ namespace SteamRush.Features.Runner
             AutoWireReferences();
             if (factionManager != null)
             {
-                int amount = FanEnergyBottleAmount > 0 ? FanEnergyBottleAmount : 300;
-                factionManager.OnChatCommand(sender, "#fan");
-                factionManager.DebugAdjustFanEnergy(amount);
-                hudManager?.ShowFanAction(sender, $"+{amount} Energy");
+                int amount = BlueEnergyBottleAmount > 0 ? BlueEnergyBottleAmount : 300;
+                factionManager.OnChatCommand(sender, "#blue");
+                factionManager.DebugAdjustBlueEnergy(amount);
+                hudManager?.ShowSupportAction(sender, $"+{amount} Energy");
                 hudManager?.ShowStatusPopup($"+{amount} Blue Energy", true);
                 AudioManager.Instance?.PlaySFX(SFXType.CollectEnergy, 1.0f);
-                Debug.Log($"[MockRunnerActionHandler] {sender} gifted Blue Energy Bottle +{amount}. (Total: {factionManager.FanLikes})");
+                Debug.Log($"[MockRunnerActionHandler] {sender} gifted Blue Energy Bottle +{amount}. (Total: {factionManager.BlueLikes})");
             }
             else
             {
@@ -291,7 +294,10 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        public void MockAntiEnergyBottle(string sender = "Viewer_Red")
+        [System.Obsolete("Use MockBlueEnergyBottle instead.")]
+        public void MockFanEnergyBottle(string sender = "Viewer_Blue") => MockBlueEnergyBottle(sender);
+
+        public void MockRedEnergyBottle(string sender = "Viewer_Red")
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
             {
@@ -302,19 +308,22 @@ namespace SteamRush.Features.Runner
             AutoWireReferences();
             if (factionManager != null)
             {
-                int amount = AntiEnergyBottleAmount > 0 ? AntiEnergyBottleAmount : 500;
-                factionManager.OnChatCommand(sender, "#anti");
-                factionManager.DebugAdjustAntiEnergy(amount);
-                hudManager?.ShowAntiAction(sender, $"+{amount} Energy");
+                int amount = RedEnergyBottleAmount > 0 ? RedEnergyBottleAmount : 500;
+                factionManager.OnChatCommand(sender, "#red");
+                factionManager.DebugAdjustRedEnergy(amount);
+                hudManager?.ShowHazardAction(sender, $"+{amount} Energy");
                 hudManager?.ShowStatusPopup($"+{amount} Red Energy", false);
                 AudioManager.Instance?.PlaySFX(SFXType.CollectEnergy, 1.0f);
-                Debug.Log($"[MockRunnerActionHandler] {sender} gifted Red Energy Bottle +{amount}. (Total: {factionManager.AntiLikes})");
+                Debug.Log($"[MockRunnerActionHandler] {sender} gifted Red Energy Bottle +{amount}. (Total: {factionManager.RedLikes})");
             }
             else
             {
                 Debug.LogWarning("[MockRunnerActionHandler] FactionTugOfWarManager not found.");
             }
         }
+
+        [System.Obsolete("Use MockRedEnergyBottle instead.")]
+        public void MockAntiEnergyBottle(string sender = "Viewer_Red") => MockRedEnergyBottle(sender);
 
         public void MockNewFollower(string customUserId = null)
         {
@@ -324,7 +333,7 @@ namespace SteamRush.Features.Runner
                 string newId = string.IsNullOrEmpty(customUserId) ? ("Follower_" + Random.Range(100, 999)) : customUserId;
                 queueManager.EnqueueFollowerAsRunner(newId);
                 AudioManager.Instance?.PlaySFX(SFXType.StreamNewFollower);
-                hudManager?.ShowFanAction(newId, "Followed -> Next Runner!");
+                hudManager?.ShowSupportAction(newId, "Followed -> Next Runner!");
                 Debug.Log($"[MockRunnerActionHandler] Shift+F5 -> Follower set as next runner: {newId}");
             }
             else
@@ -333,7 +342,7 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        public void MockActivateAntiCarUnlimited(string sender = "Red Team")
+        public void MockActivateUnlimitedObstacles(string sender = "Red Team")
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
             {
@@ -347,7 +356,7 @@ namespace SteamRush.Features.Runner
                 if (!obstacleSpawner.IsUnlimitedModeActive)
                 {
                     obstacleSpawner.ActivateUnlimitedMode();
-                    hudManager?.ShowAntiAction(sender, "Unlimited Cars (60s)");
+                    hudManager?.ShowHazardAction(sender, "Unlimited Cars (60s)");
                     Debug.Log("[MockRunnerActionHandler] F7 -> Unlimited Cars (60s) activated.");
                 }
                 else
@@ -360,6 +369,9 @@ namespace SteamRush.Features.Runner
                 Debug.LogWarning("[MockRunnerActionHandler] SingleObstacleSpawner not found.");
             }
         }
+
+        [System.Obsolete("Use MockActivateUnlimitedObstacles instead.")]
+        public void MockActivateAntiCarUnlimited(string sender = "Red Team") => MockActivateUnlimitedObstacles(sender);
 
         public void MockGiftDance(string sender = "Viewer")
         {
@@ -374,7 +386,7 @@ namespace SteamRush.Features.Runner
             {
                 string displayName = !string.IsNullOrEmpty(sender) ? sender : "Viewer";
                 float dur = giftDance.Duration;
-                hudManager?.ShowFanAction(displayName, $"Dance ({dur:F0}s)");
+                hudManager?.ShowSupportAction(displayName, $"Dance ({dur:F0}s)");
                 hudManager?.ShowStatusPopup($"[{displayName}] Meme Dance!", true);
                 giftDance.TriggerDance();
             }
@@ -394,7 +406,7 @@ namespace SteamRush.Features.Runner
             }
 
             weatherManager.TriggerWeatherHazard(60f);
-            hudManager?.ShowAntiAction(sender, "Rain & Fog (60s)");
+            hudManager?.ShowHazardAction(sender, "Rain & Fog (60s)");
             Debug.Log($"[MockRunnerActionHandler] {sender} Weather Hazard 60s (FX_Rain & Fog -3.5f).");
         }
 
@@ -405,7 +417,7 @@ namespace SteamRush.Features.Runner
             {
                 string newId = string.IsNullOrEmpty(customUserId) ? ("Follower_" + Random.Range(100, 999)) : customUserId;
                 queueManager.EnqueueFollowerAsRunner(newId);
-                hudManager?.ShowFanAction(newId, "Followed -> Next Runner!");
+                hudManager?.ShowSupportAction(newId, "Followed -> Next Runner!");
             }
             else
             {
@@ -428,45 +440,57 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        public void DebugIncreaseFanEnergy(int amount = 10)
+        public void DebugIncreaseBlueEnergy(int amount = 10)
         {
             AutoWireReferences();
             if (factionManager != null)
             {
-                factionManager.DebugAdjustFanEnergy(amount);
+                factionManager.DebugAdjustBlueEnergy(amount);
                 hudManager?.ShowStatusPopup($"Blue Energy +{amount}", true);
             }
         }
 
-        public void DebugDecreaseFanEnergy(int amount = 10)
+        [System.Obsolete("Use DebugIncreaseBlueEnergy instead.")]
+        public void DebugIncreaseFanEnergy(int amount = 10) => DebugIncreaseBlueEnergy(amount);
+
+        public void DebugDecreaseBlueEnergy(int amount = 10)
         {
             AutoWireReferences();
             if (factionManager != null)
             {
-                factionManager.DebugAdjustFanEnergy(-amount);
+                factionManager.DebugAdjustBlueEnergy(-amount);
                 hudManager?.ShowStatusPopup($"Blue Energy -{amount}", true);
             }
         }
 
-        public void DebugIncreaseAntiEnergy(int amount = 10)
+        [System.Obsolete("Use DebugDecreaseBlueEnergy instead.")]
+        public void DebugDecreaseFanEnergy(int amount = 10) => DebugDecreaseBlueEnergy(amount);
+
+        public void DebugIncreaseRedEnergy(int amount = 10)
         {
             AutoWireReferences();
             if (factionManager != null)
             {
-                factionManager.DebugAdjustAntiEnergy(amount);
+                factionManager.DebugAdjustRedEnergy(amount);
                 hudManager?.ShowStatusPopup($"Red Energy +{amount}", false);
             }
         }
 
-        public void DebugDecreaseAntiEnergy(int amount = 10)
+        [System.Obsolete("Use DebugIncreaseRedEnergy instead.")]
+        public void DebugIncreaseAntiEnergy(int amount = 10) => DebugIncreaseRedEnergy(amount);
+
+        public void DebugDecreaseRedEnergy(int amount = 10)
         {
             AutoWireReferences();
             if (factionManager != null)
             {
-                factionManager.DebugAdjustAntiEnergy(-amount);
+                factionManager.DebugAdjustRedEnergy(-amount);
                 hudManager?.ShowStatusPopup($"Red Energy -{amount}", false);
             }
         }
+
+        [System.Obsolete("Use DebugDecreaseRedEnergy instead.")]
+        public void DebugDecreaseAntiEnergy(int amount = 10) => DebugDecreaseRedEnergy(amount);
 
         public void MockTriggerFinishLineApproach(float distanceAhead = 50f)
         {

@@ -159,20 +159,18 @@ namespace SteamRush.Features.UI
             // Disabled
         }
 
-        /// <summary>
-        /// Deprecated: Fan team chat notifications disabled per design.
-        /// </summary>
-        public void ShowFanAction(string sender, string action, Sprite icon = null)
+        public void ShowSupportAction(string sender, string action, Sprite icon = null)
         {
-            // Disabled: Fan team comment notification suppressed
+            // Disabled: Side comment notifications suppressed per design
         }
 
-        /// <summary>
-        /// Deprecated: Anti team chat notifications disabled per design.
-        /// </summary>
-        public void ShowAntiAction(string sender, string action, Sprite icon = null)
+        public void ShowFanAction(string sender, string action, Sprite icon = null) => ShowSupportAction(sender, action, icon);
+
+        public void ShowHazardAction(string sender, string action, Sprite icon = null)
         {
-            // Disabled: Anti team comment notification suppressed
+            // Disabled: Side comment notifications suppressed per design
         }
+
+        public void ShowAntiAction(string sender, string action, Sprite icon = null) => ShowHazardAction(sender, action, icon);
     }
 }

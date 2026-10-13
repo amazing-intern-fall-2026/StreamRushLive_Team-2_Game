@@ -66,8 +66,8 @@ namespace SteamRush.Features.Runner
             debugUIPanel?.Initialize(
                 chatInputField,
                 onToggleDebug: ToggleDebugUI,
-                onFanEnergyChanged: amt => actionHandler?.DebugIncreaseFanEnergy(amt),
-                onAntiEnergyChanged: amt => actionHandler?.DebugIncreaseAntiEnergy(amt),
+                onBlueEnergyChanged: amt => actionHandler?.DebugIncreaseBlueEnergy(amt),
+                onRedEnergyChanged: amt => actionHandler?.DebugIncreaseRedEnergy(amt),
                 onFreeControl: () => MockActivateFreeControl(),
                 onLiveDemo: () => ToggleLiveDemoSimulation(),
                 onFinishApproach: () => MockTriggerFinishLineApproach(50f)
@@ -116,7 +116,7 @@ namespace SteamRush.Features.Runner
             if (Keyboard.current.f2Key.wasPressedThisFrame)
             {
                 if (isShift) MockToggleSprintBuffDebug();
-                else MockActivateFanSprintBuff();
+                else MockActivateSprintBuff();
             }
 
             if (Keyboard.current.f3Key.wasPressedThisFrame)
@@ -142,13 +142,13 @@ namespace SteamRush.Features.Runner
 
             if (Keyboard.current.f6Key.wasPressedThisFrame)
             {
-                if (isShift) actionHandler?.DebugDecreaseFanEnergy(10);
-                else actionHandler?.DebugIncreaseFanEnergy(10);
+                if (isShift) actionHandler?.DebugDecreaseBlueEnergy(10);
+                else actionHandler?.DebugIncreaseBlueEnergy(10);
             }
 
             if (Keyboard.current.f7Key.wasPressedThisFrame)
             {
-                MockActivateAntiCarUnlimited();
+                MockActivateUnlimitedObstacles();
             }
 
             if (Keyboard.current.f8Key.wasPressedThisFrame)
@@ -168,8 +168,8 @@ namespace SteamRush.Features.Runner
 
             if (Keyboard.current.f11Key.wasPressedThisFrame)
             {
-                if (isShift) actionHandler?.DebugDecreaseAntiEnergy(10);
-                else actionHandler?.DebugIncreaseAntiEnergy(10);
+                if (isShift) actionHandler?.DebugDecreaseRedEnergy(10);
+                else actionHandler?.DebugIncreaseRedEnergy(10);
             }
 
             if (Keyboard.current.lKey.wasPressedThisFrame)
@@ -238,7 +238,9 @@ namespace SteamRush.Features.Runner
         public void SetDebugUIVisible(bool visible) => debugUIPanel?.SetDebugUIVisible(visible);
 
         public void MockDonateShield(string sender = "Viewer") => actionHandler?.MockDonateShield(sender);
-        public void MockActivateFanSprintBuff(string sender = "Blue Team") => actionHandler?.MockActivateFanSprintBuff(sender);
+        public void MockActivateSprintBuff(string sender = "Blue Team") => actionHandler?.MockActivateSprintBuff(sender);
+        [System.Obsolete("Use MockActivateSprintBuff instead.")]
+        public void MockActivateFanSprintBuff(string sender = "Blue Team") => MockActivateSprintBuff(sender);
         public void MockActivateFreeControl(string sender = "Blue Team") => actionHandler?.MockActivateFreeControl(sender);
         public void MockToggleSprintBuffDebug() => actionHandler?.MockToggleSprintBuffDebug();
 
@@ -248,19 +250,39 @@ namespace SteamRush.Features.Runner
         public void MockSpawnHeavyTruck(string sender = "Red Team") => actionHandler?.MockSpawnHeavyTruck(sender);
         public void MockActivateHeavyTruckPhase(string sender = "Red Team") => actionHandler?.MockActivateHeavyTruckPhase(sender);
 
-        public void MockFanEnergyBottle(string sender = "Viewer_Blue") => actionHandler?.MockFanEnergyBottle(sender);
-        public void MockAntiEnergyBottle(string sender = "Viewer_Red") => actionHandler?.MockAntiEnergyBottle(sender);
+        public void MockBlueEnergyBottle(string sender = "Viewer_Blue") => actionHandler?.MockBlueEnergyBottle(sender);
+        [System.Obsolete("Use MockBlueEnergyBottle instead.")]
+        public void MockFanEnergyBottle(string sender = "Viewer_Blue") => MockBlueEnergyBottle(sender);
+
+        public void MockRedEnergyBottle(string sender = "Viewer_Red") => actionHandler?.MockRedEnergyBottle(sender);
+        [System.Obsolete("Use MockRedEnergyBottle instead.")]
+        public void MockAntiEnergyBottle(string sender = "Viewer_Red") => MockRedEnergyBottle(sender);
+
         public void MockNewFollower(string customUserId = null) => actionHandler?.MockNewFollower(customUserId);
-        public void MockActivateAntiCarUnlimited(string sender = "Red Team") => actionHandler?.MockActivateAntiCarUnlimited(sender);
+        public void MockActivateUnlimitedObstacles(string sender = "Red Team") => actionHandler?.MockActivateUnlimitedObstacles(sender);
+        [System.Obsolete("Use MockActivateUnlimitedObstacles instead.")]
+        public void MockActivateAntiCarUnlimited(string sender = "Red Team") => MockActivateUnlimitedObstacles(sender);
+
         public void MockGiftDance(string sender = "Viewer") => actionHandler?.MockGiftDance(sender);
         public void MockWeatherHazard(string sender = "Viewer_Red") => actionHandler?.MockWeatherHazard(sender);
         public void MockBuyVipTicket(string customUserId = null) => actionHandler?.MockBuyVipTicket(customUserId);
         public void MockToggleUnlimitedModeDebug() => actionHandler?.MockToggleUnlimitedModeDebug();
 
-        public void DebugIncreaseFanEnergy(int amount = 10) => actionHandler?.DebugIncreaseFanEnergy(amount);
-        public void DebugDecreaseFanEnergy(int amount = 10) => actionHandler?.DebugDecreaseFanEnergy(amount);
-        public void DebugIncreaseAntiEnergy(int amount = 10) => actionHandler?.DebugIncreaseAntiEnergy(amount);
-        public void DebugDecreaseAntiEnergy(int amount = 10) => actionHandler?.DebugDecreaseAntiEnergy(amount);
+        public void DebugIncreaseBlueEnergy(int amount = 10) => actionHandler?.DebugIncreaseBlueEnergy(amount);
+        [System.Obsolete("Use DebugIncreaseBlueEnergy instead.")]
+        public void DebugIncreaseFanEnergy(int amount = 10) => DebugIncreaseBlueEnergy(amount);
+
+        public void DebugDecreaseBlueEnergy(int amount = 10) => actionHandler?.DebugDecreaseBlueEnergy(amount);
+        [System.Obsolete("Use DebugDecreaseBlueEnergy instead.")]
+        public void DebugDecreaseFanEnergy(int amount = 10) => DebugDecreaseBlueEnergy(amount);
+
+        public void DebugIncreaseRedEnergy(int amount = 10) => actionHandler?.DebugIncreaseRedEnergy(amount);
+        [System.Obsolete("Use DebugIncreaseRedEnergy instead.")]
+        public void DebugIncreaseAntiEnergy(int amount = 10) => DebugIncreaseRedEnergy(amount);
+
+        public void DebugDecreaseRedEnergy(int amount = 10) => actionHandler?.DebugDecreaseRedEnergy(amount);
+        [System.Obsolete("Use DebugDecreaseRedEnergy instead.")]
+        public void DebugDecreaseAntiEnergy(int amount = 10) => DebugDecreaseRedEnergy(amount);
 
         public void MockTriggerFinishLineApproach(float distanceAhead = 50f) => actionHandler?.MockTriggerFinishLineApproach(distanceAhead);
         public void ToggleLiveDemoSimulation() => actionHandler?.ToggleLiveDemoSimulation();

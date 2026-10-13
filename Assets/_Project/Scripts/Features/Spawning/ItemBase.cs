@@ -69,7 +69,7 @@ namespace StreamRushLive.Features.Spawning
         protected virtual bool IsPlayer(GameObject obj)
         {
             return obj.CompareTag("Player")
-                   || obj.GetComponentInParent<RunnerController>() != null;
+                   || obj.GetComponentInParent<RunnerMovement>() != null;
         }
     }
 }

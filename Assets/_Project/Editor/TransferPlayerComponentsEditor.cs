@@ -112,12 +112,12 @@ namespace SteamRush.EditorTools
                 EditorUtility.CopySerialized(srcRb, dstRb);
             }
 
-            // Copy RunnerController
-            RunnerController srcController = playerRunner.GetComponent<RunnerController>();
+            // Copy RunnerMovement
+            RunnerMovement srcController = playerRunner.GetComponent<RunnerMovement>();
             if (srcController != null)
             {
-                RunnerController dstController = targetChar.GetComponent<RunnerController>();
-                if (dstController == null) dstController = targetChar.AddComponent<RunnerController>();
+                RunnerMovement dstController = targetChar.GetComponent<RunnerMovement>();
+                if (dstController == null) dstController = targetChar.AddComponent<RunnerMovement>();
                 EditorUtility.CopySerialized(srcController, dstController);
             }
 

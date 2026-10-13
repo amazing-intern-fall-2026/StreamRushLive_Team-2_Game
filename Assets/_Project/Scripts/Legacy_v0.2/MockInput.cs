@@ -1,3 +1,4 @@
+#pragma warning disable CS0618
 using UnityEngine;
 using UnityEngine.InputSystem;
 using SteamRush.Relay;
@@ -17,7 +18,7 @@ namespace StreamRushLive.Features.Spawning
     {
         [Header("References")]
         [SerializeField] private Spawner spawner;
-        [SerializeField] private EnergySystem energySystem;
+        [SerializeField] private RunnerEnergySystem energySystem;
         [SerializeField] private RelayQueueManager relayQueue;
 
         [Header("Test Settings")]
@@ -28,7 +29,7 @@ namespace StreamRushLive.Features.Spawning
         private void Start()
         {
             if (spawner == null) spawner = FindFirstObjectByType<Spawner>();
-            if (energySystem == null) energySystem = FindFirstObjectByType<EnergySystem>();
+            if (energySystem == null) energySystem = FindFirstObjectByType<RunnerEnergySystem>();
             if (relayQueue == null) relayQueue = FindFirstObjectByType<RelayQueueManager>();
         }
 

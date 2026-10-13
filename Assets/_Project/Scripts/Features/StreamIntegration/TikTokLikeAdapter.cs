@@ -104,7 +104,7 @@ namespace SteamRush.Features.StreamIntegration
             int stepsGained = newSteps - oldSteps;
             int energyAmount = stepsGained * _energyPerStep;
 
-            FactionType faction = _factionManager != null ? _factionManager.GetFaction(evt.UserId) : FactionType.Fan;
+            FactionType faction = _factionManager != null ? _factionManager.GetFaction(evt.UserId) : FactionType.Blue;
             string displayName = !string.IsNullOrEmpty(evt.DisplayName) ? evt.DisplayName : evt.UserId;
 
             if (_factionManager != null)

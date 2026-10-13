@@ -9,16 +9,16 @@ using SteamRush.Features.Environment;
 namespace StreamRushLive.Features.Gifts
 {
     /// <summary>
-    /// Detailed configuration for Anti team obstacle vehicle tiers.
+    /// Detailed configuration for Red team obstacle vehicle tiers.
     /// Configurable parameters: energy cost, knockback, damage penalty, distance penalty, speed, etc.
     /// </summary>
     [Serializable]
-    public class AntiCarGiftConfig
+    public class ObstacleGiftConfig
     {
         [Tooltip("Display name of vehicle tier")]
         public string vehicleName = "Vehicle";
 
-        [Tooltip("Anti team energy cost to deploy this vehicle (default: 100).")]
+        [Tooltip("Red team energy cost to deploy this vehicle (default: 100).")]
         public int energyCost = 100;
 
         [Tooltip("Knockback distance in meters pushed backward upon collision.")]
@@ -45,6 +45,12 @@ namespace StreamRushLive.Features.Gifts
 
         [Tooltip("Reverse scroll duration in seconds.")]
         public float reverseWorldDuration = 1.8f;
+    }
+
+    [System.Obsolete("AntiCarGiftConfig is deprecated. Please use ObstacleGiftConfig instead.")]
+    [Serializable]
+    public class AntiCarGiftConfig : ObstacleGiftConfig
+    {
     }
 
     /// <summary>
@@ -86,7 +92,7 @@ namespace StreamRushLive.Features.Gifts
         [SerializeField] private float _vehiclePhaseDuration = 60f;
 
         [Header("Sedan Car")]
-        [SerializeField] private AntiCarGiftConfig _sedanConfig = new AntiCarGiftConfig
+        [SerializeField] private ObstacleGiftConfig _sedanConfig = new ObstacleGiftConfig
         {
             vehicleName = "Sedan Car",
             energyCost = 100,
@@ -101,7 +107,7 @@ namespace StreamRushLive.Features.Gifts
         };
 
         [Header("Animals (Tier 2)")]
-        [SerializeField] private AntiCarGiftConfig _pickupConfig = new AntiCarGiftConfig
+        [SerializeField] private ObstacleGiftConfig _pickupConfig = new ObstacleGiftConfig
         {
             vehicleName = "Animals",
             energyCost = 100,
@@ -116,7 +122,7 @@ namespace StreamRushLive.Features.Gifts
         };
 
         [Header("Train (Tier 3)")]
-        [SerializeField] private AntiCarGiftConfig _heavyTruckConfig = new AntiCarGiftConfig
+        [SerializeField] private ObstacleGiftConfig _heavyTruckConfig = new ObstacleGiftConfig
         {
             vehicleName = "Train",
             energyCost = 100,
@@ -155,10 +161,11 @@ namespace StreamRushLive.Features.Gifts
         public int RedEnergyBottleAmount => _redEnergyBottleAmount;
         public float UnlimitedCarsDuration => _unlimitedCarsDuration;
         public float VehiclePhaseDuration => _vehiclePhaseDuration;
+        public SingleObstacleSpawner ObstacleSpawner => _obstacleSpawner;
 
-        public AntiCarGiftConfig SedanConfig => _sedanConfig;
-        public AntiCarGiftConfig PickupConfig => _pickupConfig;
-        public AntiCarGiftConfig HeavyTruckConfig => _heavyTruckConfig;
+        public ObstacleGiftConfig SedanConfig => _sedanConfig;
+        public ObstacleGiftConfig PickupConfig => _pickupConfig;
+        public ObstacleGiftConfig HeavyTruckConfig => _heavyTruckConfig;
 
         public int SedanCarCost => _sedanConfig.energyCost;
         public int PickupTruckCost => _pickupConfig.energyCost;
@@ -171,18 +178,23 @@ namespace StreamRushLive.Features.Gifts
         #endregion
 
         /// <summary>
-        /// Retrieves vehicle tier configuration.
+        /// Retrieves obstacle configuration per type (Car, Animals, Trains).
         /// </summary>
-        public AntiCarGiftConfig GetCarConfig(VehicleTier tier)
+        public ObstacleGiftConfig GetCarConfig(ObstacleType type)
         {
-            return tier switch
+            return type switch
             {
-                VehicleTier.SedanCar => _sedanConfig,
-                VehicleTier.PickupTruck => _pickupConfig,
-                VehicleTier.HeavyTruck => _heavyTruckConfig,
+                ObstacleType.Car => _sedanConfig,
+                ObstacleType.Animals => _pickupConfig,
+                ObstacleType.Trains => _heavyTruckConfig,
                 _ => _sedanConfig
             };
         }
+
+#pragma warning disable CS0618
+        [System.Obsolete("VehicleTier is deprecated. Please use ObstacleType instead.")]
+        public ObstacleGiftConfig GetCarConfig(VehicleTier tier) => GetCarConfig((ObstacleType)tier);
+#pragma warning restore CS0618
 
         private void Awake()
         {
@@ -358,7 +370,7 @@ namespace StreamRushLive.Features.Gifts
             if (_factionManager != null)
             {
                 _factionManager.OnChatCommand(sender, "#fan");
-                _factionManager.DebugAdjustFanEnergy(amount);
+                _factionManager.DebugAdjustBlueEnergy(amount);
                 _hudManager?.ShowFanAction(sender, $"+{amount} Energy");
                 _hudManager?.ShowStatusPopup($"[{sender}] +{amount} Blue Energy", true);
                 AudioManager.Instance?.PlaySFX(SFXType.CollectEnergy, 1.0f);
@@ -381,7 +393,7 @@ namespace StreamRushLive.Features.Gifts
             if (_factionManager != null)
             {
                 _factionManager.OnChatCommand(sender, "#anti");
-                _factionManager.DebugAdjustAntiEnergy(amount);
+                _factionManager.DebugAdjustRedEnergy(amount);
                 _hudManager?.ShowAntiAction(sender, $"+{amount} Energy");
                 _hudManager?.ShowStatusPopup($"[{sender}] +{amount} Red Energy", false);
                 AudioManager.Instance?.PlaySFX(SFXType.CollectEnergy, 1.0f);
@@ -459,42 +471,42 @@ namespace StreamRushLive.Features.Gifts
         /// <summary>
         /// Spawns an obstacle vehicle for Red Team, deducting configured energy cost.
         /// </summary>
-        public bool SpawnAntiCar(VehicleTier tier, string sender = "Red Team")
+        public bool SpawnObstacleVehicle(ObstacleType type, string sender = "Red Team")
         {
             ResolveReferences();
             if (_obstacleSpawner == null) return false;
 
             bool isUnlimited = _obstacleSpawner.IsUnlimitedModeActive;
-            var carConfig = GetCarConfig(tier);
+            var carConfig = GetCarConfig(type);
             int cost = carConfig != null ? carConfig.energyCost : 100;
 
             if (!isUnlimited && _factionManager != null)
             {
-                if (!_factionManager.TrySpendAntiEnergy(cost))
+                if (!_factionManager.TrySpendRedEnergy(cost))
                 {
-                    _hudManager?.ShowAntiAction(sender, $"Need {cost} ({_factionManager.AntiLikes})");
+                    _hudManager?.ShowHazardAction(sender, $"Need {cost} ({_factionManager.RedLikes})");
                     // Suppressed insufficient energy popup to avoid HUD clutter
                     return false;
                 }
             }
 
-            bool spawned = _obstacleSpawner.TriggerSpawnCarTier(tier);
+            bool spawned = _obstacleSpawner.TriggerSpawnCarTier(type);
             if (spawned)
             {
-                string tierName = carConfig != null ? carConfig.vehicleName : tier.ToString();
-                _hudManager?.ShowAntiAction(sender, $"Spawned {tierName}");
+                string tierName = carConfig != null ? carConfig.vehicleName : type.ToString();
+                _hudManager?.ShowHazardAction(sender, $"Spawned {tierName}");
                 _hudManager?.ShowStatusPopup($"[{sender}] {tierName}", false);
 
                 // Play vehicle horn warning when gift is activated
-                switch (tier)
+                switch (type)
                 {
-                    case VehicleTier.HeavyTruck:
+                    case ObstacleType.Trains:
                         AudioManager.Instance?.PlaySFX(SFXType.HeavyTruckHorn, 1.0f);
                         break;
-                    case VehicleTier.PickupTruck:
+                    case ObstacleType.Animals:
                         AudioManager.Instance?.PlaySFX(SFXType.PickupHorn, 0.9f);
                         break;
-                    case VehicleTier.SedanCar:
+                    case ObstacleType.Car:
                     default:
                         AudioManager.Instance?.PlaySFX(SFXType.CarHorn, 0.85f);
                         break;
@@ -504,11 +516,20 @@ namespace StreamRushLive.Features.Gifts
             else if (!isUnlimited && _factionManager != null)
             {
                 // Refund energy if lane is blocked
-                _factionManager.AddAntiEnergy(cost);
+                _factionManager.AddRedEnergy(cost);
             }
 
             return false;
         }
+
+#pragma warning disable CS0618
+        [System.Obsolete("VehicleTier is deprecated. Use ObstacleType instead.")]
+        public bool SpawnObstacleVehicle(VehicleTier tier, string sender = "Red Team") => SpawnObstacleVehicle((ObstacleType)tier, sender);
+        [System.Obsolete("Use SpawnObstacleVehicle instead.")]
+        public bool SpawnAntiCar(ObstacleType type, string sender = "Red Team") => SpawnObstacleVehicle(type, sender);
+        [System.Obsolete("Use SpawnObstacleVehicle instead.")]
+        public bool SpawnAntiCar(VehicleTier tier, string sender = "Red Team") => SpawnObstacleVehicle((ObstacleType)tier, sender);
+#pragma warning restore CS0618
 
         /// <summary>
         /// Triggers celebration Gift Dance for runner and displays donor notification on HUD.

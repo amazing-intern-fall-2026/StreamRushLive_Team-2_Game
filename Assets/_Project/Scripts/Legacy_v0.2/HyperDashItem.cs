@@ -30,8 +30,8 @@ namespace StreamRushLive.Features.Spawning
             RunnerCollisionHandler collisionHandler =
                 collector.GetComponentInParent<RunnerCollisionHandler>();
 
-            EnergySystem energySystem =
-                FindFirstObjectByType<EnergySystem>();
+            RunnerEnergySystem energySystem =
+                FindFirstObjectByType<RunnerEnergySystem>();
 
             if (collisionHandler != null)
             {
@@ -48,7 +48,7 @@ namespace StreamRushLive.Features.Spawning
 
         private IEnumerator HyperDashRoutine(
             RunnerCollisionHandler collisionHandler,
-            EnergySystem energySystem)
+            RunnerEnergySystem energySystem)
         {
             yield return new WaitForSeconds(duration);
 

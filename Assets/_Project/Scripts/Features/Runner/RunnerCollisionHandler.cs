@@ -10,7 +10,7 @@ namespace SteamRush.Features.Runner
     /// Handles Runner collision and interactions with obstacles and pickups.
     /// Manages shield defense, knockback penalty, i-frames, and world recovery.
     /// </summary>
-    [RequireComponent(typeof(RunnerController))]
+    [RequireComponent(typeof(RunnerMovement))]
     public class RunnerCollisionHandler : MonoBehaviour
     {
         [SerializeField] private string _obstacleTag = "Obstacle";
@@ -30,7 +30,7 @@ namespace SteamRush.Features.Runner
         [Tooltip("Invulnerability duration (blinking + trigger mode) for obstacles to pass through.")]
         [SerializeField] private float _invulnerabilityDuration = 0.8f;
 
-        private RunnerController _controller;
+        private RunnerMovement _movement;
         private ChatLaneRunnerController _chatLaneRunner;
         private Renderer[] _renderers;
 
@@ -51,14 +51,14 @@ namespace SteamRush.Features.Runner
 
         private void Awake()
         {
-            _controller = GetComponent<RunnerController>();
+            _movement = GetComponent<RunnerMovement>();
             _chatLaneRunner = GetComponent<ChatLaneRunnerController>();
             _renderers = GetComponentsInChildren<Renderer>();
             _isHandlingHit = false;
             SetRenderersVisible(true);
-            if (_controller != null)
+            if (_movement != null)
             {
-                _controller.SetTriggerMode(false);
+                _movement.SetTriggerMode(false);
             }
             else
             {
@@ -74,9 +74,9 @@ namespace SteamRush.Features.Runner
         {
             _isHyperDashActive = isActive;
 
-            if (_controller != null)
+            if (_movement != null)
             {
-                _controller.SetHyperDashTriggerMode(isActive);
+                _movement.SetHyperDashTriggerMode(isActive);
             }
         }
 
@@ -143,7 +143,7 @@ namespace SteamRush.Features.Runner
                     if (faction != null)
                     {
                         int bonus = Mathf.RoundToInt(0.2f * faction.GetFanEnergyMax());
-                        faction.AddLikes(SteamRush.Features.StreamIntegration.FactionType.Fan, bonus);
+                        faction.AddLikes(SteamRush.Features.StreamIntegration.FactionType.Blue, bonus);
                     }
                 }
 
@@ -187,31 +187,31 @@ namespace SteamRush.Features.Runner
                 return;
             }
 
-            // Fallback for obstacles without ObstacleBase or DrivingObstacleCar
-            StreamRushLive.Features.Spawning.DrivingObstacleCar drivingCar = obj.GetComponentInParent<StreamRushLive.Features.Spawning.DrivingObstacleCar>();
-            if (drivingCar != null && drivingCar.IsShieldDeflected)
+            // Fallback for obstacles without ObstacleBase or DynamicObstacle
+            StreamRushLive.Features.Spawning.DynamicObstacle dynamicObs = obj.GetComponentInParent<StreamRushLive.Features.Spawning.DynamicObstacle>();
+            if (dynamicObs != null && dynamicObs.IsShieldDeflected)
             {
                 return;
             }
 
-            if (drivingCar != null || obj.CompareTag(_obstacleTag)
+            if (dynamicObs != null || obj.CompareTag(_obstacleTag)
                 || obj.transform.root.CompareTag(_obstacleTag)
                 || obj.name.Contains("Barrier")
                 || obj.name.Contains("Obstacle")
                 || obj.name.Contains("Car"))
             {
-                GameObject targetObj = drivingCar != null ? drivingCar.gameObject : obj.transform.root.gameObject;
+                GameObject targetObj = dynamicObs != null ? dynamicObs.gameObject : obj.transform.root.gameObject;
                 if (TryConsumeShield(targetObj))
                 {
                     return;
                 }
 
-                if (drivingCar != null)
+                if (dynamicObs != null)
                 {
-                    drivingCar.OnHitPlayer(gameObject);
+                    dynamicObs.OnHitPlayer(gameObject);
                 }
 
-                StartCoroutine(HandleObstacleHit(drivingCar));
+                StartCoroutine(HandleObstacleHit(dynamicObs));
             }
         }
 
@@ -250,9 +250,9 @@ namespace SteamRush.Features.Runner
                 ? obstacle.DistancePenaltyMeters
                 : _defaultDistancePenalty;
 
-            if (_controller != null)
+            if (_movement != null)
             {
-                _controller.SetTriggerMode(true);
+                _movement.SetTriggerMode(true);
             }
             else
             {
@@ -288,12 +288,12 @@ namespace SteamRush.Features.Runner
             }
 
             HUDManager hud = FindFirstObjectByType<HUDManager>();
-            if (obstacle is StreamRushLive.Features.Spawning.DrivingObstacleCar drivingCar)
+            if (obstacle is StreamRushLive.Features.Spawning.DynamicObstacle dynamicObs2)
             {
-                string tierTitle = drivingCar.Tier switch
+                string tierTitle = dynamicObs2.ObstacleClassification switch
                 {
-                    StreamRushLive.Features.Spawning.VehicleTier.HeavyTruck => "Train Hit!",
-                    StreamRushLive.Features.Spawning.VehicleTier.PickupTruck => "Animals Hit!",
+                    StreamRushLive.Features.Spawning.ObstacleType.Trains => "Train Hit!",
+                    StreamRushLive.Features.Spawning.ObstacleType.Animals => "Animals Hit!",
                     _ => "Car Hit!"
                 };
                 hud?.ShowStatusPopup($"{tierTitle} (-{finalDistancePenalty:F0}m, -{penalty:F0}% Energy)", false);
@@ -308,18 +308,18 @@ namespace SteamRush.Features.Runner
                 _chatLaneRunner = GetComponent<ChatLaneRunnerController>() ?? GetComponentInParent<ChatLaneRunnerController>();
             }
 
-            float kbDistance = obstacle is StreamRushLive.Features.Spawning.DrivingObstacleCar carObj ? carObj.KnockbackDistance : 2.2f;
-            float kbDuration = obstacle is StreamRushLive.Features.Spawning.DrivingObstacleCar carObj2
-                ? Mathf.Max(carObj2.KnockbackDuration, carObj2.ReverseWorldDuration)
+            float kbDistance = obstacle is StreamRushLive.Features.Spawning.DynamicObstacle obsObj ? obsObj.KnockbackDistance : 2.2f;
+            float kbDuration = obstacle is StreamRushLive.Features.Spawning.DynamicObstacle obsObj2
+                ? Mathf.Max(obsObj2.KnockbackDuration, obsObj2.ReverseWorldDuration)
                 : 1.8f;
 
             if (_chatLaneRunner != null)
             {
                 _chatLaneRunner.ApplyKnockback(kbDistance, kbDuration);
             }
-            else if (_controller != null)
+            else if (_movement != null)
             {
-                _controller.ApplyKnockback(kbDistance, kbDuration);
+                _movement.ApplyKnockback(kbDistance, kbDuration);
             }
 
             if (hitStop > 0.01f)
@@ -332,8 +332,8 @@ namespace SteamRush.Features.Runner
             WorldSpeedManager speedManager = FindFirstObjectByType<WorldSpeedManager>() ?? WorldSpeedManager.Instance;
             if (speedManager != null)
             {
-                float peakSpeed = obstacle is StreamRushLive.Features.Spawning.DrivingObstacleCar carObj3 ? carObj3.ReverseWorldPeakSpeed : -15f;
-                float duration = obstacle is StreamRushLive.Features.Spawning.DrivingObstacleCar carObj4 ? carObj4.ReverseWorldDuration : 0.65f;
+                float peakSpeed = obstacle is StreamRushLive.Features.Spawning.DynamicObstacle obsObj3 ? obsObj3.ReverseWorldPeakSpeed : -15f;
+                float duration = obstacle is StreamRushLive.Features.Spawning.DynamicObstacle obsObj4 ? obsObj4.ReverseWorldDuration : 0.65f;
                 speedManager.TriggerReverseWorldKnockback(peakSpeed, duration);
             }
 
@@ -344,16 +344,16 @@ namespace SteamRush.Features.Runner
             {
                 elapsed += Time.deltaTime;
                 isKnocking = (_chatLaneRunner != null && _chatLaneRunner.IsKnockingBack) ||
-                             (_controller != null && _controller.IsKnockingBack);
+                             (_movement != null && _movement.IsKnockingBack);
                 SetRenderersVisible(elapsed % 0.15f < 0.075f);
                 yield return null;
             }
 
             SetRenderersVisible(true);
 
-            if (_controller != null)
+            if (_movement != null)
             {
-                _controller.SetTriggerMode(false);
+                _movement.SetTriggerMode(false);
             }
             else
             {
@@ -429,14 +429,14 @@ namespace SteamRush.Features.Runner
         {
             if (obstacleObj == null) return;
 
-            StreamRushLive.Features.Spawning.DrivingObstacleCar drivingCar =
-                obstacleObj.GetComponentInParent<StreamRushLive.Features.Spawning.DrivingObstacleCar>()
-                ?? obstacleObj.GetComponent<StreamRushLive.Features.Spawning.DrivingObstacleCar>()
-                ?? obstacleObj.GetComponentInChildren<StreamRushLive.Features.Spawning.DrivingObstacleCar>();
+            StreamRushLive.Features.Spawning.DynamicObstacle dynamicObs3 =
+                obstacleObj.GetComponentInParent<StreamRushLive.Features.Spawning.DynamicObstacle>()
+                ?? obstacleObj.GetComponent<StreamRushLive.Features.Spawning.DynamicObstacle>()
+                ?? obstacleObj.GetComponentInChildren<StreamRushLive.Features.Spawning.DynamicObstacle>();
 
-            if (drivingCar != null)
+            if (dynamicObs3 != null)
             {
-                drivingCar.DeflectByShield(transform.position);
+                dynamicObs3.DeflectByShield(transform.position);
                 return;
             }
 

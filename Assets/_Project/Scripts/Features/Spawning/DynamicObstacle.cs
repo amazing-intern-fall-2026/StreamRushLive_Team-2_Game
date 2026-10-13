@@ -6,23 +6,15 @@ using SteamRush.Track;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Vehicle tiers according to design specs (Sedan, Pickup, Heavy Truck).
+    /// Controls dynamic obstacles (Cars, Animals, Trains) with independent forward movement speed,
+    /// lane avoidance, and collision penalties.
     /// </summary>
-    public enum VehicleTier
+    [UnityEngine.Scripting.APIUpdating.MovedFrom(true, null, "Assembly-CSharp", "DrivingObstacleCar")]
+    public class DynamicObstacle : ObstacleBase
     {
-        SedanCar,
-        PickupTruck,
-        HeavyTruck
-    }
-
-    /// <summary>
-    /// Controls dynamic obstacle vehicles with independent forward driving speed.
-    /// </summary>
-    public class DrivingObstacleCar : ObstacleBase
-    {
-        [Header("Vehicle Tier & Penalties (GDD v1.4)")]
-        [Tooltip("Obstacle vehicle tier.")]
-        [SerializeField] private VehicleTier _vehicleTier = VehicleTier.SedanCar;
+        [Header("Obstacle Type & Penalties")]
+        [Tooltip("Dynamic obstacle type classification (Car, Animals, Trains).")]
+        [SerializeField] private ObstacleType _obstacleType = ObstacleType.Car;
 
         [Tooltip("Knockback distance pushed backward on collision (meters).")]
         [SerializeField] private float _knockbackDistance = 2.0f;
@@ -75,7 +67,8 @@ namespace StreamRushLive.Features.Spawning
         private bool _isDeflectedByShield = false;
 
         public bool IsDeflectedByShield => _isDeflectedByShield;
-        public VehicleTier Tier => _vehicleTier;
+        public ObstacleType ObstacleClassification => _obstacleType;
+        public ObstacleType Tier => _obstacleType;
         public float KnockbackDistance => _knockbackDistance;
         public float KnockbackDuration => _knockbackDuration;
         public float ReverseWorldPeakSpeed => _reverseWorldPeakSpeed;
@@ -95,21 +88,21 @@ namespace StreamRushLive.Features.Spawning
         }
 
         /// <summary>
-        /// Configures collision penalty values per vehicle tier (GDD v1.4).
+        /// Configures collision penalty values per obstacle type (Car, Animals, Trains).
         /// </summary>
-        public void ConfigureTier(VehicleTier tier)
+        public void ConfigureTier(ObstacleType type)
         {
-            _vehicleTier = tier;
+            _obstacleType = type;
 
             // Retrieve configuration directly from GiftManager if available
             var gm = StreamRushLive.Features.Gifts.GiftManager.Instance ?? FindFirstObjectByType<StreamRushLive.Features.Gifts.GiftManager>();
             if (gm != null)
             {
-                var cfg = gm.GetCarConfig(tier);
+                var cfg = gm.GetCarConfig(type);
                 if (cfg != null)
                 {
                     obstacleName = cfg.vehicleName;
-                    obstacleType = tier == VehicleTier.HeavyTruck ? ObstacleType.HighBarrier : ObstacleType.LowBarrier;
+                    obstacleType = type;
                     energyPenaltyPercent = cfg.energyPenaltyPercent;
                     distancePenaltyMeters = cfg.distancePenaltyMeters;
                     hitStopDuration = cfg.hitStopDuration;
@@ -122,11 +115,11 @@ namespace StreamRushLive.Features.Spawning
                 }
             }
 
-            switch (tier)
+            switch (type)
             {
-                case VehicleTier.SedanCar:
-                    obstacleName = "Sedan Car";
-                    obstacleType = ObstacleType.LowBarrier;
+                case ObstacleType.Car:
+                    obstacleName = "Car";
+                    obstacleType = ObstacleType.Car;
                     energyPenaltyPercent = 20f;       // -20% energy penalty
                     distancePenaltyMeters = 100f;     // -100m distance penalty
                     hitStopDuration = 0.10f;          // 0.10s hit-stop freeze
@@ -137,9 +130,9 @@ namespace StreamRushLive.Features.Spawning
                     _reverseWorldDuration = 1.8f;
                     break;
 
-                case VehicleTier.PickupTruck:
+                case ObstacleType.Animals:
                     obstacleName = "Animals";
-                    obstacleType = ObstacleType.LowBarrier;
+                    obstacleType = ObstacleType.Animals;
                     energyPenaltyPercent = 40f;       // -40% energy penalty
                     distancePenaltyMeters = 200f;     // -200m distance penalty
                     hitStopDuration = 0.18f;          // 0.18s hit-stop freeze
@@ -150,9 +143,9 @@ namespace StreamRushLive.Features.Spawning
                     _reverseWorldDuration = 2.4f;
                     break;
 
-                case VehicleTier.HeavyTruck:
-                    obstacleName = "Train";
-                    obstacleType = ObstacleType.HighBarrier;
+                case ObstacleType.Trains:
+                    obstacleName = "Trains";
+                    obstacleType = ObstacleType.Trains;
                     energyPenaltyPercent = 60f;       // -60% energy penalty
                     distancePenaltyMeters = 400f;     // -400m distance penalty
                     hitStopDuration = 0.25f;          // 0.25s heavy impact hit-stop
@@ -165,9 +158,14 @@ namespace StreamRushLive.Features.Spawning
             }
         }
 
+#pragma warning disable CS0618
+        [System.Obsolete("VehicleTier is deprecated. Use ObstacleType instead.")]
+        public void ConfigureTier(VehicleTier tier) => ConfigureTier((ObstacleType)tier);
+#pragma warning restore CS0618
+
         private void Awake()
         {
-            ConfigureTier(_vehicleTier);
+            ConfigureTier(_obstacleType);
 
             _baseY = transform.position.y;
             _rumbleSeed = Random.Range(0f, 100f);
@@ -206,15 +204,15 @@ namespace StreamRushLive.Features.Spawning
             }
             else
             {
-                switch (_vehicleTier)
+                switch (_obstacleType)
                 {
-                    case VehicleTier.HeavyTruck:
+                    case ObstacleType.Trains:
                         AudioManager.Instance?.PlaySFX(SFXType.HeavyTruckHorn, 1.0f);
                         break;
-                    case VehicleTier.PickupTruck:
+                    case ObstacleType.Animals:
                         AudioManager.Instance?.PlaySFX(SFXType.PickupHorn, 0.85f);
                         break;
-                    case VehicleTier.SedanCar:
+                    case ObstacleType.Car:
                     default:
                         AudioManager.Instance?.PlaySFX(SFXType.CarHorn, 0.8f);
                         break;
@@ -398,5 +396,13 @@ namespace StreamRushLive.Features.Spawning
 
             Destroy(gameObject);
         }
+    }
+
+    /// <summary>
+    /// Backward-compatibility alias for DrivingObstacleCar.
+    /// </summary>
+    [System.Obsolete("DrivingObstacleCar is deprecated. Please use DynamicObstacle instead.")]
+    public class DrivingObstacleCar : DynamicObstacle
+    {
     }
 }

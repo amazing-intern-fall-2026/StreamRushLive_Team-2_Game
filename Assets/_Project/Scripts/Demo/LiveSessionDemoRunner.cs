@@ -385,13 +385,13 @@ namespace SteamRush.Features.Runner
             for (int i = 0; i < initialFanCount; i++)
             {
                 string name = i < BaseFanNames.Length ? BaseFanNames[i] : $"Fan_{i + 1}";
-                factionMgr.SetFaction(name, FactionType.Fan);
+                factionMgr.SetFaction(name, FactionType.Blue);
             }
 
             for (int i = 0; i < initialAntiCount; i++)
             {
                 string name = i < BaseAntiNames.Length ? BaseAntiNames[i] : $"Anti_{i + 1}";
-                factionMgr.SetFaction(name, FactionType.Anti);
+                factionMgr.SetFaction(name, FactionType.Red);
             }
         }
 
@@ -421,7 +421,7 @@ namespace SteamRush.Features.Runner
                 totalRoomLikes += likes;
 
                 bool isFan = Random.value < fanLikeRatio;
-                factionMgr.AddLikes(isFan ? FactionType.Fan : FactionType.Anti, likes);
+                factionMgr.AddLikes(isFan ? FactionType.Blue : FactionType.Red, likes);
             }
         }
 
@@ -485,7 +485,7 @@ namespace SteamRush.Features.Runner
 
                 if (fanToAnti)
                 {
-                    var fanMembers = factionMgr.GetMembersOfFaction(FactionType.Fan);
+                    var fanMembers = factionMgr.GetMembersOfFaction(FactionType.Blue);
                     if (fanMembers.Count > 2)
                     {
                         string memberToSwitch = fanMembers[Random.Range(0, fanMembers.Count)];
@@ -494,7 +494,7 @@ namespace SteamRush.Features.Runner
                 }
                 else
                 {
-                    var antiMembers = factionMgr.GetMembersOfFaction(FactionType.Anti);
+                    var antiMembers = factionMgr.GetMembersOfFaction(FactionType.Red);
                     if (antiMembers.Count > 2)
                     {
                         string memberToSwitch = antiMembers[Random.Range(0, antiMembers.Count)];
@@ -592,11 +592,11 @@ namespace SteamRush.Features.Runner
                     }
                     else if (roll < 0.60f)
                     {
-                        DispatchViewerAction(() => console.MockFanEnergyBottle(sender));
+                        DispatchViewerAction(() => console.MockBlueEnergyBottle(sender));
                     }
                     else if (roll < 0.80f)
                     {
-                        DispatchViewerAction(() => console.MockActivateFanSprintBuff(sender));
+                        DispatchViewerAction(() => console.MockActivateSprintBuff(sender));
                     }
                     else if (roll < 0.90f)
                     {
@@ -618,7 +618,7 @@ namespace SteamRush.Features.Runner
                     }
                     else if (roll < 0.60f)
                     {
-                        DispatchViewerAction(() => console.MockAntiEnergyBottle(sender));
+                        DispatchViewerAction(() => console.MockRedEnergyBottle(sender));
                     }
                     else if (roll < 0.80f)
                     {
@@ -630,7 +630,7 @@ namespace SteamRush.Features.Runner
                     }
                     else
                     {
-                        DispatchViewerAction(() => console.MockActivateAntiCarUnlimited(sender));
+                        DispatchViewerAction(() => console.MockActivateUnlimitedObstacles(sender));
                     }
                 }
             }
