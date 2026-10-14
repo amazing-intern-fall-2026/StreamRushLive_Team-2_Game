@@ -1,53 +1,52 @@
-# Kiến trúc Thư mục Dự án - SteamRush
+# Project Directory Architecture - SteamRush
 
-Thư mục `_Project` tuân thủ chuẩn phát triển Game Unity & Quy ước của nhóm:
+The `_Project` directory adheres to Unity Game Development standards and team conventions:
 
 ```
 Assets/
 └── _Project/
-    ├── Scripts/              # Toàn bộ mã nguồn C# của dự án
-    │   ├── Core/             # Các hệ thống dùng chung (GameManager, EventBus, Audio, Save/Load, v.v.)
-    │   └── Features/         # Các tính năng nghiệp vụ theo module (Runner, RelayQueue, Obstacles, Track, UI, StreamIntegration, v.v.)
-    ├── Scenes/               # Quản lý toàn bộ Scenes
-    │   ├── Main/             # Additive Scenes chính (Core_Scene, Gameplay_Scene, UI_Scene)
-    │   ├── Phuoc/            # Scene cá nhân để test / prototype của Phước
-    │   ├── MinhHuy/          # Scene cá nhân để test / prototype của Minh Huy
-    │   ├── NguyenHuy/        # Scene cá nhân để test / prototype của Nguyễn Huy
-    │   ├── Truong/           # Scene cá nhân để test / prototype của Trường
-    │   └── Tu/               # Scene cá nhân để test / prototype của Tú
-    ├── Prefabs/              # Các Prefabs & Prefab Variants (Runner, Baton, Obstacles, Buffs, TrackTiles, v.v.)
-    ├── Models/               # Mô hình 3D (.fbx, .obj, .blend) cho Runner, Sân vận động, Bẫy 3D
-    ├── Animations/           # Animator Controllers, Animation Clips, Avatar Masks (Run, Sprint, Jump, Slide...)
-    ├── Materials/            # Vật liệu, Shaders URP, Color Palettes phong cách Low-Poly
-    ├── Textures/             # Texture maps, Color Palettes, Icon quà tặng (Hoa hồng, Donut, Khiên...)
-    ├── VFX/                  # Hiệu ứng thị giác, Particle Systems, Trail Renderer (Vệt sáng gậy tiếp sức)
-    ├── Audio/                # Âm thanh dự án
-    │   ├── BGM/              # Nhạc nền marathon, tempo nhanh khi Sprint
-    │   └── SFX/              # Tiếng bước chân, nhảy, trượt, va chạm, tiếng nhận quà, vung gậy
-    └── UI/                   # UI Canvas Prefabs, Font TextMeshPro, UI Sprites
+    ├── Scripts/              # All C# source code for the project
+    │   ├── Core/             # Shared foundational systems (GameManager, EventBus, Audio, Save/Load, etc.)
+    │   └── Features/         # Modular business logic features (Runner, RelayQueue, Obstacles, Track, UI, StreamIntegration, etc.)
+    ├── Scenes/               # All Unity Scenes
+    │   ├── Main/             # Primary additive scenes (Core_Scene, Gameplay_Scene, UI_Scene)
+    │   ├── Phuoc/            # Individual test / prototype scenes for Phuoc
+    │   ├── MinhHuy/          # Individual test / prototype scenes for Minh Huy
+    │   ├── NguyenHuy/        # Individual test / prototype scenes for Nguyen Huy
+    │   ├── Truong/           # Individual test / prototype scenes for Truong
+    │   └── Tu/               # Individual test / prototype scenes for Tu
+    ├── Prefabs/              # Prefabs & Prefab Variants (Runner, Baton, Obstacles, Buffs, TrackTiles, etc.)
+    ├── Models/               # 3D Models (.fbx, .obj, .blend) for Runner, Arena, 3D Props
+    ├── Animations/           # Animator Controllers, Animation Clips, Avatar Masks (Run, Sprint, Jump, Slide, etc.)
+    ├── Materials/            # Low-poly materials, URP Shaders, Color Palettes
+    ├── Textures/             # Texture maps, Color Palettes, Gift icons (Rose, Donut, Shield, etc.)
+    ├── VFX/                  # Visual effects, Particle Systems, Trail Renderers
+    ├── Audio/                # Project Audio
+    │   ├── BGM/              # Marathon background music, high-tempo Sprint tracks
+    │   └── SFX/              # Footsteps, jumping, sliding, impacts, gift notifications, baton swing
+    └── UI/                   # UI Canvas Prefabs, TextMeshPro fonts, UI Sprites
 ```
 
-
-### Quy tắc lưu ý:
-1. **Scenes thành viên**: Chỉ dùng để test / sandbox độc lập, không đưa vào danh sách Build Settings chính thức.
-2. **Không sửa chung Scene**: Sử dụng mô hình Additive Scenes trong `Scenes/Main/` và làm việc qua Prefabs để tránh Merge Conflict.
-3. **Namespace C#**: Tuân thủ cú pháp `SteamRush.<PhânHệ>.<TênChứcNăng>`.
-   - **Namespace hệ thống chung (Core)**:
+### Development Guidelines:
+1. **Member Scenes**: Used strictly for isolated sandbox testing. Never include them in official Build Settings.
+2. **Avoid Shared Scene Edits**: Utilize additive scene workflows in `Scenes/Main/` and build features via Prefabs to avoid merge conflicts.
+3. **C# Namespaces**: Follow the pattern `SteamRush.<System>.<FeatureName>`.
+   - **Shared Systems (Core)**:
      - `SteamRush.Core`: GameManager, EventBus, ServiceLocator, SceneLoader.
      - `SteamRush.Core.Pooling`: ObjectPool, PoolableObject.
-   - **Namespace theo tính năng (Features)**:
-     - `SteamRush.Features.Runner`: RunnerController, RunnerStateMachine, StumbleHandler.
+   - **Feature-Specific (Features)**:
+     - `SteamRush.Features.Runner`: RunnerController, RunnerMovement, StumbleHandler.
      - `SteamRush.Features.Relay`: RelayQueueManager, BatonHandoverController.
-     - `SteamRush.Features.Obstacles`: ObstacleBase, LowObstacle, HighObstacle, RollingBoulder.
-     - `SteamRush.Features.GiftSystem`: GiftSpawnFactory, BuffItem, EnergyPotion, ShieldBuff.
-     - `SteamRush.Features.StreamIntegration`: IStreamAdapter, TikTokLiveAdapter, MockStreamSimulator.
-     - `SteamRush.Features.UI`: GlobalProgressBar, EnergyGaugeUI, NametagBillboard, VictoryScreen.
-     - `SteamRush.Features.Track`: TrackSpawner, TrackTileLooper, FinishLineTrigger.
-   - **Namespace cá nhân khi code độc lập / Prototype trong Scenes cá nhân**:
-     - Cú pháp: `SteamRush.<TênThànhViên>.<ChứcNăng>`
-     - Ví dụ: `SteamRush.Phuoc.RunnerPrototype`, `SteamRush.MinhHuy.GiftTest`, `SteamRush.Truong.TrackTest`.
+     - `SteamRush.Features.Obstacles`: ObstacleBase, DynamicObstacle, SingleObstacleSpawner.
+     - `SteamRush.Features.Gifts`: IGiftAction, GiftActionRegistry, GiftManager.
+     - `SteamRush.Features.StreamIntegration`: TikTokLiveClient, TikTokGiftRouter, FactionTugOfWarManager.
+     - `SteamRush.Features.UI`: GlobalProgressBar, EnergyGaugeUI, RunnerNameplateController, VictoryScreen.
+     - `SteamRush.Features.Track`: TrackProgressTracker, TrackTileLooper, FinishLineArchway.
+   - **Personal Prototype Namespaces**:
+     - Pattern: `SteamRush.<MemberName>.<Feature>`
+     - Examples: `SteamRush.Phuoc.RunnerPrototype`, `SteamRush.MinhHuy.GiftTest`, `SteamRush.Truong.TrackTest`.
 
-### Ví dụ mẫu Code C# chuẩn quy ước:
+### C# Coding Conventions:
 
 ```csharp
 namespace SteamRush.Features.Runner
@@ -57,19 +56,19 @@ namespace SteamRush.Features.Runner
 
     public class RunnerController : MonoBehaviour
     {
-        // 1. Biến SerializeField: chuẩn _camelCase
+        // 1. SerializeField variables: _camelCase
         [SerializeField] private float _baseMoveSpeed = 8.0f;
         [SerializeField] private float _sprintMultiplier = 1.5f;
 
-        // 2. Biến private nội bộ: chuẩn _camelCase
+        // 2. Private internal variables: _camelCase
         private bool _isSprinting;
         private float _currentSpeed;
 
-        // 3. Public Property: chuẩn PascalCase
+        // 3. Public Properties: PascalCase
         public float CurrentSpeed => _currentSpeed;
         public bool IsSprinting => _isSprinting;
 
-        // 4. Method: chuẩn PascalCase
+        // 4. Methods: PascalCase
         private void Awake()
         {
             _currentSpeed = _baseMoveSpeed;
@@ -83,4 +82,3 @@ namespace SteamRush.Features.Runner
     }
 }
 ```
-

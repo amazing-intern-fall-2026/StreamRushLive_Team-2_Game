@@ -139,7 +139,7 @@ namespace StreamRushLive.Features.Gifts
         [Header("Interactive Gifts")]
         [Tooltip("Celebration dance duration when viewer donates Gift Dance (seconds).")]
         [SerializeField] private float _giftDanceDuration = 5f;
-        [Tooltip("Icon displayed on top banner notification when Meme Dance gift is sent.")]
+        [Tooltip("Icon displayed on top banner notification when Dance gift is sent.")]
         [SerializeField] private Sprite _giftDanceIcon;
 
         [Header("References")]
@@ -542,7 +542,7 @@ namespace StreamRushLive.Features.Gifts
 
             // Always display donor notification on HUD Top Banner & Fan Feed
             _hudManager?.ShowFanAction(displayName, $"Dance ({duration:F0}s)");
-            _hudManager?.ShowStatusPopup($"[{displayName}] Meme Dance!", true, GetGiftDanceIcon());
+            _hudManager?.ShowStatusPopup($"[{displayName}] Dance!", true, GetGiftDanceIcon());
             Debug.Log($"[GiftManager] {displayName} -> Activated Gift Dance ({duration:F0}s).");
 
             if (_giftDanceController != null)

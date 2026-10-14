@@ -68,8 +68,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: TEST TOP BANNER TEXT
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: ea7e08b9d379472469519728c09332e2, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_fontAsset: {fileID: 11400000, guid: 2678d827136e6894098bff703c832ce2, type: 2}
+  m_sharedMaterial: {fileID: 7664488147931049520, guid: 2678d827136e6894098bff703c832ce2, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -225,8 +225,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: ea7e08b9d379472469519728c09332e2, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_fontAsset: {fileID: 11400000, guid: 2678d827136e6894098bff703c832ce2, type: 2}
+  m_sharedMaterial: {fileID: 7664488147931049520, guid: 2678d827136e6894098bff703c832ce2, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

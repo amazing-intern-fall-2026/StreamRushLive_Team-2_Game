@@ -387,7 +387,7 @@ namespace SteamRush.Features.Runner
                 string displayName = !string.IsNullOrEmpty(sender) ? sender : "Viewer";
                 float dur = giftDance.Duration;
                 hudManager?.ShowSupportAction(displayName, $"Dance ({dur:F0}s)");
-                hudManager?.ShowStatusPopup($"[{displayName}] Meme Dance!", true);
+                hudManager?.ShowStatusPopup($"[{displayName}] Dance!", true);
                 giftDance.TriggerDance();
             }
             else

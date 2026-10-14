@@ -242,9 +242,13 @@ MonoBehaviour:
   _fanFillImage: {fileID: 1019202794271991608}
   _fanValueLabel: {fileID: 7989389972029103692}
   _fanMaxValue: 1000
+  _fanHandle: {fileID: 0}
   _antiFillImage: {fileID: 4213098372781923525}
   _antiValueLabel: {fileID: 8692147948664003737}
   _antiMaxValue: 500
+  _antiHandle: {fileID: 0}
+  _fanMemberCountLabel: {fileID: 0}
+  _antiMemberCountLabel: {fileID: 0}
 --- !u!1 &7988708897868736350
 GameObject:
   m_ObjectHideFlags: 0
@@ -312,8 +316,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 180/500
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 2678d827136e6894098bff703c832ce2, type: 2}
+  m_sharedMaterial: {fileID: 7664488147931049520, guid: 2678d827136e6894098bff703c832ce2, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -636,8 +640,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 0
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 2678d827136e6894098bff703c832ce2, type: 2}
+  m_sharedMaterial: {fileID: 7664488147931049520, guid: 2678d827136e6894098bff703c832ce2, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

@@ -58,27 +58,39 @@ namespace SteamRush.Features.UI.PreGameConfig
                 return;
             }
 
-            // Cache gift icons from TikTokGiftRouter and AvailableGifts
+            // Register master gift icons from TikTokGiftRouter
             var router = FindFirstObjectByType<TikTokGiftRouter>();
-            var iconMap = new Dictionary<string, Sprite>();
             if (router != null && router.GiftMappings != null)
             {
                 foreach (var m in router.GiftMappings)
                 {
-                    if (m.giftIcon != null && !iconMap.ContainsKey(m.giftName.ToLowerInvariant()))
+                    if (m.giftIcon != null)
                     {
-                        iconMap[m.giftName.ToLowerInvariant()] = m.giftIcon;
+                        PreGameGiftIconResolver.RegisterIcon(m.giftId, m.giftName, m.giftIcon);
                     }
                 }
             }
 
+            var iconMap = new Dictionary<string, Sprite>(StringComparer.OrdinalIgnoreCase);
             foreach (var opt in PreGameConfigData.AvailableGifts)
             {
-                string key = opt.giftName.ToLowerInvariant();
-                if (!iconMap.ContainsKey(key))
+                Sprite s = PreGameGiftIconResolver.ResolveGiftIcon(opt.giftId, opt.giftName);
+                if (s != null)
                 {
-                    Sprite s = PreGameUIBuilder.ResolveGiftIcon(opt.giftId, opt.giftName);
-                    if (s != null) iconMap[key] = s;
+                    iconMap[opt.giftName] = s;
+                    if (opt.giftId > 0) iconMap[opt.giftId.ToString()] = s;
+                }
+            }
+            if (gifts != null)
+            {
+                foreach (var g in gifts)
+                {
+                    Sprite s = PreGameGiftIconResolver.ResolveGiftIcon(g.giftId, g.giftName);
+                    if (s != null)
+                    {
+                        if (!string.IsNullOrEmpty(g.giftName)) iconMap[g.giftName] = s;
+                        if (g.giftId > 0) iconMap[g.giftId.ToString()] = s;
+                    }
                 }
             }
 

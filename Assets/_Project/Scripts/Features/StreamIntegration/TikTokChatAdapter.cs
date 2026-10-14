@@ -128,6 +128,8 @@ namespace SteamRush.Features.StreamIntegration
 
         private void ExecuteBlueCommand(string displayName, string command)
         {
+            if (_runnerController != null && _runnerController.IsChatControlLocked) return;
+
             if (command == "1" || command == "2" || command == "3" || command == "left" || command == "right")
             {
                 _runnerController?.ExecuteSingleCommand(command);

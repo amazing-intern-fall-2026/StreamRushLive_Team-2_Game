@@ -105,6 +105,22 @@ namespace SteamRush.Features.Runner
 
         public bool IsControlsLocked => _controlsLocked;
 
+        [Header("Chat Control Lock")]
+        [Tooltip("When true, chat commands (1/2/3/jump) cannot move the runner. Used when manual keyboard control is enabled.")]
+        [SerializeField] private bool _isChatControlLocked = false;
+        public bool IsChatControlLocked
+        {
+            get => _isChatControlLocked;
+            set
+            {
+                _isChatControlLocked = value;
+                if (value)
+                {
+                    _commandQueue.Clear();
+                }
+            }
+        }
+
         public void SetControlsLocked(bool locked)
         {
             _controlsLocked = locked;
@@ -172,6 +188,11 @@ namespace SteamRush.Features.Runner
             {
                 _hudManager = FindFirstObjectByType<SteamRush.Features.UI.HUDManager>();
             }
+
+            if (GetComponent<RunnerInputHandler>() == null)
+            {
+                gameObject.AddComponent<RunnerInputHandler>();
+            }
         }
 
         private void Update()
@@ -227,7 +248,7 @@ namespace SteamRush.Features.Runner
 
         public void ExecuteCommands(List<string> commands)
         {
-            if (commands == null || IsControlLocked) return;
+            if (commands == null || IsControlLocked || _isChatControlLocked) return;
 
             int count = Mathf.Min(commands.Count, _maxCommandsPerBatch);
             for (int i = 0; i < count; i++)
@@ -238,13 +259,13 @@ namespace SteamRush.Features.Runner
 
         public void ExecuteSingleCommand(string command)
         {
-            if (IsControlLocked) return;
+            if (IsControlLocked || _isChatControlLocked) return;
             EnqueueCommand(command);
         }
 
         private void EnqueueCommand(string command)
         {
-            if (string.IsNullOrWhiteSpace(command) || IsControlLocked) return;
+            if (string.IsNullOrWhiteSpace(command) || IsControlLocked || _isChatControlLocked) return;
 
             string normalized = command.Trim().ToLowerInvariant();
 
@@ -317,8 +338,7 @@ namespace SteamRush.Features.Runner
 
                 case "slide":
                 case "duck":
-                    TriggerDuck(true);
-                    _commandCooldownTimer = _nonLaneCommandDelay;
+                    // Slide / Duck is deprecated; no-op
                     break;
 
                 default:
@@ -329,7 +349,7 @@ namespace SteamRush.Features.Runner
 
         private bool TryPayControlEnergy(int cost)
         {
-            if (_isFreeControlActive)
+            if (_isFreeControlActive || _isChatControlLocked)
             {
                 return true;
             }
@@ -373,7 +393,7 @@ namespace SteamRush.Features.Runner
             if (Time.time - _lastEnergyWarningTime >= 1.2f)
             {
                 _lastEnergyWarningTime = Time.time;
-                Debug.LogWarning($"[ChatLaneRunner] Fan energy depleted — locked {actionName}.");
+                Debug.LogWarning($"[ChatLaneRunner] Fan energy depleted - locked {actionName}.");
             }
         }
 

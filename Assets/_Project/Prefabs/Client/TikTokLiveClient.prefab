@@ -197,7 +197,7 @@ MonoBehaviour:
     action: 7
     customValue: 0
   - giftId: 6037
-    giftName: Meme Dance
+    giftName: Dance
     giftIcon: {fileID: 21300000, guid: e376e5cce82cdb4429d085e066d5c855, type: 3}
     description: Dance
     action: 8

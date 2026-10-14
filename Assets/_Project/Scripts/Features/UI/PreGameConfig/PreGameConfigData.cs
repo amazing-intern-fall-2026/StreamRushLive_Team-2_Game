@@ -100,6 +100,11 @@ namespace SteamRush.Features.UI.PreGameConfig
 
         public static string GetDefaultFeatureName(GiftActionType act)
         {
+            if (SteamRush.Core.Localization.LocalizationManager.Instance != null)
+            {
+                return SteamRush.Core.Localization.LocalizationManager.Instance.GetFeatureName(act);
+            }
+
             switch (act)
             {
                 case GiftActionType.Blue_Shield: return "Protection Shield";
@@ -123,10 +128,11 @@ namespace SteamRush.Features.UI.PreGameConfig
     public class PreGameConfigData
     {
         // === A. BASIC CONFIG ===
+        public string language = "en"; // "en" (English) or "vi" (Vietnamese)
         public string tiktokUsername = "";
         public int targetDistanceOptionIndex = 1; // 0: 500m, 1: 1km, 2: 5km, 3: Infinite
-        public float targetDistanceMeters = 1000f;
-        public float finiteTargetDistanceMeters = 1000f;
+        public float targetDistanceMeters = 1000000f; // 1,000 km (1,000,000 meters)
+        public float finiteTargetDistanceMeters = 1000000f; // 1,000 km
         public bool isInfiniteDistance = false;
         public List<PreGameGiftItemConfig> gifts = new List<PreGameGiftItemConfig>();
 
@@ -136,6 +142,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         public int jumpEnergyCost = 20;
         public float freeControlDuration = 30f;
         public float sprintBuffDuration = 30f;
+        public bool enableKeyboardControl = false; // Default: OFF (manual player control disabled)
 
         // Anti & Obstacles
         public bool autoSpawnOnFullEnergy = true;
@@ -190,7 +197,7 @@ namespace SteamRush.Features.UI.PreGameConfig
             new AvailableGiftInfo(6001, "Lion"),
             new AvailableGiftInfo(5661, "Sunglasses"),
             new AvailableGiftInfo(5586, "Chili"),
-            new AvailableGiftInfo(6037, "Meme Dance"),
+            new AvailableGiftInfo(6037, "Dance"),
             new AvailableGiftInfo(5978, "Rain"),
             new AvailableGiftInfo(0, "Follow")
         };
@@ -201,13 +208,14 @@ namespace SteamRush.Features.UI.PreGameConfig
             {
                 tiktokUsername = "",
                 targetDistanceOptionIndex = 1,
-                targetDistanceMeters = 1000f,
-                finiteTargetDistanceMeters = 1000f,
+                targetDistanceMeters = 1000000f,
+                finiteTargetDistanceMeters = 1000000f,
                 isInfiniteDistance = false,
                 laneChangeEnergyCost = 10,
                 jumpEnergyCost = 20,
                 freeControlDuration = 30f,
                 sprintBuffDuration = 30f,
+                enableKeyboardControl = false,
                 autoSpawnOnFullEnergy = true,
                 maxConcurrentCars = 2,
                 distancePenaltyMeters = 100f,
@@ -233,7 +241,7 @@ namespace SteamRush.Features.UI.PreGameConfig
                     new PreGameGiftItemConfig("Spawn Train", 6001, "Lion", "Train", GiftActionType.Red_SpawnHeavyTruck, true, 60f),
                     new PreGameGiftItemConfig("Car Storm (Unlimited)", 5661, "Sunglasses", "Car Storm", GiftActionType.Red_UnlimitedCars, true, 60f),
                     new PreGameGiftItemConfig("Red Energy", 5586, "Chili", "Red Energy", GiftActionType.Red_EnergyBottle, true, 500f),
-                    new PreGameGiftItemConfig("Dance", 6037, "Meme Dance", "Dance", GiftActionType.Special_GiftDance, true, 5f),
+                    new PreGameGiftItemConfig("Dance", 6037, "Dance", "Dance", GiftActionType.Special_GiftDance, true, 5f),
                     new PreGameGiftItemConfig("Rain Storm Hazard", 5978, "Rain", "Rain Storm", GiftActionType.Special_RainHazard, true, 60f),
                     new PreGameGiftItemConfig("Next Runner", 0, "Follow", "Next Runner", GiftActionType.Follow_Runner, true, 0f)
                 }

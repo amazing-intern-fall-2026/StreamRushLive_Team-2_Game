@@ -2,9 +2,12 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using DG.Tweening;
 using SteamRush.Track;
 using SteamRush.Features.Runner;
 using SteamRush.Features.StreamIntegration;
+using SteamRush.Core.Localization;
 using SteamRush.Features.UI.Views;
 using StreamRushLive.Features.Gifts;
 using StreamRushLive.Features.Spawning;
@@ -33,11 +36,24 @@ namespace SteamRush.Features.UI.PreGameConfig
         [SerializeField] private UnityEngine.UI.Button _btnOpenConfig;
 
         [Header("State")]
+        public static bool ForceOpenSettingsOnStart { get; set; } = false;
         [SerializeField] private bool _openOnStart = true;
         [SerializeField] private bool _isTestModeActive = false;
         [SerializeField] private GameObject _badgeDemoRun;
 
-        public PreGameConfigData CurrentConfig { get; private set; }
+        private PreGameConfigData _currentConfig;
+        public PreGameConfigData CurrentConfig
+        {
+            get
+            {
+                if (_currentConfig == null)
+                {
+                    LoadConfig();
+                }
+                return _currentConfig;
+            }
+            private set => _currentConfig = value;
+        }
         public bool IsTestModeActive => _isTestModeActive;
         public bool IsOpen => _configUI != null && _configUI.gameObject.activeInHierarchy;
 
@@ -54,6 +70,19 @@ namespace SteamRush.Features.UI.PreGameConfig
 
             LoadConfig();
             BindOpenButton();
+
+            // Cache starting gift icons from scene into resolver immediately
+            var router = FindFirstObjectByType<TikTokGiftRouter>();
+            if (router != null && router.GiftMappings != null)
+            {
+                foreach (var m in router.GiftMappings)
+                {
+                    if (m.giftIcon != null)
+                    {
+                        PreGameGiftIconResolver.RegisterIcon(m.giftId, m.giftName, m.giftIcon);
+                    }
+                }
+            }
 
             // Early configure TikTokLiveClient with the correct Socket.IO port
             var client = FindFirstObjectByType<TikTokLiveClient>();
@@ -74,8 +103,9 @@ namespace SteamRush.Features.UI.PreGameConfig
             BindOpenButton();
             ApplyConfigToRuntime(connectTikTok: false);
 
-            if (_openOnStart)
+            if (_openOnStart || ForceOpenSettingsOnStart)
             {
+                ForceOpenSettingsOnStart = false;
                 OpenConfigUI();
             }
             else
@@ -84,6 +114,16 @@ namespace SteamRush.Features.UI.PreGameConfig
             }
 
             UpdateDemoRunBadgeVisibility();
+        }
+
+        public static void ResetGameAndOpenSettings()
+        {
+            Debug.Log("[PreGameConfigManager] ResetGameAndOpenSettings requested: restoring timescale, killing tweens, and reloading active scene.");
+            ForceOpenSettingsOnStart = true;
+            Time.timeScale = 1f;
+            DOTween.KillAll();
+            string sceneName = SceneManager.GetActiveScene().name;
+            SceneManager.LoadScene(sceneName);
         }
 
         private void Update()
@@ -162,6 +202,14 @@ namespace SteamRush.Features.UI.PreGameConfig
                 // Ensure all default gifts exist even if config was loaded from an older version
                 SyncWithDefaultGifts();
 
+                // Sync language with LocalizationManager
+                if (LocalizationManager.Instance != null && !string.IsNullOrEmpty(CurrentConfig.language))
+                {
+                    LocalizationManager.Instance.SetLanguage(string.Equals(CurrentConfig.language, "vi", StringComparison.OrdinalIgnoreCase)
+                        ? AppLanguage.Vietnamese
+                        : AppLanguage.English);
+                }
+
                 // Migrate old default path D:\Download\backendLiveGame to AppData Local
                 if (string.IsNullOrEmpty(CurrentConfig.backendDirectory) || CurrentConfig.backendDirectory == @"D:\Download\backendLiveGame")
                 {
@@ -176,14 +224,14 @@ namespace SteamRush.Features.UI.PreGameConfig
                 // Sanitize legacy target distance values
                 if (CurrentConfig.finiteTargetDistanceMeters <= 0f || CurrentConfig.finiteTargetDistanceMeters >= 900000000f)
                 {
-                    CurrentConfig.finiteTargetDistanceMeters = (CurrentConfig.targetDistanceMeters > 0f && CurrentConfig.targetDistanceMeters < 900000000f && CurrentConfig.targetDistanceMeters != 1000000f)
+                    CurrentConfig.finiteTargetDistanceMeters = (CurrentConfig.targetDistanceMeters > 0f && CurrentConfig.targetDistanceMeters < 900000000f)
                         ? CurrentConfig.targetDistanceMeters
-                        : 1000f;
+                        : 1000000f;
                 }
 
                 if (!CurrentConfig.isInfiniteDistance)
                 {
-                    if (CurrentConfig.targetDistanceMeters >= 900000000f || CurrentConfig.targetDistanceMeters == 1000000f)
+                    if (CurrentConfig.targetDistanceMeters >= 900000000f || CurrentConfig.targetDistanceMeters <= 0f)
                     {
                         CurrentConfig.targetDistanceMeters = CurrentConfig.finiteTargetDistanceMeters;
                     }
@@ -216,6 +264,11 @@ namespace SteamRush.Features.UI.PreGameConfig
                 {
                     g.featureName = "Dance";
                 }
+
+                if (g.giftName == "Meme Dance" || (g.action == GiftActionType.Special_GiftDance && g.giftName.Contains("Meme")))
+                {
+                    g.giftName = "Dance";
+                }
             }
 
             foreach (var g in def.gifts)
@@ -233,6 +286,11 @@ namespace SteamRush.Features.UI.PreGameConfig
 
             try
             {
+                if (LocalizationManager.Instance != null)
+                {
+                    CurrentConfig.language = LocalizationManager.Instance.CurrentLanguageCode;
+                }
+
                 string json = JsonUtility.ToJson(CurrentConfig, true);
                 File.WriteAllText(SaveFilePath, json);
                 PlayerPrefs.SetString("PreGameConfig_JSON", json);
@@ -248,14 +306,13 @@ namespace SteamRush.Features.UI.PreGameConfig
         public void ResetToDefaults()
         {
             CurrentConfig = PreGameConfigData.CreateDefault();
-            SaveConfig();
 
             if (_configUI != null)
             {
                 _configUI.PopulateUI(CurrentConfig);
             }
 
-            Debug.Log("[PreGameConfigManager] Config reset to developer defaults.");
+            Debug.Log("[PreGameConfigManager] Config reset to developer defaults in UI. Click 'SAVE SETTINGS' to persist.");
         }
 
         private int _lastToggleFrame = -1;
@@ -270,6 +327,7 @@ namespace SteamRush.Features.UI.PreGameConfig
 
             if (IsOpen)
             {
+                LoadConfig();
                 CloseConfigUI();
             }
             else
@@ -280,6 +338,8 @@ namespace SteamRush.Features.UI.PreGameConfig
 
         public void OpenConfigUI()
         {
+            LoadConfig();
+
             if (_configUI != null)
             {
                 _configUI.gameObject.SetActive(true);
@@ -310,7 +370,6 @@ namespace SteamRush.Features.UI.PreGameConfig
         public void StartTestMode()
         {
             _isTestModeActive = true;
-            SaveConfig();
             ApplyConfigToRuntime(connectTikTok: false);
             CloseConfigUI();
 
@@ -347,7 +406,6 @@ namespace SteamRush.Features.UI.PreGameConfig
         public void StartGoLive()
         {
             _isTestModeActive = false;
-            SaveConfig();
             ApplyConfigToRuntime(connectTikTok: true);
             CloseConfigUI();
             UpdateDemoRunBadgeVisibility();
@@ -390,6 +448,18 @@ namespace SteamRush.Features.UI.PreGameConfig
             {
                 runner.LaneChangeEnergyCost = CurrentConfig.laneChangeEnergyCost;
                 runner.JumpEnergyCost = CurrentConfig.jumpEnergyCost;
+            }
+
+            // 2b. Runner Keyboard Control & Chat Control Lock
+            var inputHandler = FindFirstObjectByType<RunnerInputHandler>();
+            if (inputHandler != null)
+            {
+                inputHandler.EnableKeyboardControl = CurrentConfig.enableKeyboardControl;
+            }
+
+            if (runner != null)
+            {
+                runner.IsChatControlLocked = CurrentConfig.enableKeyboardControl;
             }
 
             // 3. GiftManager Buffs & Vehicle Penalties
@@ -472,7 +542,12 @@ namespace SteamRush.Features.UI.PreGameConfig
             if (canvas != null)
             {
                 var guideObj = canvas.transform.Find("HowToPlayGuide");
-                if (guideObj != null) guideObj.gameObject.SetActive(CurrentConfig.showHowToPlayGuide);
+                if (guideObj != null)
+                {
+                    guideObj.gameObject.SetActive(CurrentConfig.showHowToPlayGuide);
+                    var guideCtrl = guideObj.GetComponent<Views.HowToPlayGuideController>() ?? guideObj.gameObject.AddComponent<Views.HowToPlayGuideController>();
+                    guideCtrl.SetRedOnlyMode(CurrentConfig.enableKeyboardControl);
+                }
 
                 var giftPanelObj = canvas.transform.Find("GiftInfoPanel");
                 if (giftPanelObj != null) giftPanelObj.gameObject.SetActive(CurrentConfig.showGiftInfoPanel);
@@ -531,22 +606,12 @@ namespace SteamRush.Features.UI.PreGameConfig
             var panel = FindFirstObjectByType<GiftInfoPanelController>();
             if (router == null) return;
 
-            // Cache master sprites from current router mappings
-            var iconCache = new Dictionary<string, Sprite>();
+            // Cache master sprites from current router mappings into master resolver
             foreach (var m in router.GiftMappings)
             {
-                if (m.giftIcon != null && !iconCache.ContainsKey(m.giftName.ToLowerInvariant()))
+                if (m.giftIcon != null)
                 {
-                    iconCache[m.giftName.ToLowerInvariant()] = m.giftIcon;
-                }
-            }
-            foreach (var opt in PreGameConfigData.AvailableGifts)
-            {
-                string k = opt.giftName.ToLowerInvariant();
-                if (!iconCache.ContainsKey(k))
-                {
-                    Sprite s = PreGameUIBuilder.ResolveGiftIcon(opt.giftId, opt.giftName);
-                    if (s != null) iconCache[k] = s;
+                    PreGameGiftIconResolver.RegisterIcon(m.giftId, m.giftName, m.giftIcon);
                 }
             }
 
@@ -555,16 +620,7 @@ namespace SteamRush.Features.UI.PreGameConfig
             {
                 if (!g.isEnabled) continue; // Filter out disabled gifts
 
-                Sprite icon = null;
-                string key = (g.giftName ?? "").ToLowerInvariant();
-                if (iconCache.ContainsKey(key) && iconCache[key] != null)
-                {
-                    icon = iconCache[key];
-                }
-                if (icon == null)
-                {
-                    icon = PreGameUIBuilder.ResolveGiftIcon(g.giftId, g.giftName);
-                }
+                Sprite icon = PreGameGiftIconResolver.ResolveGiftIcon(g.giftId, g.giftName);
 
                 newMappings.Add(new TikTokGiftMapping
                 {

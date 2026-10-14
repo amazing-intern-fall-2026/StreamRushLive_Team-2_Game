@@ -375,24 +375,42 @@ public class AudioManager : MonoBehaviour
 
             _lastPlayTimeByClip[clip] = Time.unscaledTime;
 
+            // Purge any destroyed sources from the pool
+            _sfxPool.RemoveAll(s => s == null);
+            if (_sfxPool.Count == 0)
+            {
+                for (int p = 0; p < sfxPoolSize; p++)
+                {
+                    var src = gameObject.AddComponent<AudioSource>();
+                    src.loop = false;
+                    src.playOnAwake = false;
+                    src.spatialBlend = 0f;
+                    _sfxPool.Add(src);
+                }
+            }
+
             // Find an idle AudioSource in the pool to avoid interrupting active sounds
             AudioSource availableSource = null;
             for (int i = 0; i < _sfxPool.Count; i++)
             {
                 int idx = (_poolIndex + i) % _sfxPool.Count;
-                if (!_sfxPool[idx].isPlaying)
+                var source = _sfxPool[idx];
+                if (source != null && !source.isPlaying)
                 {
-                    availableSource = _sfxPool[idx];
+                    availableSource = source;
                     _poolIndex = (idx + 1) % _sfxPool.Count;
                     break;
                 }
             }
 
-            if (availableSource == null)
+            if (availableSource == null && _sfxPool.Count > 0)
             {
+                _poolIndex = _poolIndex % _sfxPool.Count;
                 availableSource = _sfxPool[_poolIndex];
                 _poolIndex = (_poolIndex + 1) % _sfxPool.Count;
             }
+
+            if (availableSource == null) return 0f;
 
             float pitch = randomizePitch ? Random.Range(0.95f, 1.05f) : 1f;
             availableSource.pitch = pitch;
@@ -439,7 +457,7 @@ public class AudioManager : MonoBehaviour
 
         #endregion
 
-        #region Dance Background Music (Gift Meme Dance)
+        #region Dance Background Music (Gift Dance)
 
         private Coroutine _danceMusicRoutine;
 

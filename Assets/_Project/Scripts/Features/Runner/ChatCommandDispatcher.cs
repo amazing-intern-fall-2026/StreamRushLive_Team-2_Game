@@ -192,7 +192,7 @@ namespace SteamRush.Features.Runner
             {
                 if (chatLaneRunner != null)
                 {
-                    if (chatLaneRunner.IsControlLocked)
+                    if (chatLaneRunner.IsControlLocked || chatLaneRunner.IsChatControlLocked)
                     {
                         return;
                     }

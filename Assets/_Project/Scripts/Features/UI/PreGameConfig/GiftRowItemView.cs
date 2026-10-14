@@ -59,21 +59,25 @@ namespace SteamRush.Features.UI.PreGameConfig
             // 1. Feature Name
             if (_txtFeatureName != null)
             {
-                string fName = string.IsNullOrEmpty(item.featureName) ? PreGameGiftItemConfig.GetDefaultFeatureName(item.action) : item.featureName;
+                string fName = SteamRush.Core.Localization.LocalizationManager.Instance != null
+                    ? SteamRush.Core.Localization.LocalizationManager.Instance.GetFeatureName(item.action)
+                    : (string.IsNullOrEmpty(item.featureName) ? PreGameGiftItemConfig.GetDefaultFeatureName(item.action) : item.featureName);
+
                 if (fName == "+300 Blue Energy" || fName == "300 Blue Energy" || (item.action == GiftActionType.Blue_EnergyBottle && fName.Contains("300")))
                 {
-                    fName = "Blue Energy";
+                    fName = SteamRush.Core.Localization.LocalizationManager.Instance != null ? SteamRush.Core.Localization.LocalizationManager.Instance.Get("FEAT_BLUEENERGY") : "Blue Energy";
                 }
                 else if (fName == "+Red Energy" || (item.action == GiftActionType.Red_EnergyBottle && fName.StartsWith("+")))
                 {
-                    fName = "Red Energy";
+                    fName = SteamRush.Core.Localization.LocalizationManager.Instance != null ? SteamRush.Core.Localization.LocalizationManager.Instance.Get("FEAT_REDENERGY") : "Red Energy";
                 }
-                else if (fName.Equals("Meme Dance", StringComparison.OrdinalIgnoreCase) || (item.action == GiftActionType.Special_GiftDance && fName.Contains("Meme")))
-                {
-                    fName = "Dance";
-                }
-                item.featureName = fName;
+
                 _txtFeatureName.text = fName;
+            }
+
+            if (item.giftName == "Meme Dance" || (item.action == GiftActionType.Special_GiftDance && item.giftName.Contains("Meme")))
+            {
+                item.giftName = "Dance";
             }
 
             // 2. Icon & Visual alpha
@@ -168,6 +172,10 @@ namespace SteamRush.Features.UI.PreGameConfig
             // 6. Description Input
             if (_inputDesc != null)
             {
+                if (string.IsNullOrEmpty(item.description) && SteamRush.Core.Localization.LocalizationManager.Instance != null)
+                {
+                    item.description = SteamRush.Core.Localization.LocalizationManager.Instance.GetDefaultDescription(item.action);
+                }
                 _inputDesc.text = item.description;
                 _inputDesc.onValueChanged.RemoveAllListeners();
                 _inputDesc.onValueChanged.AddListener(val => item.description = val);
@@ -194,16 +202,29 @@ namespace SteamRush.Features.UI.PreGameConfig
             if (_imgIcon == null) return;
 
             Sprite resolved = null;
-            string key = (giftName ?? "").ToLowerInvariant().Trim();
+            string key = (giftName ?? "").Trim();
 
-            if (iconMap != null && !string.IsNullOrEmpty(key) && iconMap.TryGetValue(key, out var s) && s != null)
+            if (iconMap != null)
             {
-                resolved = s;
+                if (!string.IsNullOrEmpty(key) && iconMap.TryGetValue(key, out var s) && s != null)
+                {
+                    resolved = s;
+                }
+                else if (giftId > 0 && iconMap.TryGetValue(giftId.ToString(), out var sId) && sId != null)
+                {
+                    resolved = sId;
+                }
             }
 
             if (resolved == null)
             {
                 resolved = PreGameUIBuilder.ResolveGiftIcon(giftId, giftName);
+            }
+
+            // Fallback: If still null, preserve existing sprite if already displayed
+            if (resolved == null && _imgIcon.sprite != null)
+            {
+                resolved = _imgIcon.sprite;
             }
 
             if (resolved != null)
