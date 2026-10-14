@@ -544,7 +544,7 @@ namespace SteamRush.Features.UI.PreGameConfig
             {
                 UpdateTextChild(_panelBasicContent.transform, "Banner_TIKTOK LIVE HOST CHANNEL/Text", loc.Get("BANNER_HOST_CHANNEL"));
                 UpdateTextChild(_panelBasicContent.transform, "UserRow/InputUsername/Text Area/Placeholder", loc.Get("PLACEHOLDER_USERNAME"));
-                UpdateTextChild(_panelBasicContent.transform, "UserRow/BtnCheckLive/Text", loc.Get("BTN_CHECK_LIVE"));
+                UpdateButtonWithIconLayout(_panelBasicContent.transform.Find("UserRow/BtnCheckLive"), loc.Get("BTN_CHECK_LIVE"), 14.5f, 18f, 8f);
 
                 UpdateTextChild(_panelBasicContent.transform, "Banner_TARGET DISTANCE & BATON RELAY/Text", loc.Get("BANNER_TARGET_DISTANCE"));
                 UpdateTextChild(_panelBasicContent.transform, "DistanceRow/InputTargetDistance/Text Area/Placeholder", loc.Get("PLACEHOLDER_DISTANCE"));
@@ -605,7 +605,7 @@ namespace SteamRush.Features.UI.PreGameConfig
                 UpdateSettingLabel(adv, "Row_Backend Folder Path", loc.Get("LBL_BACKEND_DIR"));
 
                 // Buttons in backend
-                UpdateTextChild(adv, "Viewport/Content/Row_Euler API Key (EULER_API_KEY):/BtnOpenWeb/Text", loc.Get("BTN_GET_KEY"));
+                UpdateButtonWithIconLayout(adv.Find("Viewport/Content/Row_Euler API Key (EULER_API_KEY):/BtnOpenWeb"), loc.Get("BTN_GET_KEY"), 13.5f, 16f, 6f);
                 UpdateTextChild(adv, "Viewport/Content/Row_BackendActionButtons/BtnCheckPort/Text", loc.Get("BTN_CHECK_PORTS"));
                 UpdateTextChild(adv, "Viewport/Content/Row_BackendActionButtons/BtnStartBackend/Text", loc.Get("BTN_START_BACKEND"));
                 UpdateTextChild(adv, "Viewport/Content/Row_BackendActionButtons/BtnSetupBackend/Text", loc.Get("BTN_SETUP_BACKEND"));
@@ -684,6 +684,33 @@ namespace SteamRush.Features.UI.PreGameConfig
                     }
                 }
             }
+        }
+
+        private static void UpdateButtonWithIconLayout(Transform btn, string text, float fontSize = 14f, float iconSize = 16f, float gap = 6f)
+        {
+            if (btn == null || string.IsNullOrEmpty(text)) return;
+
+            var icon = btn.Find("Icon") as RectTransform;
+            var textRt = btn.Find("Text") as RectTransform;
+            if (icon == null || textRt == null) return;
+
+            var tmp = textRt.GetComponent<TextMeshProUGUI>();
+            if (tmp == null) return;
+
+            tmp.text = text;
+            tmp.fontSize = fontSize;
+            tmp.alignment = TextAlignmentOptions.MidlineLeft;
+
+            float textW = tmp.preferredWidth;
+            float totalW = iconSize + gap + textW;
+
+            icon.anchorMin = icon.anchorMax = icon.pivot = new Vector2(0.5f, 0.5f);
+            icon.sizeDelta = new Vector2(iconSize, iconSize);
+            icon.anchoredPosition = new Vector2(-totalW / 2f + iconSize / 2f, 0f);
+
+            textRt.anchorMin = textRt.anchorMax = textRt.pivot = new Vector2(0.5f, 0.5f);
+            textRt.sizeDelta = new Vector2(textW, 40f);
+            textRt.anchoredPosition = new Vector2(-totalW / 2f + iconSize + gap + textW / 2f, 0f);
         }
 
         private static void UpdateSettingLabel(Transform root, string prefix, string newText)
