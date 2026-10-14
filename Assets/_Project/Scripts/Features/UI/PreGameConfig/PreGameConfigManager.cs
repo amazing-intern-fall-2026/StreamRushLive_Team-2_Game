@@ -236,6 +236,9 @@ namespace SteamRush.Features.UI.PreGameConfig
                         CurrentConfig.targetDistanceMeters = CurrentConfig.finiteTargetDistanceMeters;
                     }
                 }
+
+                // Temporarily disable manual keyboard controls
+                CurrentConfig.enableKeyboardControl = false;
             }
         }
 

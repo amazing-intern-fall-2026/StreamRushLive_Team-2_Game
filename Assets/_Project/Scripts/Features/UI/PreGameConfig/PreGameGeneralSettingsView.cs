@@ -86,26 +86,24 @@ namespace SteamRush.Features.UI.PreGameConfig
             if (_toggleEnableKeyboardControl != null)
             {
                 _toggleEnableKeyboardControl.onValueChanged.RemoveAllListeners();
-                _toggleEnableKeyboardControl.onValueChanged.AddListener(isOn =>
-                {
-                    var guideCtrl = FindFirstObjectByType<Views.HowToPlayGuideController>(FindObjectsInactive.Include);
-                    if (guideCtrl != null)
-                    {
-                        guideCtrl.SetRedOnlyMode(isOn);
-                    }
+                ApplyKeyboardControlDimming();
+            }
+        }
 
-                    var runnerCtrl = FindFirstObjectByType<ChatLaneRunnerController>();
-                    if (runnerCtrl != null)
-                    {
-                        runnerCtrl.IsChatControlLocked = isOn;
-                    }
+        private void ApplyKeyboardControlDimming()
+        {
+            if (_toggleEnableKeyboardControl == null) return;
+            _toggleEnableKeyboardControl.interactable = false;
+            _toggleEnableKeyboardControl.isOn = false;
 
-                    var inputH = FindFirstObjectByType<RunnerInputHandler>();
-                    if (inputH != null)
-                    {
-                        inputH.EnableKeyboardControl = isOn;
-                    }
-                });
+            Transform row = _toggleEnableKeyboardControl.transform.parent;
+            if (row != null)
+            {
+                var cg = row.GetComponent<CanvasGroup>();
+                if (cg == null) cg = row.gameObject.AddComponent<CanvasGroup>();
+                cg.alpha = 0.45f;
+                cg.interactable = false;
+                cg.blocksRaycasts = false;
             }
         }
 
@@ -169,11 +167,11 @@ namespace SteamRush.Features.UI.PreGameConfig
             if (_inputSprintDuration != null) _inputSprintDuration.text = data.sprintBuffDuration.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
             if (_toggleEnableKeyboardControl != null)
             {
-                _toggleEnableKeyboardControl.isOn = data.enableKeyboardControl;
+                ApplyKeyboardControlDimming();
                 var guideCtrl = FindFirstObjectByType<Views.HowToPlayGuideController>(FindObjectsInactive.Include);
                 if (guideCtrl != null)
                 {
-                    guideCtrl.SetRedOnlyMode(data.enableKeyboardControl);
+                    guideCtrl.SetRedOnlyMode(false);
                 }
             }
 
@@ -261,7 +259,7 @@ namespace SteamRush.Features.UI.PreGameConfig
                 data.sprintBuffDuration = Mathf.Max(1f, sprintDuration);
 
             if (_toggleEnableKeyboardControl != null)
-                data.enableKeyboardControl = _toggleEnableKeyboardControl.isOn;
+                data.enableKeyboardControl = false;
 
             if (_toggleAutoSpawnCar != null)
                 data.autoSpawnOnFullEnergy = _toggleAutoSpawnCar.isOn;
