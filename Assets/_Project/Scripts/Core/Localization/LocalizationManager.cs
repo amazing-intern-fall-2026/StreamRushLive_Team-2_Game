@@ -150,13 +150,13 @@ namespace SteamRush.Core.Localization
             { "GUIDE_SUBTITLE", "3 Bước kết nối phòng Live và bắt đầu game tương tác" },
             { "GUIDE_STEP1_TAG", "BƯỚC 1" },
             { "GUIDE_STEP1_TITLE", "Khởi Động Máy Chủ Backend" },
-            { "GUIDE_STEP1_DESC", "Vào tab <b>HỆ THỐNG NÂNG CAO</b> -> Bấm <b>CÀI ĐẶT (INSTALL)</b> để chuẩn bị môi trường (lần đầu) -> Bấm <b>KHỞI ĐỘNG (START)</b>. Cổng HTTP 9091 & Socket 3001 báo xanh là hoàn tất." },
+            { "GUIDE_STEP1_DESC", "• <color=#FFE066>Lấy Key:</color> Bấm <b>GET KEY</b> để mở web lấy API Key dán vào ô.\n• <color=#FFE066>Cài đặt:</color> Bấm <b>AUTO SETUP (GIT)</b> (chỉ thực hiện lần đầu).\n• <color=#FFE066>Bật Server:</color> Bấm <b>START BACKEND</b> (cổng 9091 & 3001 báo xanh)." },
             { "GUIDE_STEP2_TAG", "BƯỚC 2" },
             { "GUIDE_STEP2_TITLE", "Kiểm Tra & Kết Nối Kênh Live" },
-            { "GUIDE_STEP2_DESC", "Tại tab <b>CẤU HÌNH CƠ BẢN</b>, nhập chính xác <b>@username</b> kênh TikTok đang phát Live -> Bấm nút <b>KIỂM TRA LIVE</b> -> Chờ trạng thái chuyển sang <b>ĐÃ KẾT NỐI</b> màu xanh lá." },
+            { "GUIDE_STEP2_DESC", "• <color=#FFE066>Nhập kênh:</color> Điền đúng <b>@username</b> TikTok đang phát Live.\n• <color=#FFE066>Kết nối:</color> Bấm <b>CHECK LIVE</b> đến khi báo <b>CONNECTED</b> (xanh lá)." },
             { "GUIDE_STEP3_TAG", "BƯỚC 3" },
             { "GUIDE_STEP3_TITLE", "Bắt Đầu Live Stream & Tương Tác" },
-            { "GUIDE_STEP3_DESC", "Tùy chỉnh cự ly và quà tặng nếu muốn -> Bấm <b>LƯU CÀI ĐẶT</b> -> Bấm <b>BẮT ĐẦU LIVE STREAM</b>. Khán giả gõ <b>1, 2, 3</b> để điều khiển Runner và tặng quà kích hoạt kỹ năng thời gian thực!" },
+            { "GUIDE_STEP3_DESC", "• <color=#FFE066>Lưu cài đặt:</color> Tùy chỉnh cự ly/quà -> Bấm <b>SAVE SETTINGS</b>.\n• <color=#FFE066>Vào game:</color> Bấm <b>START LIVE STREAM</b> để chơi tương tác.\n• <color=#FFE066>Lệnh chơi:</color> Khán giả gõ <b>1, 2, 3</b> điều khiển & tặng quà tung skill!" },
             { "GUIDE_BTN_GOTIT", "ĐÃ HIỂU" },
 
             // === FEATURE NAMES ===
@@ -288,13 +288,13 @@ namespace SteamRush.Core.Localization
             { "GUIDE_SUBTITLE", "3 Steps to connect your Live room & start interactive gameplay" },
             { "GUIDE_STEP1_TAG", "STEP 1" },
             { "GUIDE_STEP1_TITLE", "Start Backend Server" },
-            { "GUIDE_STEP1_DESC", "Open <b>ADVANCED SYSTEM</b> tab -> Click <b>AUTO SETUP (GIT)</b> to prepare environment (first time) -> Click <b>START BACKEND</b>. HTTP 9091 & Socket 3001 green indicate ready." },
+            { "GUIDE_STEP1_DESC", "• <color=#FFE066>Euler Key:</color> Click <b>GET KEY</b> on web & paste into key field.\n• <color=#FFE066>Environment:</color> Click <b>AUTO SETUP (GIT)</b> (first time only).\n• <color=#FFE066>Run Server:</color> Click <b>START BACKEND</b> (HTTP & Socket green)." },
             { "GUIDE_STEP2_TAG", "STEP 2" },
             { "GUIDE_STEP2_TITLE", "Check & Verify Live Channel" },
-            { "GUIDE_STEP2_DESC", "In <b>BASIC SETUP</b> tab, enter the exact <b>@username</b> broadcasting live -> Click <b>CHECK LIVE</b> -> Wait for green <b>CONNECTED</b> status confirmation." },
+            { "GUIDE_STEP2_DESC", "• <color=#FFE066>Channel:</color> Enter the active TikTok <b>@username</b>.\n• <color=#FFE066>Verify:</color> Click <b>CHECK LIVE</b> until status shows <b>CONNECTED</b>." },
             { "GUIDE_STEP3_TAG", "STEP 3" },
             { "GUIDE_STEP3_TITLE", "Start Live Stream & Interactivity" },
-            { "GUIDE_STEP3_DESC", "Configure distance & gifts if desired -> Click <b>SAVE SETTINGS</b> -> Click <b>START LIVE STREAM</b>. Viewers comment <b>1, 2, 3</b> to control Runner and send gifts to trigger live skills!" },
+            { "GUIDE_STEP3_DESC", "• <color=#FFE066>Settings:</color> Adjust distance & gifts -> Click <b>SAVE SETTINGS</b>.\n• <color=#FFE066>Launch:</color> Click <b>START LIVE STREAM</b> to begin broadcast.\n• <color=#FFE066>Commands:</color> Viewers chat <b>1, 2, 3</b> to steer & send gifts for skills!" },
             { "GUIDE_BTN_GOTIT", "GOT IT" },
 
             // === FEATURE NAMES ===
