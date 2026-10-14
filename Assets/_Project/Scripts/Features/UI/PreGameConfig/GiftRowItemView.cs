@@ -51,7 +51,8 @@ namespace SteamRush.Features.UI.PreGameConfig
             int totalCount,
             Dictionary<string, Sprite> iconMap,
             Action<int> onMoveUp,
-            Action<int> onMoveDown)
+            Action<int> onMoveDown,
+            Action<int, int, string, AvailableGiftInfo> onGiftChanged = null)
         {
             _item = item;
             AutoWireIfNull();
@@ -130,9 +131,14 @@ namespace SteamRush.Features.UI.PreGameConfig
                     if (newIdx >= 0 && newIdx < PreGameConfigData.AvailableGifts.Length)
                     {
                         var selectedGift = PreGameConfigData.AvailableGifts[newIdx];
+                        int prevId = item.giftId;
+                        string prevName = item.giftName;
+
                         item.giftId = selectedGift.giftId;
                         item.giftName = selectedGift.giftName;
                         UpdateIcon(selectedGift.giftName, selectedGift.giftId, iconMap);
+
+                        onGiftChanged?.Invoke(index, prevId, prevName, selectedGift);
                     }
                 });
             }
@@ -271,6 +277,34 @@ namespace SteamRush.Features.UI.PreGameConfig
                 var arrowImg = _dropdownGift.transform.Find("Arrow")?.GetComponent<Image>();
                 if (arrowImg != null) arrowImg.color = new Color(0.75f, 0.89f, 0.91f, alpha);
             }
+        }
+
+        public void SetGiftOptionWithoutNotify(int giftId, string giftName, Dictionary<string, Sprite> iconMap)
+        {
+            if (_item != null)
+            {
+                _item.giftId = giftId;
+                _item.giftName = giftName;
+            }
+
+            if (_dropdownGift != null)
+            {
+                int targetIdx = 0;
+                for (int i = 0; i < PreGameConfigData.AvailableGifts.Length; i++)
+                {
+                    var opt = PreGameConfigData.AvailableGifts[i];
+                    if (opt.giftId == giftId || string.Equals(opt.giftName, giftName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        targetIdx = i;
+                        break;
+                    }
+                }
+
+                _dropdownGift.SetValueWithoutNotify(targetIdx);
+                _dropdownGift.RefreshShownValue();
+            }
+
+            UpdateIcon(giftName, giftId, iconMap);
         }
 
         public void SaveCurrentValues()
