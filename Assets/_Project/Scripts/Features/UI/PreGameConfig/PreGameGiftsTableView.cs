@@ -62,13 +62,20 @@ namespace SteamRush.Features.UI.PreGameConfig
                 return;
             }
 
+            PreGameGiftIconResolver.ClearCache();
+
             // Register master gift icons from TikTokGiftRouter
             var router = FindFirstObjectByType<TikTokGiftRouter>();
             if (router != null && router.GiftMappings != null)
             {
                 foreach (var m in router.GiftMappings)
                 {
-                    if (m.giftIcon != null)
+                    var canonical = PreGameGiftIconResolver.ResolveGiftIcon(m.giftId, m.giftName);
+                    if (canonical != null)
+                    {
+                        m.giftIcon = canonical;
+                    }
+                    else if (m.giftIcon != null)
                     {
                         PreGameGiftIconResolver.RegisterIcon(m.giftId, m.giftName, m.giftIcon);
                     }
@@ -130,7 +137,7 @@ namespace SteamRush.Features.UI.PreGameConfig
             {
                 if (i != changedIndex)
                 {
-                    bool sameId = newGift.giftId > 0 && gifts[i].giftId == newGift.giftId;
+                    bool sameId = newGift.giftId > 0 && gifts[i].giftId > 0 && gifts[i].giftId == newGift.giftId;
                     bool sameName = string.Equals(gifts[i].giftName, newGift.giftName, StringComparison.OrdinalIgnoreCase);
                     if (sameId || sameName)
                     {

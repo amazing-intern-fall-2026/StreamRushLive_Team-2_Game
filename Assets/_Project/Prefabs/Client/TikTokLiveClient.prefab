@@ -50,7 +50,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.Features.StreamIntegration.TikTokLiveClient
   _serverUrl: http://localhost:3001
-  _tiktokUniqueId: chickmangames
+  _tiktokUniqueId: user
   _connectOnStart: 0
   _webSocketOnly: 1
   _setUniqueIdEvent: setUniqueID
@@ -210,7 +210,7 @@ MonoBehaviour:
     customValue: 0
   - giftId: 0
     giftName: Follow
-    giftIcon: {fileID: 21300000, guid: 9f0a017c352f0d746a254c677fc5c211, type: 3}
+    giftIcon: {fileID: 21300000, guid: 3b7983490f65d284d9a137a473ea86bb, type: 3}
     description: Next Runner
     action: 13
     customValue: 0

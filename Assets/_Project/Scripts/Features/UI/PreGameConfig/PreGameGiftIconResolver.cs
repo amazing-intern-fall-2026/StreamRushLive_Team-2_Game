@@ -11,8 +11,16 @@ namespace SteamRush.Features.UI.PreGameConfig
     /// </summary>
     public static class PreGameGiftIconResolver
     {
+        private static readonly Dictionary<string, Sprite> _canonicalCache = new Dictionary<string, Sprite>(StringComparer.OrdinalIgnoreCase);
         private static readonly Dictionary<int, Sprite> _cacheById = new Dictionary<int, Sprite>();
         private static readonly Dictionary<string, Sprite> _cacheByName = new Dictionary<string, Sprite>(StringComparer.OrdinalIgnoreCase);
+
+        public static void ClearCache()
+        {
+            _canonicalCache.Clear();
+            _cacheById.Clear();
+            _cacheByName.Clear();
+        }
 
         /// <summary>
         /// Registers a sprite in the master cache so it persists even if router mappings are filtered.
@@ -20,6 +28,13 @@ namespace SteamRush.Features.UI.PreGameConfig
         public static void RegisterIcon(int giftId, string giftName, Sprite icon)
         {
             if (icon == null) return;
+
+            string canonical = GetCanonicalGiftSpriteName(giftId, giftName);
+            if (!string.IsNullOrEmpty(canonical) && _canonicalCache.ContainsKey(canonical))
+            {
+                return;
+            }
+
             if (giftId > 0)
             {
                 _cacheById[giftId] = icon;
@@ -31,115 +46,173 @@ namespace SteamRush.Features.UI.PreGameConfig
             }
         }
 
+        /// <summary>
+        /// Resolves the canonical sprite file name without extension for any gift ID or gift name.
+        /// Ensures consistent and correct sprites across Editor and Standalone builds.
+        /// </summary>
+        public static string GetCanonicalGiftSpriteName(int giftId, string giftName)
+        {
+            string lower = (giftName ?? "").Trim().ToLowerInvariant();
+
+            // 1. Heart vs Finger Heart (Rule: Heart is Like Heart, not the coin gift!)
+            if (lower.Contains("finger") && lower.Contains("heart")) return "fingerheart";
+            if (lower.Contains("hand") && lower.Contains("heart")) return "handhearts";
+            if (lower == "heart" || lower.Contains("like") || lower.Contains("tim")) return "heart";
+
+            // 2. Exact and keyword gift names
+            if (lower == "ice cream" || lower == "icecream" || lower == "ice cream cone" || lower == "icecreamcone") return "icecream";
+            if (lower == "gg") return "gg";
+            if (lower == "panda") return "panda";
+            if (lower == "mic" || lower == "microphone") return "mic";
+            if (lower == "cap" || lower == "hat" || lower == "freedom") return "cap";
+            if (lower == "dumbbell" || lower == "dumbell") return "dumbbell";
+            if (lower == "sunglasses" || lower == "glasses") return "sunglasses";
+            if (lower == "rose") return "rose";
+            if (lower == "tiktok" || lower == "speed") return "tiktok";
+            if (lower == "donut" || lower == "doughnut") return "donut";
+            if (lower == "chili" || lower == "pepper") return "chili";
+            if (lower == "rain" || lower.Contains("rain storm") || lower.Contains("rainstorm")) return "rain";
+            if (lower == "train") return "train";
+            if (lower == "dance") return "dance";
+            if (lower == "money gun" || lower == "moneygun") return "moneygun";
+            if (lower == "boxing gloves" || lower == "boxinggloves" || lower == "gloves") return "boxinggloves";
+            if (lower == "swan") return "swan";
+            if (lower == "fireworks" || lower == "firework" || lower == "fire") return "fireworks";
+            if (lower == "crown") return "crown";
+            if (lower == "whale") return "whale";
+            if (lower == "sports car" || lower == "sportscar" || lower == "car") return "sportscar";
+            if (lower == "yacht") return "yacht";
+            if (lower == "airplane" || lower == "plane" || lower == "jetplane") return "airplane";
+            if (lower == "rocket") return "rocket";
+            if (lower == "pirate ship" || lower == "pirateship") return "pirateship";
+            if (lower == "ferris wheel" || lower == "ferriswheel") return "ferriswheel";
+            if (lower == "lion") return "lion";
+            if (lower == "planet") return "planet";
+            if (lower == "interstellar") return "interstellar";
+            if (lower == "universe") return "universe";
+            if (lower == "trophy" || lower.Contains("trophy")) return "matchtrophy";
+            if (lower == "gamepad") return "gamepad";
+            if (lower == "vip") return "vip";
+            if (lower == "follow" || lower.Contains("runner") || lower == "next") return "follow";
+
+            // 3. Fallback by Gift ID
+            switch (giftId)
+            {
+                case 5655: return "rose";
+                case 5269: return "tiktok";
+                case 5827: return "icecream";
+                case 6064: return "gg";
+                case 37: return "panda";
+                case 5650: return "mic";
+                case 6052: return "gamepad";
+                case 5586: return "chili";
+                case 5338: return "donut";
+                case 6104:
+                case 5879: return "cap";
+                case 5585: return "dumbbell";
+                case 5509:
+                case 5661: return "sunglasses";
+                case 5659: return "moneygun";
+                case 6007: return "boxinggloves";
+                case 5897: return "swan";
+                case 6090: return "fireworks";
+                case 6097: return "crown";
+                case 5656: return "whale";
+                case 6089: return "sportscar";
+                case 6103: return "yacht";
+                case 5883:
+                case 5665: return "airplane";
+                case 5930: return "rocket";
+                case 5951: return "pirateship";
+                case 5652: return "ferriswheel";
+                case 6001:
+                case 6223: return "lion";
+                case 5954: return "planet";
+                case 6149: return "interstellar";
+                case 6038: return "universe";
+                case 6094: return "matchtrophy";
+                case 6037: return "dance";
+                case 5978: return lower.Contains("train") ? "train" : "rain";
+                case 5487: return lower.Contains("finger") ? "fingerheart" : "heart";
+            }
+
+            return null;
+        }
+
         public static Sprite ResolveGiftIcon(int giftId, string giftName)
         {
-            // 1. Check in-memory master cache
-            if (giftId > 0 && _cacheById.TryGetValue(giftId, out var cachedById) && cachedById != null)
+            string canonical = GetCanonicalGiftSpriteName(giftId, giftName);
+
+            // 1. Try canonical sprite first (Top priority - Single Source of Truth)
+            if (!string.IsNullOrEmpty(canonical))
             {
-                return cachedById;
+                if (_canonicalCache.TryGetValue(canonical, out var cached) && cached != null)
+                {
+                    return cached;
+                }
+
+                var sp = Resources.Load<Sprite>($"TikTokGifts/{canonical}");
+#if UNITY_EDITOR
+                if (sp == null)
+                {
+                    sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"Assets/_Project/Textures/TikTokGifts/{canonical}.png");
+                }
+#endif
+                if (sp != null)
+                {
+                    _canonicalCache[canonical] = sp;
+                    return sp;
+                }
             }
+
+            // 2. Check registered cache by exact giftName
             if (!string.IsNullOrWhiteSpace(giftName) && _cacheByName.TryGetValue(giftName.Trim(), out var cachedByName) && cachedByName != null)
             {
                 return cachedByName;
             }
 
-            // 2. Check TikTokGiftRouter mappings (including inactive)
-            var router = UnityEngine.Object.FindAnyObjectByType<StreamIntegration.TikTokGiftRouter>(FindObjectsInactive.Include);
-            if (router != null && router.GiftMappings != null)
+            // 3. Check registered cache by giftId
+            if (giftId > 0 && _cacheById.TryGetValue(giftId, out var cachedById) && cachedById != null)
             {
-                var found = router.GiftMappings.Find(m =>
-                    (giftId > 0 && m.giftId == giftId) ||
-                    (!string.IsNullOrEmpty(giftName) && string.Equals(m.giftName, giftName, StringComparison.OrdinalIgnoreCase)));
-                if (found != null && found.giftIcon != null)
-                {
-                    RegisterIcon(giftId, giftName, found.giftIcon);
-                    return found.giftIcon;
-                }
+                return cachedById;
             }
 
-            // 3. Check Resources/TikTokGifts (Works in both Editor and Standalone .exe Builds)
-            Sprite resSprite = LoadFromResources(giftId, giftName);
-            if (resSprite != null)
+            // 4. Try loading by giftId from Resources / AssetDatabase
+            if (giftId > 0)
             {
-                RegisterIcon(giftId, giftName, resSprite);
-                return resSprite;
-            }
-
+                var spId = Resources.Load<Sprite>($"TikTokGifts/{giftId}");
 #if UNITY_EDITOR
-            // 4. Editor fallback: AssetDatabase
-            string dir = "Assets/_Project/Textures/TikTokGifts";
-            if (giftId > 0)
-            {
-                var sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/{giftId}.png");
-                if (sp != null)
+                if (spId == null)
                 {
-                    RegisterIcon(giftId, giftName, sp);
-                    return sp;
+                    spId = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"Assets/_Project/Textures/TikTokGifts/{giftId}.png");
                 }
-            }
-
-            if (!string.IsNullOrEmpty(giftName))
-            {
-                string lower = giftName.ToLowerInvariant().Trim();
-                var sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/{lower}.png");
-                if (sp != null)
-                {
-                    RegisterIcon(giftId, giftName, sp);
-                    return sp;
-                }
-
-                // Keyword fallback matching
-                if (lower.Contains("heart") || lower.Contains("like")) sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/5487.png") ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/heart.png");
-                else if (lower.Contains("rose")) sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/5655.png") ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/rose.png");
-                else if (lower.Contains("tiktok") || lower.Contains("speed")) sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/5269.png") ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/tiktok.png");
-                else if (lower.Contains("cap") || lower.Contains("hat") || lower.Contains("freedom")) sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/5879.png") ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/cap.png");
-                else if (lower.Contains("donut")) sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/5338.png") ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/donut.png");
-                else if (lower.Contains("dumbbell") || lower.Contains("beast") || lower.Contains("pickup")) sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/5585.png") ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/dumbbell.png");
-                else if (lower.Contains("lion") || lower.Contains("train")) sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/6001.png") ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/lion.png");
-                else if (lower.Contains("sunglasses") || lower.Contains("car storm") || lower.Contains("unlimited")) sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/5661.png") ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/sunglasses.png");
-                else if (lower.Contains("chili")) sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/5586.png") ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/chili.png");
-                else if (lower.Contains("dance") || lower.Contains("meme")) sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/6037.png") ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/dance.png");
-                else if (lower.Contains("rain") || lower.Contains("weather")) sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/5978.png") ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/rain.png");
-                else if (lower.Contains("follow") || lower.Contains("runner") || lower.Contains("next")) sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/follow.png");
-
-                if (sp != null)
-                {
-                    RegisterIcon(giftId, giftName, sp);
-                    return sp;
-                }
-            }
 #endif
-
-            return null;
-        }
-
-        private static Sprite LoadFromResources(int giftId, string giftName)
-        {
-            if (giftId > 0)
-            {
-                var sp = Resources.Load<Sprite>($"TikTokGifts/{giftId}");
-                if (sp != null) return sp;
+                if (spId != null)
+                {
+                    _cacheById[giftId] = spId;
+                    return spId;
+                }
             }
 
+            // 5. Generic name fallback
             if (!string.IsNullOrEmpty(giftName))
             {
                 string lower = giftName.ToLowerInvariant().Trim();
-                var sp = Resources.Load<Sprite>($"TikTokGifts/{lower}");
-                if (sp != null) return sp;
-
-                // Keyword fallback for Resources
-                if (lower.Contains("heart") || lower.Contains("like")) return Resources.Load<Sprite>("TikTokGifts/5487") ?? Resources.Load<Sprite>("TikTokGifts/heart");
-                if (lower.Contains("rose")) return Resources.Load<Sprite>("TikTokGifts/5655") ?? Resources.Load<Sprite>("TikTokGifts/rose");
-                if (lower.Contains("tiktok") || lower.Contains("speed")) return Resources.Load<Sprite>("TikTokGifts/5269") ?? Resources.Load<Sprite>("TikTokGifts/tiktok");
-                if (lower.Contains("cap") || lower.Contains("hat") || lower.Contains("freedom")) return Resources.Load<Sprite>("TikTokGifts/5879") ?? Resources.Load<Sprite>("TikTokGifts/cap");
-                if (lower.Contains("donut")) return Resources.Load<Sprite>("TikTokGifts/5338") ?? Resources.Load<Sprite>("TikTokGifts/donut");
-                if (lower.Contains("dumbbell") || lower.Contains("beast") || lower.Contains("pickup")) return Resources.Load<Sprite>("TikTokGifts/5585") ?? Resources.Load<Sprite>("TikTokGifts/dumbbell");
-                if (lower.Contains("lion") || lower.Contains("train")) return Resources.Load<Sprite>("TikTokGifts/6001") ?? Resources.Load<Sprite>("TikTokGifts/lion");
-                if (lower.Contains("sunglasses") || lower.Contains("car storm") || lower.Contains("unlimited")) return Resources.Load<Sprite>("TikTokGifts/5661") ?? Resources.Load<Sprite>("TikTokGifts/sunglasses");
-                if (lower.Contains("chili")) return Resources.Load<Sprite>("TikTokGifts/5586") ?? Resources.Load<Sprite>("TikTokGifts/chili");
-                if (lower.Contains("dance") || lower.Contains("meme")) return Resources.Load<Sprite>("TikTokGifts/6037") ?? Resources.Load<Sprite>("TikTokGifts/dance");
-                if (lower.Contains("rain") || lower.Contains("weather")) return Resources.Load<Sprite>("TikTokGifts/5978") ?? Resources.Load<Sprite>("TikTokGifts/rain");
-                if (lower.Contains("follow") || lower.Contains("runner") || lower.Contains("next")) return Resources.Load<Sprite>("TikTokGifts/follow");
+                string clean = System.Text.RegularExpressions.Regex.Replace(lower, @"[^a-z0-9]", "");
+                var sp = Resources.Load<Sprite>($"TikTokGifts/{lower}") ?? Resources.Load<Sprite>($"TikTokGifts/{clean}");
+#if UNITY_EDITOR
+                if (sp == null)
+                {
+                    string dir = "Assets/_Project/Textures/TikTokGifts";
+                    sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/{lower}.png") ??
+                         UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"{dir}/{clean}.png");
+                }
+#endif
+                if (sp != null)
+                {
+                    _cacheByName[giftName.Trim()] = sp;
+                    return sp;
+                }
             }
 
             return null;

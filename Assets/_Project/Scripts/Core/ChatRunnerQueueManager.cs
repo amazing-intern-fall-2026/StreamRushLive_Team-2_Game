@@ -21,7 +21,7 @@ namespace SteamRush.Features.Runner
         public static ChatRunnerQueueManager Instance { get; private set; }
 
         [Header("Initial Queue Mock")]
-        [SerializeField] private string _initialRunnerId = "Streamer_Alex";
+        [SerializeField] private string _initialRunnerId = "user";
         [Tooltip("Enable/disable loading initial mock followers into the queue.")]
         [SerializeField] private bool _enableMockFollowers = false;
         [SerializeField] private List<string> _initialFollowers = new List<string> { "Viewer_Bao", "Viewer_Chi", "Top1_Dung", "Mod_Giang", "Gamer_Huy" };

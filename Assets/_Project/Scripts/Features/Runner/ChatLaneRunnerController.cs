@@ -129,7 +129,6 @@ namespace SteamRush.Features.Runner
                 _commandQueue.Clear();
                 StopFast();
             }
-            Debug.Log($"[ChatLaneRunner] ControlsLocked = {locked}");
         }
 
         public void ApplyKnockback(float distance = -1f, float duration = -1f)

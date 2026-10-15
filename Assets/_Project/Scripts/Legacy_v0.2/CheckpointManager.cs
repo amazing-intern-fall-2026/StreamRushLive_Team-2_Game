@@ -5,12 +5,11 @@ using SteamRush.Track;
 
 namespace SteamRush.Features.Runner
 {
-    // Saves a safe checkpoint every 200m (GDD v1.3 section 7). When the Runner dies (PlayerDeathEvent via
-    // EventBus - SteamRush.Core), teleports the Runner back to the closest checkpoint and requests heart restore
-    // via EventBus. Decoupled from HP/Heart modules.
-    //
-    // Reads travel distance through WorldSpeedManager (SteamRush.Track) - shared infrastructure for both
-    // gameplay loops, maintaining decoupling.
+    /// <summary>
+    /// Saves a safe checkpoint every 200m. When the Runner dies (PlayerDeathEvent via EventBus),
+    /// teleports the Runner back to the closest checkpoint and requests heart restore via EventBus.
+    /// Reads travel distance through WorldSpeedManager.
+    /// </summary>
     public class CheckpointManager : MonoBehaviour
     {
         [SerializeField] private Transform _runnerTransform;

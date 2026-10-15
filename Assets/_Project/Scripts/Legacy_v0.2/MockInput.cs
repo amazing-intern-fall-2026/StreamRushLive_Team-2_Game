@@ -8,7 +8,6 @@ namespace StreamRushLive.Features.Spawning
     /// <summary>
     /// Handles test keys during development (supports New Input System and Direct Keyboard).
     /// Uses spawn position configurations from Spawner.
-    ///
     /// 1 - Spawn random obstacle (Low Barrier / High Barrier)
     /// 2 - Spawn random item (Energy Buff / Shield / High Jump / Hyper Dash)
     /// 3 - Add Energy (+20)

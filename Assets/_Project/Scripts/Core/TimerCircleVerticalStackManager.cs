@@ -8,7 +8,6 @@ namespace SteamRush.Features.UI.Views
     /// Manages dynamic vertical stacking for all Timer Circle popups:
     /// - Fan Team (Left column): FanSprintTimerCircle, ShieldTimerCircle, FreeControlTimerCircle.
     /// - Anti Team (Right column): AntiUnlimitedTimerCircle, AntiVehiclePhaseTimerCircle.
-    ///
     /// Stacking rules:
     /// 1. First active circle appears at the topmost position.
     /// 2. New circles stack beneath existing ones along the vertical axis.

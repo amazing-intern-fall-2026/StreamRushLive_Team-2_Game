@@ -111,12 +111,27 @@ namespace SteamRush.Features.UI.PreGameConfig
                 {
                     var opt = PreGameConfigData.AvailableGifts[i];
                     Sprite icon = null;
-                    if (iconMap != null && iconMap.TryGetValue(opt.giftName.ToLowerInvariant(), out var sp))
+                    if (iconMap != null && iconMap.TryGetValue(opt.giftName, out var sp))
                     {
                         icon = sp;
                     }
+                    if (icon == null)
+                    {
+                        icon = PreGameGiftIconResolver.ResolveGiftIcon(opt.giftId, opt.giftName);
+                    }
                     options.Add(new TMP_Dropdown.OptionData(opt.giftName) { image = icon });
-                    if (opt.giftId == item.giftId || string.Equals(opt.giftName, item.giftName, StringComparison.OrdinalIgnoreCase))
+
+                    bool isMatch = false;
+                    if (opt.giftId > 0 && item.giftId > 0 && opt.giftId == item.giftId)
+                    {
+                        isMatch = true;
+                    }
+                    else if (string.Equals(opt.giftName, item.giftName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        isMatch = true;
+                    }
+
+                    if (isMatch)
                     {
                         selectedIndex = i;
                     }
@@ -207,10 +222,10 @@ namespace SteamRush.Features.UI.PreGameConfig
         {
             if (_imgIcon == null) return;
 
-            Sprite resolved = null;
+            Sprite resolved = PreGameGiftIconResolver.ResolveGiftIcon(giftId, giftName);
             string key = (giftName ?? "").Trim();
 
-            if (iconMap != null)
+            if (resolved == null && iconMap != null)
             {
                 if (!string.IsNullOrEmpty(key) && iconMap.TryGetValue(key, out var s) && s != null)
                 {
@@ -225,12 +240,6 @@ namespace SteamRush.Features.UI.PreGameConfig
             if (resolved == null)
             {
                 resolved = PreGameUIBuilder.ResolveGiftIcon(giftId, giftName);
-            }
-
-            // Fallback: If still null, preserve existing sprite if already displayed
-            if (resolved == null && _imgIcon.sprite != null)
-            {
-                resolved = _imgIcon.sprite;
             }
 
             if (resolved != null)
@@ -293,7 +302,17 @@ namespace SteamRush.Features.UI.PreGameConfig
                 for (int i = 0; i < PreGameConfigData.AvailableGifts.Length; i++)
                 {
                     var opt = PreGameConfigData.AvailableGifts[i];
-                    if (opt.giftId == giftId || string.Equals(opt.giftName, giftName, StringComparison.OrdinalIgnoreCase))
+                    bool isMatch = false;
+                    if (opt.giftId > 0 && giftId > 0 && opt.giftId == giftId)
+                    {
+                        isMatch = true;
+                    }
+                    else if (string.Equals(opt.giftName, giftName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        isMatch = true;
+                    }
+
+                    if (isMatch)
                     {
                         targetIdx = i;
                         break;

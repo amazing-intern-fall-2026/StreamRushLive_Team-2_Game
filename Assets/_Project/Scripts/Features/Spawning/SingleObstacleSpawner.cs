@@ -99,7 +99,6 @@ namespace StreamRushLive.Features.Spawning
         public void SetSpawningLocked(bool locked)
         {
             _spawningLocked = locked;
-            Debug.Log($"[SingleObstacleSpawner] SpawningLocked = {locked}");
         }
         private class ActiveObstacle
         {
@@ -376,7 +375,7 @@ namespace StreamRushLive.Features.Spawning
 
             Debug.Log(
                 $"[SingleObstacleSpawner] Vehicle Phase = {_activeVehiclePhase} " +
-                $"trong {_vehiclePhaseRemainingTime:F0}s.");
+                $"for {_vehiclePhaseRemainingTime:F0}s.");
         }
 
         /// <summary>
@@ -426,9 +425,8 @@ namespace StreamRushLive.Features.Spawning
             {
                 AntiUnlimitedTimerCircle.Instance?.DeactivateTimer();
             }
-            Debug.Log($"[SingleObstacleSpawner] [DEBUG] Unlimited Mode = {isActive} (test key 0).");
+            Debug.Log($"[SingleObstacleSpawner] Unlimited Mode = {isActive}.");
         }
-        // ===== [Dhuy] END =====
 
         /// <summary>
         /// Checks whether the rain weather hazard / environment gift is currently active.

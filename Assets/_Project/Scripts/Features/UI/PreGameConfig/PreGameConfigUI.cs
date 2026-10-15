@@ -699,7 +699,7 @@ namespace SteamRush.Features.UI.PreGameConfig
 
             tmp.text = text;
             tmp.fontSize = fontSize;
-            tmp.enableWordWrapping = false;
+            tmp.textWrappingMode = TextWrappingModes.NoWrap;
             tmp.overflowMode = TextOverflowModes.Overflow;
             tmp.alignment = TextAlignmentOptions.MidlineLeft;
 

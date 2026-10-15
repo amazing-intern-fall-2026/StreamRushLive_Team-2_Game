@@ -77,7 +77,12 @@ namespace SteamRush.Features.UI.PreGameConfig
             {
                 foreach (var m in router.GiftMappings)
                 {
-                    if (m.giftIcon != null)
+                    var canonical = PreGameGiftIconResolver.ResolveGiftIcon(m.giftId, m.giftName);
+                    if (canonical != null)
+                    {
+                        m.giftIcon = canonical;
+                    }
+                    else if (m.giftIcon != null)
                     {
                         PreGameGiftIconResolver.RegisterIcon(m.giftId, m.giftName, m.giftIcon);
                     }
@@ -271,6 +276,29 @@ namespace SteamRush.Features.UI.PreGameConfig
                 if (g.giftName == "Meme Dance" || (g.action == GiftActionType.Special_GiftDance && g.giftName.Contains("Meme")))
                 {
                     g.giftName = "Dance";
+                }
+
+                // Sanitize legacy gift IDs & names
+                if (g.action == GiftActionType.Like_Energy)
+                {
+                    g.giftName = "Heart";
+                    g.giftId = 0;
+                }
+                else if (g.giftName == "Cap" && (g.giftId == 5879 || g.giftId == 0))
+                {
+                    g.giftId = 6104;
+                }
+                else if (g.giftName == "Sunglasses" && (g.giftId == 5661 || g.giftId == 0))
+                {
+                    g.giftId = 5509;
+                }
+                else if (g.giftName == "Rain" && g.giftId == 5978)
+                {
+                    g.giftId = 0;
+                }
+                else if (g.giftName == "Finger Heart")
+                {
+                    g.giftId = 5487;
                 }
             }
 

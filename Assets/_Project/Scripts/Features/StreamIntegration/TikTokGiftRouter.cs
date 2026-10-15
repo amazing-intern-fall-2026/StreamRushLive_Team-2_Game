@@ -304,7 +304,7 @@ namespace SteamRush.Features.StreamIntegration
                 return;
             }
 
-            if (lowerName.Contains("follow") || lowerName.Contains("vip") || lowerName.Contains("ticket") || lowerName.Contains("runner"))
+            if (lowerName.Contains("follow") || lowerName.Contains("vip") || lowerName.Contains("ticket") || lowerName.Contains("runner") || lowerName.Contains("crown"))
             {
                 _queueManager?.EnqueueFollowerAsRunner(displayName);
                 ShowPopup($"Runner: [{displayName}]", true);
@@ -317,7 +317,8 @@ namespace SteamRush.Features.StreamIntegration
                 return;
             }
 
-            if (evt.TotalCoins >= 100 || lowerName.Contains("lion") || lowerName.Contains("rocket"))
+            // Mega / High-tier gifts (Universe, Lion, Dragon, Rocket, Planet, Whale, Yacht, Leon)
+            if (evt.TotalCoins >= 1000 || lowerName.Contains("universe") || lowerName.Contains("lion") || lowerName.Contains("dragon") || lowerName.Contains("rocket") || lowerName.Contains("planet") || lowerName.Contains("whale") || lowerName.Contains("yacht") || lowerName.Contains("leon"))
             {
                 if (faction == FactionType.Red)
                 {
@@ -325,18 +326,34 @@ namespace SteamRush.Features.StreamIntegration
                 }
                 else
                 {
+                    _giftManager?.ActivateSprintBuff(displayName);
+                    _giftManager?.ActivateShield(displayName);
+                    _giftManager?.AddBlueEnergy(displayName, 1000);
+                }
+                return;
+            }
+
+            // Medium-tier gifts (Money Gun, Swan, Fireworks, Sunglasses, Sports Car, Airplane)
+            if (evt.TotalCoins >= 100 || lowerName.Contains("money") || lowerName.Contains("swan") || lowerName.Contains("firework") || lowerName.Contains("sunglasses") || lowerName.Contains("car") || lowerName.Contains("plane"))
+            {
+                if (faction == FactionType.Red)
+                {
                     _giftManager?.ActivateHeavyTruckPhase(displayName);
+                }
+                else
+                {
+                    _giftManager?.ActivateSprintBuff(displayName);
                 }
                 return;
             }
 
             if (faction == FactionType.Blue)
             {
-                if (lowerName.Contains("shield") || lowerName.Contains("donut") || evt.TotalCoins >= 30)
+                if (lowerName.Contains("shield") || lowerName.Contains("donut") || lowerName.Contains("panda") || evt.TotalCoins >= 30)
                 {
                     _giftManager?.ActivateShield(displayName);
                 }
-                else if (lowerName.Contains("sprint") || lowerName.Contains("speed") || lowerName.Contains("cap") || lowerName.Contains("hat"))
+                else if (lowerName.Contains("sprint") || lowerName.Contains("speed") || lowerName.Contains("cap") || lowerName.Contains("hat") || lowerName.Contains("tiktok"))
                 {
                     _giftManager?.ActivateSprintBuff(displayName);
                 }
@@ -351,11 +368,11 @@ namespace SteamRush.Features.StreamIntegration
                 {
                     _giftManager?.ActivateHeavyTruckPhase(displayName);
                 }
-                else if (lowerName.Contains("pickup") || evt.TotalCoins >= 20)
+                else if (lowerName.Contains("pickup") || lowerName.Contains("dumbbell") || evt.TotalCoins >= 20)
                 {
                     _giftManager?.ActivatePickupTruckPhase(displayName);
                 }
-                else if (lowerName.Contains("car") || lowerName.Contains("sedan") || evt.TotalCoins >= 10)
+                else if (lowerName.Contains("car") || lowerName.Contains("sedan") || lowerName.Contains("chili") || evt.TotalCoins >= 10)
                 {
                     _giftManager?.SpawnObstacleVehicle(ObstacleType.Car, displayName);
                 }
