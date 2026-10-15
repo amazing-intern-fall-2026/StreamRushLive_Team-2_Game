@@ -699,18 +699,23 @@ namespace SteamRush.Features.UI.PreGameConfig
 
             tmp.text = text;
             tmp.fontSize = fontSize;
+            tmp.enableWordWrapping = false;
+            tmp.overflowMode = TextOverflowModes.Overflow;
             tmp.alignment = TextAlignmentOptions.MidlineLeft;
 
             float textW = tmp.preferredWidth;
+            if (textW <= 0f) textW = tmp.GetPreferredValues(text).x;
+
             float totalW = iconSize + gap + textW;
 
             icon.anchorMin = icon.anchorMax = icon.pivot = new Vector2(0.5f, 0.5f);
             icon.sizeDelta = new Vector2(iconSize, iconSize);
             icon.anchoredPosition = new Vector2(-totalW / 2f + iconSize / 2f, 0f);
 
+            float textBoxW = textW + 12f;
             textRt.anchorMin = textRt.anchorMax = textRt.pivot = new Vector2(0.5f, 0.5f);
-            textRt.sizeDelta = new Vector2(textW, 40f);
-            textRt.anchoredPosition = new Vector2(-totalW / 2f + iconSize + gap + textW / 2f, 0f);
+            textRt.sizeDelta = new Vector2(textBoxW, 40f);
+            textRt.anchoredPosition = new Vector2(-totalW / 2f + iconSize + gap + textBoxW / 2f, 0f);
         }
 
         private static void UpdateSettingLabel(Transform root, string prefix, string newText)
