@@ -101,15 +101,15 @@ namespace SteamRush.Features.StreamIntegration
             }
 
             // Gameplay command execution based on player faction
-            FactionType faction = _factionManager != null ? _factionManager.GetFaction(evt.UserId) : FactionType.Fan;
+            FactionType faction = _factionManager != null ? _factionManager.GetFaction(evt.UserId) : FactionType.Blue;
 
-            if (faction == FactionType.Fan)
+            if (faction == FactionType.Blue)
             {
-                ExecuteFanCommand(displayName, trimmedCmd);
+                ExecuteBlueCommand(displayName, trimmedCmd);
             }
             else
             {
-                ExecuteAntiCommand(evt.UserId, displayName, trimmedCmd);
+                ExecuteRedCommand(evt.UserId, displayName, trimmedCmd);
             }
         }
 
@@ -120,50 +120,56 @@ namespace SteamRush.Features.StreamIntegration
             bool changed = _factionManager.OnChatCommand(userId, command);
             if (changed)
             {
-                bool isFan = _factionManager.GetFaction(userId) == FactionType.Fan;
-                string teamName = isFan ? "Blue Team (Runner Support)" : "Red Team (Obstacle Hazard)";
-                ShowPopup($"[{displayName}] joined {teamName}!", isFan);
+                bool isBlue = _factionManager.GetFaction(userId) == FactionType.Blue;
+                string teamName = isBlue ? "Blue Team (Runner Support)" : "Red Team (Obstacle Hazard)";
+                ShowPopup($"[{displayName}] joined {teamName}!", isBlue);
             }
         }
 
-        private void ExecuteFanCommand(string displayName, string command)
+        private void ExecuteBlueCommand(string displayName, string command)
         {
+            if (_runnerController != null && _runnerController.IsChatControlLocked) return;
+
             if (command == "1" || command == "2" || command == "3" || command == "left" || command == "right")
             {
                 _runnerController?.ExecuteSingleCommand(command);
-                _hudManager?.ShowFanAction(displayName, $"Lane {command}");
+                _hudManager?.ShowSupportAction(displayName, $"Lane {command}");
             }
             else if (command == "jump" || command == "j")
             {
                 _runnerController?.ExecuteSingleCommand("jump");
-                _hudManager?.ShowFanAction(displayName, "Jump!");
+                _hudManager?.ShowSupportAction(displayName, "Jump!");
             }
             else if (command == "fast" || command == "speed")
             {
                 _runnerController?.ExecuteSingleCommand("fast");
-                _hudManager?.ShowFanAction(displayName, "Turbo Boost!");
+                _hudManager?.ShowSupportAction(displayName, "Turbo Boost!");
             }
         }
 
-        private void ExecuteAntiCommand(string userId, string displayName, string command)
+        private void ExecuteFanCommand(string displayName, string command) => ExecuteBlueCommand(displayName, command);
+
+        private void ExecuteRedCommand(string userId, string displayName, string command)
         {
             if (command == "1" || command == "2" || command == "3")
             {
                 if (int.TryParse(command, out int laneIndex))
                 {
-                    bool spawned = _factionManager != null && _factionManager.TrySpawnAntiObstacleCar(userId, laneIndex);
+                    bool spawned = _factionManager != null && _factionManager.TrySpawnObstacleVehicle(userId, laneIndex);
                     if (spawned)
                     {
-                        _hudManager?.ShowAntiAction(displayName, $"Car on Lane {laneIndex}!");
+                        _hudManager?.ShowHazardAction(displayName, $"Car on Lane {laneIndex}!");
                     }
                 }
             }
         }
 
-        private void ShowPopup(string message, bool isFan)
+        private void ExecuteAntiCommand(string userId, string displayName, string command) => ExecuteRedCommand(userId, displayName, command);
+
+        private void ShowPopup(string message, bool isBlue)
         {
             if (!_showPopups) return;
-            _hudManager?.ShowStatusPopup(message, isFan);
+            _hudManager?.ShowStatusPopup(message, isBlue);
         }
     }
 }

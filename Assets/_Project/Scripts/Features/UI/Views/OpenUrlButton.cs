@@ -51,7 +51,6 @@ namespace SteamRush.Features.UI.Views
         {
             if (!string.IsNullOrEmpty(_targetUrl))
             {
-                Debug.Log($"<color=#00E5FF>[OpenUrlButton] Opening URL: {_targetUrl}</color>");
                 Application.OpenURL(_targetUrl);
             }
             else

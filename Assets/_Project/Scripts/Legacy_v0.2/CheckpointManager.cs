@@ -1,18 +1,15 @@
+#pragma warning disable CS0618
 using UnityEngine;
 using SteamRush.Core;
 using SteamRush.Track;
 
 namespace SteamRush.Features.Runner
 {
-    // Luu checkpoint an toan moi 200m (GDD v1.3 muc 7). Khi Runner chet (PlayerDeathEvent qua
-    // EventBus - SteamRush.Core), dich Runner ve checkpoint gan nhat va yeu cau hoi tim, cung
-    // qua EventBus. KHONG tham chieu truc tiep module HP/Heart (chua ton tai luc viet file nay -
-    // se noi qua 1 adapter rieng sau khi RunnerHealthSystem cua Truong (S1-24) merge, khong dung
-    // toi CheckpointManager).
-    //
-    // Doc quang duong qua WorldSpeedManager (SteamRush.Track) - class ha tang dung chung cho ca
-    // 2 luong gameplay (ChatLaneRunnerController cua Tu cung doc/ghi toc do cuon qua day), khong
-    // phai goi thang vao logic nghiep vu cua module khac nen khong vi pham nguyen tac decoupling.
+    /// <summary>
+    /// Saves a safe checkpoint every 200m. When the Runner dies (PlayerDeathEvent via EventBus),
+    /// teleports the Runner back to the closest checkpoint and requests heart restore via EventBus.
+    /// Reads travel distance through WorldSpeedManager.
+    /// </summary>
     public class CheckpointManager : MonoBehaviour
     {
         [SerializeField] private Transform _runnerTransform;
@@ -75,7 +72,7 @@ namespace SteamRush.Features.Runner
             _hasCheckpoint = true;
         }
 
-        // Doan 3: diem debug bat buoc theo task - bao Runner da hoi sinh tai checkpoint nao.
+        // Logs checkpoint respawn information.
         private void OnPlayerDeath(PlayerDeathEvent deathEvent)
         {
             if (_runnerTransform != null && _hasCheckpoint)
@@ -83,7 +80,7 @@ namespace SteamRush.Features.Runner
                 _runnerTransform.position = _lastCheckpointPosition;
             }
 
-            Debug.Log($"[CheckpointManager] Runner da hoi sinh tai checkpoint gan nhat (quang duong da luu={_lastCheckpointDistance:F0}m).");
+            Debug.Log($"[CheckpointManager] Runner respawned at closest checkpoint (saved distance: {_lastCheckpointDistance:F0}m).");
 
             EventBus.Publish(new RestoreHeartsRequestEvent(_heartCount));
         }

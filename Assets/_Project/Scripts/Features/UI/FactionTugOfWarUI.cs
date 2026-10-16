@@ -5,18 +5,18 @@ using UnityEngine.UI;
 namespace SteamRush.Features.UI
 {
     /// <summary>
-    /// Displays Fan (Blue, left) and Anti (Red, right) tug-of-war gauges adhering to SRP.
+    /// Displays Blue (Left) and Red (Right) tug-of-war gauges adhering to SRP.
     /// Receives values via SetFactionValues invoked by FactionTugOfWarManager.
     /// </summary>
     public class FactionTugOfWarUI : MonoBehaviour
     {
-        [Header("Fan (Blue, Left)")]
+        [Header("Blue (Left)")]
         [SerializeField] private Image _fanFillImage;
         [SerializeField] private TMP_Text _fanValueLabel;
         [SerializeField] private int _fanMaxValue = 1000;
         [SerializeField] private RectTransform _fanHandle;
 
-        [Header("Anti (Red, Right)")]
+        [Header("Red (Right)")]
         [SerializeField] private Image _antiFillImage;
         [SerializeField] private TMP_Text _antiValueLabel;
         [SerializeField] private int _antiMaxValue = 1000;
@@ -26,7 +26,12 @@ namespace SteamRush.Features.UI
         [SerializeField] private TMP_Text _fanMemberCountLabel;
         [SerializeField] private TMP_Text _antiMemberCountLabel;
 
+        public int BlueMaxValue => _fanMaxValue;
+        public int RedMaxValue => _antiMaxValue;
+
+        [System.Obsolete("Use BlueMaxValue instead.")]
         public int FanMaxValue => _fanMaxValue;
+        [System.Obsolete("Use RedMaxValue instead.")]
         public int AntiMaxValue => _antiMaxValue;
 
         private static Sprite _fallbackWhiteSprite;

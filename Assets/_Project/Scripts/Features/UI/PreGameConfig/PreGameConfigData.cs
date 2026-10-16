@@ -100,6 +100,11 @@ namespace SteamRush.Features.UI.PreGameConfig
 
         public static string GetDefaultFeatureName(GiftActionType act)
         {
+            if (SteamRush.Core.Localization.LocalizationManager.Instance != null)
+            {
+                return SteamRush.Core.Localization.LocalizationManager.Instance.GetFeatureName(act);
+            }
+
             switch (act)
             {
                 case GiftActionType.Blue_Shield: return "Protection Shield";
@@ -123,10 +128,11 @@ namespace SteamRush.Features.UI.PreGameConfig
     public class PreGameConfigData
     {
         // === A. BASIC CONFIG ===
+        public string language = "en"; // "en" (English) or "vi" (Vietnamese)
         public string tiktokUsername = "";
         public int targetDistanceOptionIndex = 1; // 0: 500m, 1: 1km, 2: 5km, 3: Infinite
-        public float targetDistanceMeters = 1000f;
-        public float finiteTargetDistanceMeters = 1000f;
+        public float targetDistanceMeters = 1000000f; // 1,000 km (1,000,000 meters)
+        public float finiteTargetDistanceMeters = 1000000f; // 1,000 km
         public bool isInfiniteDistance = false;
         public List<PreGameGiftItemConfig> gifts = new List<PreGameGiftItemConfig>();
 
@@ -136,6 +142,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         public int jumpEnergyCost = 20;
         public float freeControlDuration = 30f;
         public float sprintBuffDuration = 30f;
+        public bool enableKeyboardControl = false; // Default: OFF (manual player control disabled)
 
         // Anti & Obstacles
         public bool autoSpawnOnFullEnergy = true;
@@ -182,16 +189,39 @@ namespace SteamRush.Features.UI.PreGameConfig
         public static readonly AvailableGiftInfo[] AvailableGifts = new[]
         {
             new AvailableGiftInfo(5655, "Rose"),
-            new AvailableGiftInfo(5487, "Heart"),
+            new AvailableGiftInfo(0, "Heart"),
+            new AvailableGiftInfo(5487, "Finger Heart"),
             new AvailableGiftInfo(5269, "TikTok"),
-            new AvailableGiftInfo(5879, "Cap"),
-            new AvailableGiftInfo(5338, "Donut"),
-            new AvailableGiftInfo(5585, "Dumbbell"),
-            new AvailableGiftInfo(6001, "Lion"),
-            new AvailableGiftInfo(5661, "Sunglasses"),
+            new AvailableGiftInfo(5827, "Ice Cream"),
+            new AvailableGiftInfo(6064, "GG"),
+            new AvailableGiftInfo(37, "Panda"),
+            new AvailableGiftInfo(5650, "Mic"),
+            new AvailableGiftInfo(6052, "Gamepad"),
             new AvailableGiftInfo(5586, "Chili"),
-            new AvailableGiftInfo(6037, "Meme Dance"),
-            new AvailableGiftInfo(5978, "Rain"),
+            new AvailableGiftInfo(5338, "Donut"),
+            new AvailableGiftInfo(6104, "Cap"),
+            new AvailableGiftInfo(5585, "Dumbbell"),
+            new AvailableGiftInfo(5509, "Sunglasses"),
+            new AvailableGiftInfo(5659, "Money Gun"),
+            new AvailableGiftInfo(6007, "Boxing Gloves"),
+            new AvailableGiftInfo(5897, "Swan"),
+            new AvailableGiftInfo(6090, "Fireworks"),
+            new AvailableGiftInfo(6097, "Crown"),
+            new AvailableGiftInfo(5656, "Whale"),
+            new AvailableGiftInfo(6089, "Sports Car"),
+            new AvailableGiftInfo(6103, "Yacht"),
+            new AvailableGiftInfo(5883, "Airplane"),
+            new AvailableGiftInfo(5930, "Rocket"),
+            new AvailableGiftInfo(5951, "Pirate Ship"),
+            new AvailableGiftInfo(5652, "Ferris Wheel"),
+            new AvailableGiftInfo(6223, "Lion"),
+            new AvailableGiftInfo(5954, "Planet"),
+            new AvailableGiftInfo(6149, "Interstellar"),
+            new AvailableGiftInfo(6038, "Universe"),
+            new AvailableGiftInfo(6094, "Trophy"),
+            new AvailableGiftInfo(6037, "Dance"),
+            new AvailableGiftInfo(0, "Rain"),
+            new AvailableGiftInfo(9999, "VIP"),
             new AvailableGiftInfo(0, "Follow")
         };
 
@@ -201,13 +231,14 @@ namespace SteamRush.Features.UI.PreGameConfig
             {
                 tiktokUsername = "",
                 targetDistanceOptionIndex = 1,
-                targetDistanceMeters = 1000f,
-                finiteTargetDistanceMeters = 1000f,
+                targetDistanceMeters = 1000000f,
+                finiteTargetDistanceMeters = 1000000f,
                 isInfiniteDistance = false,
                 laneChangeEnergyCost = 10,
                 jumpEnergyCost = 20,
                 freeControlDuration = 30f,
                 sprintBuffDuration = 30f,
+                enableKeyboardControl = false,
                 autoSpawnOnFullEnergy = true,
                 maxConcurrentCars = 2,
                 distancePenaltyMeters = 100f,
@@ -224,17 +255,17 @@ namespace SteamRush.Features.UI.PreGameConfig
                 backendDirectory = GetDefaultBackendDirectory(),
                 gifts = new List<PreGameGiftItemConfig>
                 {
-                    new PreGameGiftItemConfig("Team Energy (Likes)", 5487, "Heart", "x20: 20 Team Energy", GiftActionType.Like_Energy, true, 20f),
+                    new PreGameGiftItemConfig("Team Energy (Likes)", 0, "Heart", "x20: 20 Team Energy", GiftActionType.Like_Energy, true, 20f),
                     new PreGameGiftItemConfig("Protection Shield", 5655, "Rose", "Protection Shield", GiftActionType.Blue_Shield, true, 15f),
                     new PreGameGiftItemConfig("Speed Boost (Turbo)", 5269, "TikTok", "Turbo Speed", GiftActionType.Blue_SpeedBoost, true, 30f),
-                    new PreGameGiftItemConfig("Freedom Charm", 5879, "Cap", "Freedom Charm", GiftActionType.Blue_FreeControl, true, 30f),
+                    new PreGameGiftItemConfig("Freedom Charm", 6104, "Cap", "Freedom Charm", GiftActionType.Blue_FreeControl, true, 30f),
                     new PreGameGiftItemConfig("Blue Energy", 5338, "Donut", "Blue Energy", GiftActionType.Blue_EnergyBottle, true, 300f),
                     new PreGameGiftItemConfig("Spawn Hunting Beasts", 5585, "Dumbbell", "Hunting Beasts", GiftActionType.Red_SpawnPickup, true, 60f),
-                    new PreGameGiftItemConfig("Spawn Train", 6001, "Lion", "Train", GiftActionType.Red_SpawnHeavyTruck, true, 60f),
-                    new PreGameGiftItemConfig("Car Storm (Unlimited)", 5661, "Sunglasses", "Car Storm", GiftActionType.Red_UnlimitedCars, true, 60f),
+                    new PreGameGiftItemConfig("Spawn Train", 6223, "Lion", "Train", GiftActionType.Red_SpawnHeavyTruck, true, 60f),
+                    new PreGameGiftItemConfig("Car Storm (Unlimited)", 5509, "Sunglasses", "Car Storm", GiftActionType.Red_UnlimitedCars, true, 60f),
                     new PreGameGiftItemConfig("Red Energy", 5586, "Chili", "Red Energy", GiftActionType.Red_EnergyBottle, true, 500f),
-                    new PreGameGiftItemConfig("Dance", 6037, "Meme Dance", "Dance", GiftActionType.Special_GiftDance, true, 5f),
-                    new PreGameGiftItemConfig("Rain Storm Hazard", 5978, "Rain", "Rain Storm", GiftActionType.Special_RainHazard, true, 60f),
+                    new PreGameGiftItemConfig("Dance", 6037, "Dance", "Dance", GiftActionType.Special_GiftDance, true, 5f),
+                    new PreGameGiftItemConfig("Rain Storm Hazard", 0, "Rain", "Rain Storm", GiftActionType.Special_RainHazard, true, 60f),
                     new PreGameGiftItemConfig("Next Runner", 0, "Follow", "Next Runner", GiftActionType.Follow_Runner, true, 0f)
                 }
             };

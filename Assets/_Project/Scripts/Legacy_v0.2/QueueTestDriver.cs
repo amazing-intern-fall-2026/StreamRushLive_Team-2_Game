@@ -7,9 +7,9 @@ public class QueueTestDriver : MonoBehaviour
 
     private void Start()
     {
-        spawner.EnqueueObstacle(ObstacleType.LowBarrier);
-        spawner.EnqueueObstacle(ObstacleType.HighBarrier);
-        spawner.EnqueueObstacle(ObstacleType.LowBarrier);
-        spawner.EnqueueObstacle(ObstacleType.HighBarrier);
+        spawner.EnqueueObstacle(ObstacleType.Car);
+        spawner.EnqueueObstacle(ObstacleType.Trains);
+        spawner.EnqueueObstacle(ObstacleType.Car);
+        spawner.EnqueueObstacle(ObstacleType.Trains);
     }
 }

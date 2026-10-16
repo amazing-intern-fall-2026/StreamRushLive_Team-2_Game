@@ -55,7 +55,7 @@ namespace SteamRush.Features.UI.Views
 
         public bool IsActive => _isActive;
 
-        private VehicleTier? _displayedPhase;
+        private ObstacleType? _displayedPhase;
 
         private void Awake()
         {
@@ -103,7 +103,7 @@ namespace SteamRush.Features.UI.Views
                 return;
             }
 
-            VehicleTier? currentPhase = obstacleSpawner.ActiveVehiclePhase;
+            ObstacleType? currentPhase = obstacleSpawner.ActiveVehiclePhase;
 
             // No active phase
             if (!currentPhase.HasValue)
@@ -141,7 +141,7 @@ namespace SteamRush.Features.UI.Views
         /// <summary>
         /// Shows timer circle for active vehicle phase (Pickup or Heavy).
         /// </summary>
-        public void ActivateTimer(VehicleTier phase, float duration)
+        public void ActivateTimer(ObstacleType phase, float duration)
         {
             _displayedPhase = phase;
             _totalDuration = duration > 0f ? duration : 60f;
@@ -149,7 +149,7 @@ namespace SteamRush.Features.UI.Views
             _isActive = true;
 
             TimerCircleSkin phaseSkin = HudTheme.Current.GetTimerSkin(
-                phase == VehicleTier.HeavyTruck ? TimerCircleKind.VehicleHeavy : TimerCircleKind.VehiclePickup);
+                phase == ObstacleType.Trains ? TimerCircleKind.VehicleHeavy : TimerCircleKind.VehiclePickup);
 
             if (!gameObject.activeSelf)
             {
@@ -184,7 +184,7 @@ namespace SteamRush.Features.UI.Views
                 timerText.text = $"{Mathf.CeilToInt(_remainingTime)}s";
             }
 
-            TimerCircleVerticalStackManager.RegisterAntiCircle(this, containerRect);
+            TimerCircleVerticalStackManager.RegisterRedCircle(this, containerRect);
         }
 
         /// <summary>
@@ -195,7 +195,7 @@ namespace SteamRush.Features.UI.Views
             _isActive = false;
             _displayedPhase = null;
 
-            TimerCircleVerticalStackManager.UnregisterAntiCircle(this);
+            TimerCircleVerticalStackManager.UnregisterRedCircle(this);
 
             if (containerRect != null)
             {
@@ -212,10 +212,15 @@ namespace SteamRush.Features.UI.Views
 
         private void OnDisable()
         {
-            TimerCircleVerticalStackManager.UnregisterAntiCircle(this);
+            TimerCircleVerticalStackManager.UnregisterRedCircle(this);
         }
 
-        private void UpdatePhaseLabel(VehicleTier phase)
+#pragma warning disable CS0618
+        [System.Obsolete("VehicleTier is deprecated. Use ObstacleType instead.")]
+        public void ActivateTimer(VehicleTier phase, float duration) => ActivateTimer((ObstacleType)phase, duration);
+#pragma warning restore CS0618
+
+        private void UpdatePhaseLabel(ObstacleType phase)
         {
             if (iconText == null)
             {
@@ -224,12 +229,12 @@ namespace SteamRush.Features.UI.Views
 
             switch (phase)
             {
-                case VehicleTier.PickupTruck:
+                case ObstacleType.Animals:
                     iconText.text = "ANIMALS";
                     iconText.color = HudTheme.Current.GetTimerSkin(TimerCircleKind.VehiclePickup).label;
                     break;
 
-                case VehicleTier.HeavyTruck:
+                case ObstacleType.Trains:
                     iconText.text = "TRAIN";
                     iconText.color = HudTheme.Current.GetTimerSkin(TimerCircleKind.VehicleHeavy).label;
                     break;

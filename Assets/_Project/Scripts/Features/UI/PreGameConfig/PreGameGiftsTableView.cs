@@ -15,6 +15,8 @@ namespace SteamRush.Features.UI.PreGameConfig
         [SerializeField] private Transform _giftsContainer;
         [SerializeField] private GameObject _giftRowTemplate;
 
+        private readonly List<GiftRowItemView> _activeRowViews = new List<GiftRowItemView>();
+
         public Transform GiftsContainer => _giftsContainer;
         public GameObject GiftRowTemplate => _giftRowTemplate;
 
@@ -26,6 +28,8 @@ namespace SteamRush.Features.UI.PreGameConfig
 
         public void RebuildGiftsList(List<PreGameGiftItemConfig> gifts)
         {
+            _activeRowViews.Clear();
+
             if (_giftsContainer == null || _giftRowTemplate == null)
             {
                 AutoWireIfNull(transform);
@@ -58,27 +62,46 @@ namespace SteamRush.Features.UI.PreGameConfig
                 return;
             }
 
-            // Cache gift icons from TikTokGiftRouter and AvailableGifts
+            PreGameGiftIconResolver.ClearCache();
+
+            // Register master gift icons from TikTokGiftRouter
             var router = FindFirstObjectByType<TikTokGiftRouter>();
-            var iconMap = new Dictionary<string, Sprite>();
             if (router != null && router.GiftMappings != null)
             {
                 foreach (var m in router.GiftMappings)
                 {
-                    if (m.giftIcon != null && !iconMap.ContainsKey(m.giftName.ToLowerInvariant()))
+                    var canonical = PreGameGiftIconResolver.ResolveGiftIcon(m.giftId, m.giftName);
+                    if (canonical != null)
                     {
-                        iconMap[m.giftName.ToLowerInvariant()] = m.giftIcon;
+                        m.giftIcon = canonical;
+                    }
+                    else if (m.giftIcon != null)
+                    {
+                        PreGameGiftIconResolver.RegisterIcon(m.giftId, m.giftName, m.giftIcon);
                     }
                 }
             }
 
+            var iconMap = new Dictionary<string, Sprite>(StringComparer.OrdinalIgnoreCase);
             foreach (var opt in PreGameConfigData.AvailableGifts)
             {
-                string key = opt.giftName.ToLowerInvariant();
-                if (!iconMap.ContainsKey(key))
+                Sprite s = PreGameGiftIconResolver.ResolveGiftIcon(opt.giftId, opt.giftName);
+                if (s != null)
                 {
-                    Sprite s = PreGameUIBuilder.ResolveGiftIcon(opt.giftId, opt.giftName);
-                    if (s != null) iconMap[key] = s;
+                    iconMap[opt.giftName] = s;
+                    if (opt.giftId > 0) iconMap[opt.giftId.ToString()] = s;
+                }
+            }
+            if (gifts != null)
+            {
+                foreach (var g in gifts)
+                {
+                    Sprite s = PreGameGiftIconResolver.ResolveGiftIcon(g.giftId, g.giftName);
+                    if (s != null)
+                    {
+                        if (!string.IsNullOrEmpty(g.giftName)) iconMap[g.giftName] = s;
+                        if (g.giftId > 0) iconMap[g.giftId.ToString()] = s;
+                    }
                 }
             }
 
@@ -90,14 +113,54 @@ namespace SteamRush.Features.UI.PreGameConfig
                 rowObj.SetActive(true);
 
                 var view = rowObj.GetComponent<GiftRowItemView>() ?? rowObj.AddComponent<GiftRowItemView>();
+                _activeRowViews.Add(view);
+
                 view.Bind(
                     item,
                     index,
                     gifts.Count,
                     iconMap,
                     onMoveUp: (idx) => MoveGift(idx, idx - 1, gifts),
-                    onMoveDown: (idx) => MoveGift(idx, idx + 1, gifts)
+                    onMoveDown: (idx) => MoveGift(idx, idx + 1, gifts),
+                    onGiftChanged: (idx, oldId, oldName, newOpt) => OnRowGiftChanged(idx, oldId, oldName, newOpt, gifts, iconMap)
                 );
+            }
+        }
+
+        private void OnRowGiftChanged(int changedIndex, int oldGiftId, string oldGiftName, AvailableGiftInfo newGift, List<PreGameGiftItemConfig> gifts, Dictionary<string, Sprite> iconMap)
+        {
+            if (gifts == null || changedIndex < 0 || changedIndex >= gifts.Count) return;
+
+            // Check if any other row already has newGift
+            int collisionIndex = -1;
+            for (int i = 0; i < gifts.Count; i++)
+            {
+                if (i != changedIndex)
+                {
+                    bool sameId = newGift.giftId > 0 && gifts[i].giftId > 0 && gifts[i].giftId == newGift.giftId;
+                    bool sameName = string.Equals(gifts[i].giftName, newGift.giftName, StringComparison.OrdinalIgnoreCase);
+                    if (sameId || sameName)
+                    {
+                        collisionIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            // If collision found, swap gifts so no two rows ever have duplicate gifts!
+            if (collisionIndex >= 0 && collisionIndex < _activeRowViews.Count)
+            {
+                var otherItem = gifts[collisionIndex];
+                otherItem.giftId = oldGiftId;
+                otherItem.giftName = oldGiftName;
+
+                var otherView = _activeRowViews[collisionIndex];
+                if (otherView != null)
+                {
+                    otherView.SetGiftOptionWithoutNotify(oldGiftId, oldGiftName, iconMap);
+                }
+
+                Debug.Log($"<color=#38BDF8>[PreGameGiftsTableView] Auto-swapped gifts: Row {changedIndex + 1} ('{newGift.giftName}') <-> Row {collisionIndex + 1} ('{oldGiftName}')</color>");
             }
         }
 

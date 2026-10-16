@@ -4,8 +4,8 @@ using UnityEngine.Rendering.Universal;
 namespace StreamRushLive.Features.VFX
 {
     /// <summary>
-    /// Điều khiển bật/tắt Speed Lines Full Screen Pass Renderer Feature.
-    /// Speed Lines được cấu hình trong PC_Renderer.asset.
+    /// Controls toggle state for Speed Lines Full Screen Pass Renderer Feature in URP.
+    /// Speed Lines are configured in PC_Renderer.asset.
     /// </summary>
     [DisallowMultipleComponent]
     public class SpeedLinesController : MonoBehaviour
@@ -13,11 +13,11 @@ namespace StreamRushLive.Features.VFX
         public static SpeedLinesController Instance { get; private set; }
 
         [Header("URP Renderer")]
-        [Tooltip("PC_Renderer.asset đang chứa Full Screen Pass Renderer Feature.")]
+        [Tooltip("PC_Renderer.asset containing the Full Screen Pass Renderer Feature.")]
         [SerializeField] private ScriptableRendererData _rendererData;
 
         [Header("Speed Lines")]
-        [Tooltip("Material SpeedLines đang được gắn vào Pass Material.")]
+        [Tooltip("SpeedLines material assigned to the Pass Material slot.")]
         [SerializeField] private Material _speedLinesMaterial;
 
         private ScriptableRendererFeature _speedLinesFeature;
@@ -37,7 +37,7 @@ namespace StreamRushLive.Features.VFX
 
             FindSpeedLinesFeature();
 
-            // Speed Lines luôn tắt khi bắt đầu scene.
+            // Speed Lines start disabled when entering scene.
             SetSpeedLines(false);
         }
 
@@ -65,7 +65,7 @@ namespace StreamRushLive.Features.VFX
                 if (_rendererData == null)
                 {
                     Debug.LogError(
-                        "[SpeedLinesController] Chưa gán PC_Renderer vào Renderer Data."
+                        "[SpeedLinesController] PC_Renderer is not assigned in Renderer Data."
                     );
                     return;
                 }
@@ -79,7 +79,7 @@ namespace StreamRushLive.Features.VFX
                 if (_speedLinesMaterial == null)
                 {
                     Debug.LogError(
-                        "[SpeedLinesController] Chưa gán SpeedLines Material."
+                        "[SpeedLinesController] SpeedLines Material is not assigned."
                     );
                     return;
                 }
@@ -97,19 +97,14 @@ namespace StreamRushLive.Features.VFX
                     if (fullScreenFeature.passMaterial == _speedLinesMaterial)
                     {
                         _speedLinesFeature = feature;
-
-                        Debug.Log(
-                            "[SpeedLinesController] Đã tìm thấy Full Screen Pass Renderer Feature của SpeedLines."
-                        );
-
                         return;
                     }
                 }
             }
 
             Debug.LogError(
-                "[SpeedLinesController] Không tìm thấy Full Screen Pass Renderer Feature " +
-                "đang dùng Material SpeedLines trong PC_Renderer."
+                "[SpeedLinesController] Could not find Full Screen Pass Renderer Feature " +
+                "using SpeedLines material in PC_Renderer."
             );
         }
 
@@ -126,10 +121,6 @@ namespace StreamRushLive.Features.VFX
             }
 
             _speedLinesFeature.SetActive(active);
-
-            Debug.Log(
-                $"[SpeedLinesController] Speed Lines = {(active ? "ON" : "OFF")}"
-            );
         }
 
         public void Activate()

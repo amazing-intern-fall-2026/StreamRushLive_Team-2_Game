@@ -45,7 +45,7 @@ namespace SteamRush.Features.StreamIntegration
                 }
                 else
                 {
-                    _spawner.TriggerSpawnCarFromAntiLikes();
+                    _spawner.TriggerSpawnObstacleFromRedEnergy();
                 }
             }
             else

@@ -1,131 +1,134 @@
-# 📖 HƯỚNG DẪN KIẾN TRÚC MÃ NGUỒN (SCRIPTS ARCHITECTURE GUIDE)
+# 📖 SOURCE CODE ARCHITECTURE GUIDE
 
-> **Dự án:** StreamRushLive (Team 2) — TikTok Live Interactive 3-Lane Endless Runner  
-> **Phiên bản chuẩn hóa:** **v0.3** (`Prototype chatland.unity`)  
-> **Nguyên tắc thiết kế cốt lõi:**  
-> 1. **Mô hình Treadmill Runner:** Runner đứng cố định tại trục chạy (X = 9.55m), thế giới (mặt đường, dãy phố, vật cản) cuộn ngược chiều tạo cảm giác di chuyển.  
-> 2. **Không có cơ chế Máu / Game Over (No HP / Endless Relay):** Runner không bao giờ chết vì va chạm; va chạm chỉ gián đoạn vật lý (đẩy lùi Runner, xung cuộn ngược thế giới, trừ cự ly, trừ năng lượng). Buổi livestream là một luồng chạy tiếp sức vô tận liên tục.  
-> 3. **Xa lộ 3 làn xe:** Làn Trái (Z = +3.0m), Làn Giữa (Z = 0.0m), Làn Phải (Z = -3.0m).  
-> 4. **Kiến trúc Modul Decoupled:** Giao tiếp qua `EventBus`, không tham chiếu chéo phụ thuộc chặt chẽ giữa các module.
+> **Project:** StreamRushLive (Team 2) — TikTok Live Interactive 3-Lane Endless Runner  
+> **Standardized Version:** **v0.3** (`Prototype chatland.unity`)  
+> **Core Design Principles:**  
+> 1. **Treadmill Runner Model:** The runner remains fixed at the running axis (X = 9.55m), while the world (road tiles, city streets, obstacles) scrolls backward to create forward motion.  
+> 2. **No Health / Endless Relay:** The runner never permanently dies from collisions. Collisions apply physical disruption (runner pushback, reverse world scroll impulse, distance penalty, energy loss). The livestream is a continuous, endless relay stream.  
+> 3. **3-Lane Highway:** Left Lane (Z = +3.0m), Middle Lane (Z = 0.0m), Right Lane (Z = -3.0m).  
+> 4. **Decoupled Modular Architecture:** Communication between modules is mediated via `EventBus` without rigid cross-references.  
+> 5. **Command Pattern for Gifts:** All TikTok gift interactions are encapsulated within independent `IGiftAction` instances.
 
 ---
 
-## 🗺️ SƠ ĐỒ PHÂN BỔ THƯ MỤC CHÍNH
+## 🗺️ MAIN DIRECTORY STRUCTURE
 
 ```
 Assets/_Project/Scripts/
-├── Core/                     # Hệ thống nền tảng dùng chung (EventBus, Năng lượng, Vận tốc thế giới)
+├── Core/                     # Shared foundation systems (EventBus, Energy, World Speed, Gift Manager)
 ├── Features/
-│   ├── Runner/               # Điều khiển nhân vật, vật lý thảm chạy, va chạm, console chat
-│   ├── Spawning/             # Sinh vật cản xe tự lái, vật phẩm hỗ trợ Fan, Base Classes
-│   ├── StreamIntegration/   # Tích hợp livestream (Phe Fan vs Anti, Lọc quyền Follower)
-│   ├── Track/               # Theo dõi cự ly, trôi 16 Tiles phố, vật thể thế giới
-│   └── UI/                  # Quản trị HUD, Thanh tiến trình, Bảng tên 3D, Popup, Toast
-└── Legacy_v0.2/             # [LƯU TRỮ NỘI BỘ] Các script cũ thuộc cơ chế v0.2 đã bãi bỏ
+│   ├── Gifts/                # Stream Gift Architecture: IGiftAction, Registry, and Concrete Actions
+│   ├── Runner/               # Character control, treadmill physics, collisions, roadside handover
+│   ├── Spawning/             # Dynamic obstacle spawning (DynamicObstacle), Base Classes (ObstacleBase)
+│   ├── StreamIntegration/   # Livestream integration (Blue vs Red teams, TikTokGiftRouter, Socket Client)
+│   ├── Track/               # Track distance progress, 16 city street tiles looper, environment items
+│   └── UI/                  # HUD Management, Progress Bar, 3D Nameplate, Popups, Toasts, PreGame Config
+├── Demo/                     # [MOCK & TESTING] Live simulation bots, chat console test, debug panel
+├── Editor/                   # Unity Editor tools and extensions
+└── Legacy_v0.2/             # [ARCHIVED] Deprecated legacy scripts from v0.2
 ```
 
 ---
 
-## 1. THƯ MỤC `Core/` — HỆ THỐNG NỀN TẢNG DÙNG CHUNG
+## 1. `Core/` — SHARED FOUNDATION SYSTEMS
 
-| Tên Script | Vai trò & Trách nhiệm chính |
+| Script Name | Role & Core Responsibilities |
 | :--- | :--- |
-| **`EventBus.cs`** | **Hệ thống Publish / Subscribe tĩnh Decoupled.** Cho phép các module giao tiếp mà không cần tham chiếu trực tiếp nhau. Ví dụ: Khi phe Anti đủ like, `FactionTugOfWarManager` phát `RequestCarSpawnEvent`, `ChatRunnerCarSpawnAdapter` lắng nghe và yêu cầu Spawner thả xe. |
-| **`EnergySystem.cs`** | **Hệ thống quản lý Năng lượng của Runner.** Năng lượng không tự tiêu hao theo thời gian và không trừ khi bứt tốc (Sprint là miễn phí). Thay vào đó, mỗi khi Runner đổi làn sẽ bị trừ năng lượng (mặc định -10 điểm / 1%) và bị phạt khi va chạm (-25%). Phát sự kiện `OnEnergyNormalizedChanged` cập nhật thanh năng lượng trên HUD. |
-| **`WorldSpeedManager.cs`** | **Bộ điều phối vận tốc của toàn bộ thế giới cuộn.** Điều chỉnh tốc độ cơ bản (8.0 m/s), bứt tốc Sprint (18.0 m/s), hãm trượt Slide, và hồi phục gia tốc mượt mà. Đặc biệt sở hữu hàm `TriggerReverseWorldKnockback(peakSpeed: -8.5m/s)` tạo xung lực cuộn ngược toàn bộ phố xá khi có va chạm mạnh. |
+| **`EventBus.cs`** | **Decoupled Static Publish / Subscribe System.** Enables cross-module event messaging without direct component coupling (e.g., when Red Team reaches threshold energy, `FactionTugOfWarManager` publishes `RequestCarSpawnEvent`, which `ChatRunnerCarSpawnAdapter` receives to request obstacle spawning). |
+| **`RunnerEnergySystem.cs`** | **Runner Stamina / Energy System (Team Blue).** Energy does not passively drain over time or during Sprint boosts. Instead, changing lanes consumes stamina (default -10 energy) and vehicle collisions inflict an energy penalty (-25%). Publishes `OnEnergyNormalizedChanged` for HUD updates. (Includes backwards-compatible alias `EnergySystem`). |
+| **`WorldSpeedManager.cs`** | **World Scroll Speed Controller.** Governs base scroll speed (8.0 m/s), Sprint boost (18.0 m/s), slide deceleration, and smooth acceleration recovery. Provides `TriggerReverseWorldKnockback(peakSpeed: -8.5m/s)` to apply an instant backward recoil pulse to the environment upon severe collisions. |
+| **`GiftManager.cs`** | **Central Gift Configuration Facade.** Maintains and provides parameters for active gift durations (Shield 15s, Sprint 30s, Unlimited Cars 60s), energy costs, and vehicle impact properties. |
 
 ---
 
-## 2. THƯ MỤC `Features/Runner/` — ĐIỀU KHIỂN & VẬT LÝ NHÂN VẬT
+## 2. `Features/Gifts/` — GIFT ARCHITECTURE (IGIFTACTION PATTERN)
 
-| Tên Script | Vai trò & Trách nhiệm chính |
+| Script Name | Role & Core Responsibilities |
 | :--- | :--- |
-| **`ChatLaneRunnerController.cs`** | **Bộ điều khiển chuyển 3 làn đường qua lệnh Chat.** Quản lý vị trí Z của Runner theo 3 làn (+3m, 0m, -3m). Nhận lệnh chat (`left`, `right`, `jump`, `slide`, `fast`, `slow`), phối hợp tiêu hao năng lượng và thực hiện hiệu ứng giật lùi Runner (`ApplyKnockback`) khi có va chạm xe. |
-| **`RunnerController.cs`** | **"Bộ não" vật lý của Runner trên thảm chạy Treadmill.** Khóa cứng trục X = 9.55m, chỉ cho phép nhảy/rơi tự do trên trục Y. Tự áp trọng lực thủ công (lên 9.6 m/s², rơi 18.0 m/s²) để đỉnh nhảy đạt đúng 2.2m theo chuẩn GDD. Tự động tính toán **Forgiving Hitbox** (co nhỏ Collider 15% so với Mesh thật lúc Awake) để tránh va chạm oan. |
-| **`RunnerCollisionHandler.cs`** | **Trung tâm tiếp nhận & giải quyết va chạm.** Khi chạm vật cản: nếu có Khiên (`Shield`) -> hủy vật cản, bảo toàn cự ly. Nếu không có Khiên -> kích hoạt đồng thời: trừ cự ly tiến trình (-15m), trừ năng lượng (-25%), kích hoạt cuộn ngược thế giới (`Reverse World Knockback`), và bật 2.0s nhấp nháy bất tử (`i-Frames`). |
-| **`RunnerInputHandler.cs`** | **Bộ đọc phím bàn phím cục bộ (Dành cho Developer kiểm thử).** Hỗ trợ các phím cứng: Phím Space/W/Mũi tên lên để Nhảy; S/Ctrl/Mũi tên xuống để Cúi/Trượt; Shift/E để Sprint. Tự động vô hiệu hóa phím bấm khi con trỏ chuột đang nằm trong ô nhập text (`TMP_InputField`). |
-| **`MockChatConsole.cs`** | **Bảng điều khiển giả lập Livestream trong Game.** Cung cấp khung chat UI cho phép gõ trực tiếp lệnh của khán giả, kết hợp các phím tắt nhanh: `F1` (Tặng khiên), `F2` (Tặng bình năng lượng), `F3` (Thả xe cản đường Anti). Giúp test toàn bộ tương tác người xem mà không cần máy chủ TikTok thật. |
-| **`RunnerItemEffects.cs`** | **Quản lý trạng thái hiệu ứng Buff trên Runner.** Theo dõi thời gian duy trì của Khiên bảo vệ (`Shield`), hiệu ứng Nhảy cao (`High Jump`), và tiêu thụ khiên khi có va chạm. |
-| **`ChatRunnerQueueManager.cs`** | **Quản lý Hàng đợi Người xem tiếp sức (Relay Queue).** Tiếp nhận người xem bấm Follow vào danh sách chờ. Khi Runner chạy đủ chặng **100 mét**, hệ thống chọn người tiếp theo trong hàng đợi lên làm Runner chính, cập nhật tên và avatar mới mà không làm ngắt quãng trận đấu. |
+| **`IGiftAction.cs`** | **Standard Interface Contract** for all gift actions and `GiftContext` DTO (containing sender information, faction, coin value, and necessary runtime service references). |
+| **`GiftActionRegistry.cs`** | **Central Lookup Registry.** Maps `GiftActionType` to concrete `IGiftAction` classes, enabling new gifts to be introduced without modifying router logic. |
+| **`Actions/BlueGiftActions.cs`** | Gift actions for Team Blue: `ShieldGiftAction` (Protective Shield), `SpeedBoostGiftAction` (Turbo Sprint), `FreeControlGiftAction` (Free Control Buff), `BlueEnergyBottleGiftAction` (+300 Blue Energy). |
+| **`Actions/RedGiftActions.cs`** | Gift actions for Team Red: `SpawnPickupTruckGiftAction` (Tier 2 Hunting Beast phase), `SpawnHeavyTruckGiftAction` (Tier 3 Train phase), `UnlimitedCarsGiftAction` (Unlimited Car Storm 60s), `RedEnergyBottleGiftAction` (+500 Red Energy). |
+| **`Actions/SpecialGiftActions.cs`** | Special actions: `GiftDanceAction` (Celebration dance), `RainHazardGiftAction` (Rain storm & slippery track), `VipRelayTicketGiftAction` (VIP relay queue pass), `FollowRunnerGiftAction` (Follower becomes next runner), `LikeEnergyGiftAction` (Like points recharge). |
 
 ---
 
-## 3. THƯ MỤC `Features/Spawning/` — SINH VẬT CẢN & VẬT PHẨM
+## 3. `Features/Runner/` — RUNNER CONTROL & LOCOMOTION PHYSICS
 
-### 3.1. Các Lớp Cơ Sở Đa Hình (Base Classes & Enums) — Tuyệt đối không xóa!
-* **`ObstacleBase.cs` [ABSTRACT CLASS]:** Lớp cha trừu tượng của toàn bộ chướng ngại vật trong game. Quy định sẵn phần trăm trừ năng lượng (`EnergyPenaltyPercent`), cự ly bị trừ (`DistancePenaltyMeters`), thời gian đóng băng khung hình (`HitStopDuration`) và cờ chống va chạm trùng lặp (`HasCollided`).
-* **`ItemBase.cs` [ABSTRACT CLASS]:** Lớp cha trừu tượng của các vật phẩm có thể nhặt. Định nghĩa hàm thu thập `Collect(GameObject runner)`.
-* **`SpawnableObject.cs` [BASE CLASS]:** Lớp nền tảng cho mọi đối tượng được Spawner sinh ra trên đường ray.
-* **`ObstacleType.cs`, `ItemType.cs`, `SpawnType.cs` [ENUMS]:** Các bảng định nghĩa danh mục chủng loại vật cản và vật phẩm.
-
-### 3.2. Các Script Vật Cản & Vật Phẩm Thực Thi
-| Tên Script | Vai trò & Trách nhiệm chính |
+| Script Name | Role & Core Responsibilities |
 | :--- | :--- |
-| **`SingleObstacleSpawner.cs`** | **Spawner thông minh 3 làn xe.** Sinh xe cản đường cho phe Anti và vật phẩm cho phe Fan trên các làn Z = +3, 0, -3. Có dải **Laser đỏ nhấp nháy cảnh báo trước 3.5 giây**. Giới hạn tối đa 2 vật cản cùng lúc để luôn đảm bảo có ít nhất 1 làn trống cho Runner né. |
-| **`DrivingObstacleCar.cs`** | **Xe ô tô đô thị tự lái ngược chiều.** Sở hữu vận tốc chạy tự thân (6.5 m/s) cộng dồn với tốc độ thế giới thành 14.5 m/s lao về phía Runner. Tự động xoay 4 bánh xe theo mặt đường và rung lắc nổ máy nhẹ. Sau va chạm, xe bị thế giới kéo giật lùi rồi tự hủy. |
-| **`ShieldItem.cs`** | **Vật phẩm Khiên bảo hộ.** Do khán giả phe Fan donate thả xuống mặt đường. Khi Runner nhặt được, nhận lớp khiên bảo vệ chặn 1 lần va chạm xe ô tô. |
-| **`BuffItem.cs`** | **Vật phẩm Bình Năng Lượng.** Do khán giả phe Fan thả xuống; hồi phục ngay **+20% Năng Lượng** cho Runner. |
+| **`ChatLaneRunnerController.cs`** | **Viewer Chat Command Dispatcher.** Parses chat commands (`1`, `2`, `3`, `left`, `right`, `jump`), validates action energy requirements (`RunnerEnergySystem` or `FactionTugOfWarManager`), handles Free Control and Sprint modes, and delegates locomotion execution to `RunnerMovement`. |
+| **`RunnerMovement.cs`**<br>*(formerly `RunnerController`)* | **Single Source of Truth for Runner Physics & Locomotion.** Handles lane shifting across 3 lanes (`MoveToLane`, `ShiftLane` on Z: +3m, 0m, -3m), jump/fall on the Y axis, knockback push on X (`ApplyKnockback`), and **Forgiving Hitbox** logic (shrinks collider ~15% relative to visible mesh at Awake). Includes backwards-compatible alias `RunnerController`. |
+| **`RunnerCollisionHandler.cs`** | **Collision Resolution Center.** When hitting an obstacle: if shielded, deflects/destroys the obstacle while maintaining distance. If unshielded, simultaneously triggers distance penalty, energy loss (-25%), reverse world knockback, and 2.0s invulnerability frames (i-Frames) with visual blinking. |
+| **`RunnerInputHandler.cs`** | **Local Keyboard Input Reader (Streamer / Developer Manual Controls).** Supports lane shifting via A/D, Left/Right arrow keys, or 1/2/3 keys; Space key to Jump. Automatically suppresses input when any input field (`TMP_InputField`) is focused. |
+| **`RoadsideHandoverTrigger.cs`** | **Roadside Relay Handover Trigger.** A 12m trigger spanning all 3 lanes; when a runner runs out of stamina and passes the roadside proxy, it triggers `ChatRunnerQueueManager.NotifyRunnerReachedProxy()` to seamlessly transfer the runner baton and swap avatar/nameplate. |
+| **`RunnerGiftEffects.cs`** | **Runner Buff State Manager.** Manages duration for active Shield buff, High Jump buff, and consumes shield upon obstacle impact. |
+| **`GiftDanceController.cs`** | **Celebration Dance Animator Controller.** Blends the `Dance` animator layer weight when viewers send special gifts or when the runner crosses the finish line. |
 
 ---
 
-## 4. THƯ MỤC `Features/StreamIntegration/` — TÍCH HỢP LIVESTREAM & PHE PHÁI
+## 4. `Features/Spawning/` — OBSTACLE & ITEM SPAWNING
 
-| Tên Script | Vai trò & Trách nhiệm chính |
+### 4.1. Polymorphic Base Classes & Enums
+* **`ObstacleBase.cs` [ABSTRACT CLASS]:** Base class for all obstacles. Defines energy loss percentage (`EnergyPenaltyPercent`), distance penalty (`DistancePenaltyMeters`), hitstop freeze duration (`HitStopDuration`), collision deduplication flag (`HasCollided`), and shield deflection logic (`_isShieldDeflected`).
+* **`ItemBase.cs` [ABSTRACT CLASS]:** Base class for collectible items. Defines `Collect(GameObject runner)`.
+* **`ObstacleType.cs` [ENUM]:** Core dynamic obstacle types for Team Red: `Car` (Sedan - Tier 1), `Animals` (Hunting Beast - Tier 2), `Trains` (Train / Heavy Truck - Tier 3). (Includes backwards-compatible alias `VehicleTier`).
+
+### 4.2. Concrete Spawners & Obstacles
+| Script Name | Role & Core Responsibilities |
 | :--- | :--- |
-| **`FactionTugOfWarManager.cs`** | **Quản lý Đại chiến Kéo co (Fan vs Anti).** Phân chia khán giả theo cú pháp chat `#fan` (hoặc `#blue`) và `#anti` (hoặc `#red`). Đếm số lượng like và quà tặng. Khi phe Anti tích lũy đủ 500 tim, tự động kích hoạt sự kiện thả 1 xe ô tô cản đường Runner. |
-| **`FollowerGate.cs`** | **Cổng kiểm soát quyền hạn Follower.** Đảm bảo chỉ những tài khoản đã bấm Follow kênh livestream mới có quyền can thiệp vào game (gửi lệnh chuyển làn, bứt tốc, hoặc xếp hàng chờ chạy tiếp sức). |
-| **`ChatRunnerCarSpawnAdapter.cs`** | **Bộ chuyển đổi sự kiện thả xe.** Lắng nghe `RequestCarSpawnEvent` từ `EventBus` khi phe Anti đủ điểm, rồi gọi trực tiếp `SingleObstacleSpawner.TriggerSpawnCarFromAntiLikes()` để sinh xe trên đường. |
-| **`ChatCommandSanitizer.cs`** | **Bộ chuẩn hóa chuỗi lệnh chat.** Tự động chuyển ký tự về chữ thường, cắt bỏ khoảng trắng thừa và dấu câu để bộ phân tích lệnh (`MockChatConsole` hoặc Stream Parser) nhận diện chính xác. |
+| **`SingleObstacleSpawner.cs`** | **Intelligent 3-Lane Spawner.** Spawns obstacles for Team Red (`Car`, `Animals`, `Trains`) across lanes Z = +3, 0, -3. Displays a **3.5s flashing red laser warning** prior to arrival. Enforces active obstacle caps to guarantee at least one clear evasion lane. |
+| **`DynamicObstacle.cs`**<br>*(inherits `ObstacleBase`)* | **Autonomous Head-On Moving Obstacles (Car, Animals, Trains).** Features standalone forward velocity compounded with world scroll speed, plays vehicle horns, and deflects away when striking a shielded runner. |
+| **`BuffItem.cs`** | **Energy Buff Item.** Dropped by viewers; restores **+20% Stamina** to the runner upon collection. |
 
 ---
 
-## 5. THƯ MỤC `Features/Track/` — MÔI TRƯỜNG & THẾ GIỚI CUỘN
+## 5. `Features/StreamIntegration/` — LIVESTREAM & FACTION LOGIC
 
-| Tên Script | Vai trò & Trách nhiệm chính |
+| Script Name | Role & Core Responsibilities |
 | :--- | :--- |
-| **`TrackProgressTracker.cs`** | **Bộ đếm quãng đường và tiến trình chặng.** Đo đạc chính xác cự ly chạy thực tế, trừ cự ly khi va chạm (-15m), cập nhật tỷ lệ phần trăm chặng 100m lên thanh tiến trình HUD, và kích hoạt sự kiện hoàn thành chặng để chuyển giao gậy. |
-| **`TrackTileLooper.cs`** | **Hệ thống trôi tuần hoàn 16 Tiles đại lộ PolygonCity.** Đồng bộ di chuyển 16 mảnh đường ray mang trọn vẹn kiến trúc phố xá, tòa nhà, vỉa hè và cây xanh; tự động dịch chuyển tile đã đi qua về phía trước chân trời, tạo cảm giác đại lộ dài vô tận với 0% giật cục (No Pop-in). |
-| **`MovingWorldObject.cs`** | **Script di chuyển theo tốc độ thế giới.** Gắn trên các vật thể sinh ra trên đường (vật cản, item, xe cộ), đảm bảo vật thể trôi đồng tốc độ với mặt đường và tự hủy khi trôi ra sau lưng Runner. |
+| **`TikTokGiftRouter.cs`** | **Standardized TikTok Gift Router.** Packages incoming gifts into `GiftContext` and invokes `GiftActionRegistry` to execute effects while triggering UI card bounce/highlighting. |
+| **`FactionTugOfWarManager.cs`** | **Blue vs Red Tug-of-War Coordinator.** Coordinates balance between the two `FactionEnergyPool` instances (Blue vs Red). Faction assignment is driven by chat commands (`blue`/`red`) or gift donations. When Red Pool reaches 100%, automatically spawns an incoming vehicle. |
+| **`FactionEnergyPool.cs`** | **Shared Energy Reservoir.** Reusable component for both Team Blue (Runner support) and Team Red (Obstacle summons). Stores, increments, decrements, and normalizes faction percentage points. |
+| **`FollowerGate.cs`** | **Follower Permission Gatekeeper.** Ensures only users who have followed the livestream channel can issue gameplay commands (lane changes, queueing for relay runs). |
+| **`ChatRunnerCarSpawnAdapter.cs`** | **Car Spawn Event Adapter.** Listens for `RequestCarSpawnEvent` from `EventBus` when Team Red accumulates enough energy, invoking `SingleObstacleSpawner.TriggerSpawnObstacleFromRedEnergy()` directly. |
+| **`ChatCommandSanitizer.cs`** | **Chat Command Sanitizer.** Normalizes input strings by converting to lowercase and stripping punctuation/whitespace for accurate parsing. |
 
 ---
 
-## 6. THƯ MỤC `Features/UI/` — GIAO DIỆN NGƯỜI DÙNG (HUD & VIEWS)
+## 6. `Demo/` — SIMULATION & DEBUG TESTING (ISOLATED)
 
-| Tên Script | Vai trò & Trách nhiệm chính |
+| Script Name | Role & Core Responsibilities |
 | :--- | :--- |
-| **`HUDManager.cs`** | **Mẫu thiết kế Facade điều phối HUD.** Cung cấp các hàm public tập trung (`UpdateProgress`, `UpdateEnergy`, `UpdateRunnerInfo`, `ShowStatusPopup`) để các module khác cập nhật thông tin hiển thị mà không cần can thiệp sâu vào từng View UI con. |
-| **`FactionTugOfWarUI.cs`** | **Thanh hiển thị tỷ số Kéo co Fan vs Anti.** Cập nhật đồ họa thanh cân bằng lực lượng hai phe, hiển thị số lượt Like và số người tham gia của mỗi bên theo thời gian thực. |
-| **`ChatRunnerUIBinder.cs`** | **Cầu nối dữ liệu giữa Logic Stream và Giao diện UI.** Lắng nghe các thay đổi từ `FactionTugOfWarManager` và `ChatRunnerQueueManager` để cập nhật trực tiếp lên màn hình. |
-| **`ChatRunnerStatusUI.cs`** | **Bảng trạng thái phụ trợ của Runner.** Hiển thị vận tốc thế giới hiện tại, làn chạy hiện tại và chế độ đang kích hoạt (`Normal`, `Sprint`, `Slide`). |
-| **`Views/ProgressBarController.cs`** | Quản lý thanh tiến trình chạy chặng 100m (0 -> 100%). |
-| **`Views/RunnerNameplateController.cs`** | **Bảng tên 3D Billboard trên đầu Runner.** Tự động xoay mặt về phía `Camera.main`, hiển thị tên và avatar của khán giả đang điều khiển chặng đua. |
-| **`Views/EnergyBarController.cs`** | Quản lý thanh hiển thị năng lượng tiêu hao/bứt tốc của Runner. |
-| **`Views/StatusPopupSpawner.cs` & `StatusPopupController.cs`** | Sinh và quản lý hoạt ảnh chữ nhảy lơ lửng khi nhận hiệu ứng (ví dụ: *"Khiên Bảo Vệ"*, *"Năng lượng +20%"*, *"Va chạm xe (-15m)"*). |
-| **`Views/GiftToastController.cs` & `GiftToastQueue.cs`** | Quản lý hàng đợi thông báo Toast vinh danh người xem khi gửi quà tặng hoặc donate. |
+| **`LiveSessionDemoRunner.cs`** | Automated bot simulating an active livestream session (auto-likes, lane changes, Blue/Red gifts) for standalone testing without requiring a live TikTok broadcast. |
+| **`MockChatConsole.cs`** | Chat UI console allowing developers to input viewer commands directly, alongside debug hotkeys: `F1` (Shield), `F2` (Sprint), `F3` (Red Car Spawn). |
+| **`MockDebugUIPanel.cs`** | On-screen debug panel providing quick action buttons: Add Follower, Inject 100 Energy, Spawn Vehicles. |
+| **`MockRunnerActionHandler.cs`** | Handles simulated actions for test runners and faction energy adjustments. |
 
 ---
 
-## 7. QUY TRÌNH LUỒNG DỮ LIỆU CHÍNH (GAMEPLAY PIPELINE)
+## 7. GAMEPLAY DATA PIPELINE
 
 ```mermaid
 flowchart TD
-    Viewer["Khán giả tương tác qua Chat / Like"] --> Gate["FollowerGate: Kiểm tra quyền Follow"]
-    Gate --> TugOfWar["FactionTugOfWarManager: Cân bằng phe Fan vs Anti"]
-    Gate --> Queue["ChatRunnerQueueManager: Hàng đợi 100m"]
+    Viewer["Viewer Interaction: Chat / Like / Gift"] --> Gate["FollowerGate: Validate Follow Status"]
+    Gate --> TugOfWar["FactionTugOfWarManager: Balance Blue vs Red Teams"]
+    Gate --> GiftRouter["TikTokGiftRouter -> GiftActionRegistry / IGiftAction"]
+    Gate --> Queue["ChatRunnerQueueManager: Relay Queue"]
     
-    TugOfWar -- "Anti đủ like" --> CarSpawn["SingleObstacleSpawner: Cảnh báo Laser 3.5s -> Thả Xe"]
-    TugOfWar -- "Fan donate" --> ItemSpawn["SingleObstacleSpawner: Thả Khiên / Năng Lượng"]
+    GiftRouter -- "Red Team Gifts" --> CarSpawn["SingleObstacleSpawner: 3.5s Laser Warning -> Vehicle Spawn"]
+    GiftRouter -- "Blue Team Gifts" --> BuffAction["Shield / Turbo Sprint / Energy Boost"]
     
-    CarSpawn --> Car["DrivingObstacleCar: Lao tới 14.5 m/s"]
-    Car -. "Va chạm" .-> Collision["RunnerCollisionHandler"]
+    CarSpawn --> Car["DynamicObstacle (Car, Animals, Trains)"]
+    Car -. "Collision" .-> Collision["RunnerCollisionHandler (Shield: Deflect; No Shield: Penalty)"]
     
-    Collision --> Speed["WorldSpeedManager: Reverse Knockback -8.5 m/s"]
-    Collision --> Tracker["TrackProgressTracker: Phạt trừ 15m cự ly"]
-    Collision --> Energy["EnergySystem: Phạt trừ 25% Năng Lượng"]
+    Collision --> Speed["WorldSpeedManager: Reverse Recoil Pulse"]
+    Collision --> Tracker["TrackProgressTracker: Deduct Distance"]
+    Collision --> Energy["RunnerEnergySystem: Deduct 25% Energy"]
     
-    Tracker -- "Đạt mốc 100m" --> Handover["ChatRunnerQueueManager: Bàn giao Follower mới lên làm Runner"]
-    Handover --> Nameplate["RunnerNameplateController: Đổi tên & Avatar trên đầu Runner"]
+    Energy -- "Energy Reaches 0" --> Handover["RoadsideHandoverTrigger: 12m Handover Relay Zone"]
+    Handover --> Nameplate["RunnerNameplateController: Swap Avatar & Username"]
 ```
 
 ---
-*Tài liệu này được biên soạn chuẩn hóa cho kiến trúc mã nguồn v0.3. Khi thêm script mới vào dự án, hãy đặt vào đúng thư mục chuyên trách tương ứng và cập nhật bảng giải thích tại đây.*
+*This architecture guide standardizes the codebase for v0.3. When creating new scripts, place them in their respective feature folders and document their core responsibilities accordingly.*

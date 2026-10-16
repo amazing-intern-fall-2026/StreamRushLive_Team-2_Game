@@ -1,3 +1,4 @@
+#pragma warning disable CS0618
 using UnityEngine;
 using UnityEngine.InputSystem;
 using SteamRush.Relay;
@@ -7,7 +8,6 @@ namespace StreamRushLive.Features.Spawning
     /// <summary>
     /// Handles test keys during development (supports New Input System and Direct Keyboard).
     /// Uses spawn position configurations from Spawner.
-    ///
     /// 1 - Spawn random obstacle (Low Barrier / High Barrier)
     /// 2 - Spawn random item (Energy Buff / Shield / High Jump / Hyper Dash)
     /// 3 - Add Energy (+20)
@@ -17,7 +17,7 @@ namespace StreamRushLive.Features.Spawning
     {
         [Header("References")]
         [SerializeField] private Spawner spawner;
-        [SerializeField] private EnergySystem energySystem;
+        [SerializeField] private RunnerEnergySystem energySystem;
         [SerializeField] private RelayQueueManager relayQueue;
 
         [Header("Test Settings")]
@@ -28,7 +28,7 @@ namespace StreamRushLive.Features.Spawning
         private void Start()
         {
             if (spawner == null) spawner = FindFirstObjectByType<Spawner>();
-            if (energySystem == null) energySystem = FindFirstObjectByType<EnergySystem>();
+            if (energySystem == null) energySystem = FindFirstObjectByType<RunnerEnergySystem>();
             if (relayQueue == null) relayQueue = FindFirstObjectByType<RelayQueueManager>();
         }
 

@@ -148,9 +148,6 @@ MonoBehaviour:
   timerText: {fileID: 277140862218268595}
   iconText: {fileID: 5776667482344038490}
   canvasGroup: {fileID: 8205375606027025392}
-  activeRingColor: {r: 1, g: 0.2, b: 0.1, a: 1}
-  warningRingColor: {r: 1, g: 0.8, b: 0.1, a: 1}
-  bgColor: {r: 0.08, g: 0.04, b: 0.06, a: 0.92}
 --- !u!1 &2277038684094953574
 GameObject:
   m_ObjectHideFlags: 0
@@ -293,8 +290,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 60s
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 30596ec5b5b2aef44a2f0b6bbac20068, type: 2}
-  m_sharedMaterial: {fileID: 4762602659135997272, guid: 30596ec5b5b2aef44a2f0b6bbac20068, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 2678d827136e6894098bff703c832ce2, type: 2}
+  m_sharedMaterial: {fileID: 7664488147931049520, guid: 2678d827136e6894098bff703c832ce2, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -430,8 +427,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: "B\xC3O XE"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 30596ec5b5b2aef44a2f0b6bbac20068, type: 2}
-  m_sharedMaterial: {fileID: 4762602659135997272, guid: 30596ec5b5b2aef44a2f0b6bbac20068, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 2678d827136e6894098bff703c832ce2, type: 2}
+  m_sharedMaterial: {fileID: 7664488147931049520, guid: 2678d827136e6894098bff703c832ce2, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -455,8 +452,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 13
-  m_fontSizeBase: 13
+  m_fontSize: 16
+  m_fontSizeBase: 16
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18

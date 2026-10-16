@@ -51,7 +51,8 @@ namespace SteamRush.Features.UI.PreGameConfig
             int totalCount,
             Dictionary<string, Sprite> iconMap,
             Action<int> onMoveUp,
-            Action<int> onMoveDown)
+            Action<int> onMoveDown,
+            Action<int, int, string, AvailableGiftInfo> onGiftChanged = null)
         {
             _item = item;
             AutoWireIfNull();
@@ -59,21 +60,25 @@ namespace SteamRush.Features.UI.PreGameConfig
             // 1. Feature Name
             if (_txtFeatureName != null)
             {
-                string fName = string.IsNullOrEmpty(item.featureName) ? PreGameGiftItemConfig.GetDefaultFeatureName(item.action) : item.featureName;
+                string fName = SteamRush.Core.Localization.LocalizationManager.Instance != null
+                    ? SteamRush.Core.Localization.LocalizationManager.Instance.GetFeatureName(item.action)
+                    : (string.IsNullOrEmpty(item.featureName) ? PreGameGiftItemConfig.GetDefaultFeatureName(item.action) : item.featureName);
+
                 if (fName == "+300 Blue Energy" || fName == "300 Blue Energy" || (item.action == GiftActionType.Blue_EnergyBottle && fName.Contains("300")))
                 {
-                    fName = "Blue Energy";
+                    fName = SteamRush.Core.Localization.LocalizationManager.Instance != null ? SteamRush.Core.Localization.LocalizationManager.Instance.Get("FEAT_BLUEENERGY") : "Blue Energy";
                 }
                 else if (fName == "+Red Energy" || (item.action == GiftActionType.Red_EnergyBottle && fName.StartsWith("+")))
                 {
-                    fName = "Red Energy";
+                    fName = SteamRush.Core.Localization.LocalizationManager.Instance != null ? SteamRush.Core.Localization.LocalizationManager.Instance.Get("FEAT_REDENERGY") : "Red Energy";
                 }
-                else if (fName.Equals("Meme Dance", StringComparison.OrdinalIgnoreCase) || (item.action == GiftActionType.Special_GiftDance && fName.Contains("Meme")))
-                {
-                    fName = "Dance";
-                }
-                item.featureName = fName;
+
                 _txtFeatureName.text = fName;
+            }
+
+            if (item.giftName == "Meme Dance" || (item.action == GiftActionType.Special_GiftDance && item.giftName.Contains("Meme")))
+            {
+                item.giftName = "Dance";
             }
 
             // 2. Icon & Visual alpha
@@ -106,12 +111,27 @@ namespace SteamRush.Features.UI.PreGameConfig
                 {
                     var opt = PreGameConfigData.AvailableGifts[i];
                     Sprite icon = null;
-                    if (iconMap != null && iconMap.TryGetValue(opt.giftName.ToLowerInvariant(), out var sp))
+                    if (iconMap != null && iconMap.TryGetValue(opt.giftName, out var sp))
                     {
                         icon = sp;
                     }
+                    if (icon == null)
+                    {
+                        icon = PreGameGiftIconResolver.ResolveGiftIcon(opt.giftId, opt.giftName);
+                    }
                     options.Add(new TMP_Dropdown.OptionData(opt.giftName) { image = icon });
-                    if (opt.giftId == item.giftId || string.Equals(opt.giftName, item.giftName, StringComparison.OrdinalIgnoreCase))
+
+                    bool isMatch = false;
+                    if (opt.giftId > 0 && item.giftId > 0 && opt.giftId == item.giftId)
+                    {
+                        isMatch = true;
+                    }
+                    else if (string.Equals(opt.giftName, item.giftName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        isMatch = true;
+                    }
+
+                    if (isMatch)
                     {
                         selectedIndex = i;
                     }
@@ -126,9 +146,14 @@ namespace SteamRush.Features.UI.PreGameConfig
                     if (newIdx >= 0 && newIdx < PreGameConfigData.AvailableGifts.Length)
                     {
                         var selectedGift = PreGameConfigData.AvailableGifts[newIdx];
+                        int prevId = item.giftId;
+                        string prevName = item.giftName;
+
                         item.giftId = selectedGift.giftId;
                         item.giftName = selectedGift.giftName;
                         UpdateIcon(selectedGift.giftName, selectedGift.giftId, iconMap);
+
+                        onGiftChanged?.Invoke(index, prevId, prevName, selectedGift);
                     }
                 });
             }
@@ -168,6 +193,10 @@ namespace SteamRush.Features.UI.PreGameConfig
             // 6. Description Input
             if (_inputDesc != null)
             {
+                if (string.IsNullOrEmpty(item.description) && SteamRush.Core.Localization.LocalizationManager.Instance != null)
+                {
+                    item.description = SteamRush.Core.Localization.LocalizationManager.Instance.GetDefaultDescription(item.action);
+                }
                 _inputDesc.text = item.description;
                 _inputDesc.onValueChanged.RemoveAllListeners();
                 _inputDesc.onValueChanged.AddListener(val => item.description = val);
@@ -193,12 +222,19 @@ namespace SteamRush.Features.UI.PreGameConfig
         {
             if (_imgIcon == null) return;
 
-            Sprite resolved = null;
-            string key = (giftName ?? "").ToLowerInvariant().Trim();
+            Sprite resolved = PreGameGiftIconResolver.ResolveGiftIcon(giftId, giftName);
+            string key = (giftName ?? "").Trim();
 
-            if (iconMap != null && !string.IsNullOrEmpty(key) && iconMap.TryGetValue(key, out var s) && s != null)
+            if (resolved == null && iconMap != null)
             {
-                resolved = s;
+                if (!string.IsNullOrEmpty(key) && iconMap.TryGetValue(key, out var s) && s != null)
+                {
+                    resolved = s;
+                }
+                else if (giftId > 0 && iconMap.TryGetValue(giftId.ToString(), out var sId) && sId != null)
+                {
+                    resolved = sId;
+                }
             }
 
             if (resolved == null)
@@ -250,6 +286,44 @@ namespace SteamRush.Features.UI.PreGameConfig
                 var arrowImg = _dropdownGift.transform.Find("Arrow")?.GetComponent<Image>();
                 if (arrowImg != null) arrowImg.color = new Color(0.75f, 0.89f, 0.91f, alpha);
             }
+        }
+
+        public void SetGiftOptionWithoutNotify(int giftId, string giftName, Dictionary<string, Sprite> iconMap)
+        {
+            if (_item != null)
+            {
+                _item.giftId = giftId;
+                _item.giftName = giftName;
+            }
+
+            if (_dropdownGift != null)
+            {
+                int targetIdx = 0;
+                for (int i = 0; i < PreGameConfigData.AvailableGifts.Length; i++)
+                {
+                    var opt = PreGameConfigData.AvailableGifts[i];
+                    bool isMatch = false;
+                    if (opt.giftId > 0 && giftId > 0 && opt.giftId == giftId)
+                    {
+                        isMatch = true;
+                    }
+                    else if (string.Equals(opt.giftName, giftName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        isMatch = true;
+                    }
+
+                    if (isMatch)
+                    {
+                        targetIdx = i;
+                        break;
+                    }
+                }
+
+                _dropdownGift.SetValueWithoutNotify(targetIdx);
+                _dropdownGift.RefreshShownValue();
+            }
+
+            UpdateIcon(giftName, giftId, iconMap);
         }
 
         public void SaveCurrentValues()

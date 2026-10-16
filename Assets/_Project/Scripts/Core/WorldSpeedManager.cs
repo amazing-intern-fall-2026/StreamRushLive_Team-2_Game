@@ -108,7 +108,7 @@ namespace SteamRush.Track
         public bool IsVictoryStopped => _state == SpeedState.Victory;
 
         /// <summary>
-        /// Normalized energy percent (0-1) supplied by EnergySystem.
+        /// Normalized energy percent (0-1) supplied by RunnerEnergySystem.
         /// </summary>
         public float CurrentEnergyPercent01 { get; set; } = 1f;
 

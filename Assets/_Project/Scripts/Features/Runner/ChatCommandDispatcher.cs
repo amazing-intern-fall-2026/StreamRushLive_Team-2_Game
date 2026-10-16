@@ -128,23 +128,23 @@ namespace SteamRush.Features.Runner
 
             if (trimmedCmd == "blue" || trimmedCmd == "#blue")
             {
-                bool isSwitching = factionManager != null && factionManager.HasFaction(followerName) && factionManager.GetFaction(followerName) == FactionType.Anti;
-                factionManager?.SetFaction(followerName, FactionType.Fan);
+                bool isSwitching = factionManager != null && factionManager.HasFaction(followerName) && factionManager.GetFaction(followerName) == FactionType.Red;
+                factionManager?.SetFaction(followerName, FactionType.Blue);
                 string actionText = isSwitching ? "Switched to Blue Team" : "Joined Blue Team";
                 hudManager?.ShowFanAction(followerName, actionText);
                 return;
             }
             else if (trimmedCmd == "red" || trimmedCmd == "#red")
             {
-                bool isSwitching = factionManager != null && factionManager.HasFaction(followerName) && factionManager.GetFaction(followerName) == FactionType.Fan;
-                factionManager?.SetFaction(followerName, FactionType.Anti);
+                bool isSwitching = factionManager != null && factionManager.HasFaction(followerName) && factionManager.GetFaction(followerName) == FactionType.Blue;
+                factionManager?.SetFaction(followerName, FactionType.Red);
                 string actionText = isSwitching ? "Switched to Red Team" : "Joined Red Team";
                 hudManager?.ShowAntiAction(followerName, actionText);
                 return;
             }
 
             int antiLane = -1;
-            if (factionManager != null && factionManager.GetFaction(followerName) == FactionType.Anti)
+            if (factionManager != null && factionManager.GetFaction(followerName) == FactionType.Red)
             {
                 if (trimmedCmd == "1") antiLane = 1;
                 else if (trimmedCmd == "2") antiLane = 2;
@@ -192,7 +192,7 @@ namespace SteamRush.Features.Runner
             {
                 if (chatLaneRunner != null)
                 {
-                    if (chatLaneRunner.IsControlLocked)
+                    if (chatLaneRunner.IsControlLocked || chatLaneRunner.IsChatControlLocked)
                     {
                         return;
                     }

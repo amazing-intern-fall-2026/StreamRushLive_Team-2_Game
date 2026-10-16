@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using SteamRush.Features.Runner;
 
 namespace SteamRush.Features.UI.PreGameConfig
 {
@@ -21,6 +22,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         [SerializeField] private TMP_InputField _inputJumpCost;
         [SerializeField] private TMP_InputField _inputFreeControlDuration;
         [SerializeField] private TMP_InputField _inputSprintDuration;
+        [SerializeField] private Toggle _toggleEnableKeyboardControl;
 
         [Header("Anti Settings")]
         [SerializeField] private Toggle _toggleAutoSpawnCar;
@@ -43,7 +45,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         [SerializeField] private Toggle _toggleShowTimerCircles;
         [SerializeField] private Toggle _toggleDebugUI;
 
-        private float _lastFiniteDistanceKm = 1f;
+        private float _lastFiniteDistanceKm = 1000f;
 
         public TMP_InputField InputUsername => _inputUsername;
 
@@ -80,6 +82,29 @@ namespace SteamRush.Features.UI.PreGameConfig
                     if (panel != null) panel.gameObject.SetActive(val);
                 });
             }
+
+            if (_toggleEnableKeyboardControl != null)
+            {
+                _toggleEnableKeyboardControl.onValueChanged.RemoveAllListeners();
+                ApplyKeyboardControlDimming();
+            }
+        }
+
+        private void ApplyKeyboardControlDimming()
+        {
+            if (_toggleEnableKeyboardControl == null) return;
+            _toggleEnableKeyboardControl.interactable = false;
+            _toggleEnableKeyboardControl.isOn = false;
+
+            Transform row = _toggleEnableKeyboardControl.transform.parent;
+            if (row != null)
+            {
+                var cg = row.GetComponent<CanvasGroup>();
+                if (cg == null) cg = row.gameObject.AddComponent<CanvasGroup>();
+                cg.alpha = 0.45f;
+                cg.interactable = false;
+                cg.blocksRaycasts = false;
+            }
         }
 
         private void OnInfiniteToggleChanged(bool isInfinite)
@@ -97,7 +122,7 @@ namespace SteamRush.Features.UI.PreGameConfig
             }
             else
             {
-                float restored = _lastFiniteDistanceKm > 0f ? _lastFiniteDistanceKm : 1.0f;
+                float restored = _lastFiniteDistanceKm > 0f ? _lastFiniteDistanceKm : 1000.0f;
                 _inputTargetDistance.text = restored.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
                 _inputTargetDistance.interactable = true;
             }
@@ -119,7 +144,7 @@ namespace SteamRush.Features.UI.PreGameConfig
 
             float finiteKm = (data.finiteTargetDistanceMeters > 0f && data.finiteTargetDistanceMeters < 900000000f)
                 ? data.finiteTargetDistanceMeters / 1000f
-                : 1.0f;
+                : 1000.0f;
             _lastFiniteDistanceKm = finiteKm;
 
             if (_inputTargetDistance != null)
@@ -140,6 +165,15 @@ namespace SteamRush.Features.UI.PreGameConfig
             if (_inputJumpCost != null) _inputJumpCost.text = data.jumpEnergyCost.ToString();
             if (_inputFreeControlDuration != null) _inputFreeControlDuration.text = data.freeControlDuration.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
             if (_inputSprintDuration != null) _inputSprintDuration.text = data.sprintBuffDuration.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+            if (_toggleEnableKeyboardControl != null)
+            {
+                ApplyKeyboardControlDimming();
+                var guideCtrl = FindFirstObjectByType<Views.HowToPlayGuideController>(FindObjectsInactive.Include);
+                if (guideCtrl != null)
+                {
+                    guideCtrl.SetRedOnlyMode(false);
+                }
+            }
 
             if (_toggleAutoSpawnCar != null) _toggleAutoSpawnCar.isOn = data.autoSpawnOnFullEnergy;
             if (_inputMaxCars != null) _inputMaxCars.text = data.maxConcurrentCars.ToString();
@@ -201,7 +235,7 @@ namespace SteamRush.Features.UI.PreGameConfig
                 {
                     float fallback = (data.finiteTargetDistanceMeters > 0f && data.finiteTargetDistanceMeters < 900000000f)
                         ? data.finiteTargetDistanceMeters
-                        : 1000f;
+                        : 1000000f;
                     data.finiteTargetDistanceMeters = fallback;
                     data.targetDistanceMeters = fallback;
                     _lastFiniteDistanceKm = fallback / 1000f;
@@ -223,6 +257,9 @@ namespace SteamRush.Features.UI.PreGameConfig
 
             if (_inputSprintDuration != null && float.TryParse(_inputSprintDuration.text, out float sprintDuration))
                 data.sprintBuffDuration = Mathf.Max(1f, sprintDuration);
+
+            if (_toggleEnableKeyboardControl != null)
+                data.enableKeyboardControl = false;
 
             if (_toggleAutoSpawnCar != null)
                 data.autoSpawnOnFullEnergy = _toggleAutoSpawnCar.isOn;
@@ -258,6 +295,8 @@ namespace SteamRush.Features.UI.PreGameConfig
         public void AutoWireIfNull(Transform root)
         {
             if (root == null) root = transform;
+            EnsureKeyboardControlRow(root);
+
             foreach (var t in root.GetComponentsInChildren<Transform>(true))
             {
                 string n = t.name;
@@ -271,6 +310,7 @@ namespace SteamRush.Features.UI.PreGameConfig
                 if (_inputJumpCost == null && (n.Contains("Jump energy cost") || n.Contains("JumpCost"))) _inputJumpCost = t.GetComponentInChildren<TMP_InputField>(true);
                 if (_inputFreeControlDuration == null && (n.Contains("Freedom Charm duration") || n.Contains("FreeControl"))) _inputFreeControlDuration = t.GetComponentInChildren<TMP_InputField>(true);
                 if (_inputSprintDuration == null && (n.Contains("Sprint Boost duration") || n.Contains("Sprint"))) _inputSprintDuration = t.GetComponentInChildren<TMP_InputField>(true);
+                if (_toggleEnableKeyboardControl == null && (n.Contains("keyboard controls") || n.Contains("KeyboardControl"))) _toggleEnableKeyboardControl = t.GetComponentInChildren<Toggle>(true);
 
                 // 2. Anti-Faction
                 if (_toggleAutoSpawnCar == null && (n.Contains("Auto-spawn car") || n.Contains("AutoSpawn"))) _toggleAutoSpawnCar = t.GetComponentInChildren<Toggle>(true);
@@ -296,6 +336,65 @@ namespace SteamRush.Features.UI.PreGameConfig
                 if (_toggleShowStopwatch == null && (n.Contains("Show Match Timer") || n.Contains("Stopwatch"))) _toggleShowStopwatch = t.GetComponentInChildren<Toggle>(true);
                 if (_toggleShowTimerCircles == null && (n.Contains("Show Skill & Buff Timer Circles") || n.Contains("TimerCircles"))) _toggleShowTimerCircles = t.GetComponentInChildren<Toggle>(true);
                 if (_toggleDebugUI == null && (n.Contains("Show Debug UI in game") || n.Contains("DebugUI"))) _toggleDebugUI = t.GetComponentInChildren<Toggle>(true);
+            }
+        }
+
+        private void EnsureKeyboardControlRow(Transform root)
+        {
+            if (root == null) root = transform;
+
+            Transform content = null;
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name == "PanelAdvancedContent")
+                {
+                    content = t.Find("Viewport/Content");
+                    break;
+                }
+            }
+            if (content == null) return;
+
+            // Find all matching keyboard control rows to clean up any duplicates
+            var matchingRows = new System.Collections.Generic.List<Transform>();
+            for (int i = 0; i < content.childCount; i++)
+            {
+                var child = content.GetChild(i);
+                if (child.name.Contains("keyboard controls") || child.name.Contains("KeyboardControl"))
+                {
+                    matchingRows.Add(child);
+                }
+            }
+
+            Transform rowToKeep = null;
+            if (matchingRows.Count > 0)
+            {
+                rowToKeep = matchingRows[0];
+                for (int i = 1; i < matchingRows.Count; i++)
+                {
+                    if (Application.isPlaying) Destroy(matchingRows[i].gameObject);
+                    else DestroyImmediate(matchingRows[i].gameObject);
+                }
+            }
+            else
+            {
+                var template = content.Find("Row_Auto-spawn car at 100% energy:");
+                if (template != null)
+                {
+                    var newRow = Instantiate(template.gameObject, content, false);
+                    newRow.transform.SetSiblingIndex(5);
+                    rowToKeep = newRow.transform;
+                }
+            }
+
+            if (rowToKeep != null)
+            {
+                rowToKeep.name = "Row_Enable manual keyboard controls (A/D/Space):";
+                var txt = rowToKeep.GetComponentInChildren<TMPro.TMP_Text>(true);
+                if (txt != null)
+                {
+                    txt.text = "Enable manual keyboard controls (A/D/Space):";
+                }
+                _toggleEnableKeyboardControl = rowToKeep.GetComponentInChildren<Toggle>(true);
             }
         }
     }

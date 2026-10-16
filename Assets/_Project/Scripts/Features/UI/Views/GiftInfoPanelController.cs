@@ -174,6 +174,15 @@ namespace SteamRush.Features.UI.Views
                 return;
             }
 
+            // Register all incoming icons into master cache
+            foreach (var m in rawMappings)
+            {
+                if (m != null && m.giftIcon != null)
+                {
+                    PreGameConfig.PreGameGiftIconResolver.RegisterIcon(m.giftId, m.giftName, m.giftIcon);
+                }
+            }
+
             if (placeholder != null)
             {
                 placeholder.gameObject.SetActive(false);
@@ -549,6 +558,10 @@ namespace SteamRush.Features.UI.Views
                 iconImg.preserveAspect = true;
                 iconImg.raycastTarget = false; // Do not block button click events
                 Sprite resolvedIcon = mapping.giftIcon != null ? mapping.giftIcon : GetOfficialTikTokGiftIcon(mapping.giftId, mapping.giftName);
+                if (resolvedIcon != null && mapping.giftIcon == null)
+                {
+                    mapping.giftIcon = resolvedIcon;
+                }
                 iconImg.sprite = resolvedIcon != null ? resolvedIcon : _fallbackIcon;
             }
 
@@ -656,7 +669,6 @@ namespace SteamRush.Features.UI.Views
             UnityEditor.EditorUtility.SetDirty(this);
 #endif
             BuildGiftDisplay();
-            Debug.Log("<color=#00FF88>[GiftInfoPanel] Switched to element order display (left to right, top to bottom).</color>");
         }
 
         [ContextMenu("Sync Gift Order to TikTokLiveClient")]
@@ -786,7 +798,6 @@ namespace SteamRush.Features.UI.Views
                                     importer.alphaIsTransparency = true;
                                     importer.SaveAndReimport();
                                 }
-                                Debug.Log($"<color=#00FF88>[GiftInfoPanel] Cached live stream gift icon for ID {giftId} -> {savePath}</color>");
                             }
                         }
                         catch (System.Exception ex)

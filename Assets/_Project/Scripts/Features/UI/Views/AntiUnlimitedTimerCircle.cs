@@ -151,7 +151,7 @@ namespace SteamRush.Features.UI.Views
                 canvasGroup.alpha = 1f;
             }
 
-            TimerCircleVerticalStackManager.RegisterAntiCircle(this, containerRect);
+            TimerCircleVerticalStackManager.RegisterRedCircle(this, containerRect);
         }
 
         /// <summary>
@@ -162,7 +162,7 @@ namespace SteamRush.Features.UI.Views
             if (this == null) return;
             _isActive = false;
 
-            TimerCircleVerticalStackManager.UnregisterAntiCircle(this);
+            TimerCircleVerticalStackManager.UnregisterRedCircle(this);
 
             if (containerRect != null)
             {
@@ -179,7 +179,7 @@ namespace SteamRush.Features.UI.Views
 
         private void OnDisable()
         {
-            TimerCircleVerticalStackManager.UnregisterAntiCircle(this);
+            TimerCircleVerticalStackManager.UnregisterRedCircle(this);
         }
 
         [ContextMenu("Rebuild UI")]

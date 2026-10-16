@@ -168,6 +168,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SteamRush.UI.Views.ProgressBarController
   fillBar: {fileID: 7451670722263604658}
   labelKm: {fileID: 7427840771092457102}
+  avatarHandle: {fileID: 0}
 --- !u!1 &8169983600393407574
 GameObject:
   m_ObjectHideFlags: 0
@@ -235,8 +236,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 0.0 / 100 km
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 2678d827136e6894098bff703c832ce2, type: 2}
+  m_sharedMaterial: {fileID: 7664488147931049520, guid: 2678d827136e6894098bff703c832ce2, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
