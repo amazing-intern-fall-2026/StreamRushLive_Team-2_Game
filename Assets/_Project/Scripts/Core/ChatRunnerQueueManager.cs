@@ -632,7 +632,9 @@ namespace SteamRush.Features.Runner
             }
 
             _hudManager.UpdateRunnerInfo(CurrentRunnerId, CurrentRunnerAvatar, false);
+            _hudManager.UpdateRunnerAvatar(CurrentRunnerAvatar);
             _hudManager.UpdateRunnerTarget(_runnerTransform);
+
             UpdateNextRunnerHud();
         }
 

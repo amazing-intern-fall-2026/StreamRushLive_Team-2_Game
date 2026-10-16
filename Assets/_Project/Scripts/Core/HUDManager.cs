@@ -42,6 +42,15 @@ namespace SteamRush.Features.UI
             progressBar.SetLegProgress(currentMeters, targetMeters);
         }
 
+        // Synchronizes the current runner avatar across HUD elements.
+        public void UpdateRunnerAvatar(Sprite avatar)
+        {
+            if (progressBar != null)
+            {
+                progressBar.SetRunnerAvatar(avatar);
+            }
+        }
+
         // currentEnergy: normalized 0..1 value provided by caller.
         public void UpdateEnergy(float currentEnergy)
         {
@@ -108,9 +117,9 @@ namespace SteamRush.Features.UI
             string lower = message.ToLowerInvariant();
 
             // Suppress redundant notifications on Top Banner
-            if (lower.Contains("out of energy") || 
-                lower.Contains("not enough energy") || 
-                lower.Contains("ended - sedan") || 
+            if (lower.Contains("out of energy") ||
+                lower.Contains("not enough energy") ||
+                lower.Contains("ended - sedan") ||
                 lower.Contains("distance!"))
             {
                 return;
