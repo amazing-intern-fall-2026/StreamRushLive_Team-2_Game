@@ -12,6 +12,37 @@ namespace SteamRush.Features.UI.Views
 
         // Runner avatar handle slides horizontally along progress bar based on percentage
         [SerializeField] private RectTransform avatarHandle;
+        [SerializeField] private Image avatarPlaceholder;
+
+        // Updates the avatar displayed on the progress bar.
+        public void SetRunnerAvatar(Sprite runnerAvatar)
+        {
+            if (avatarPlaceholder == null)
+            {
+                GameObject placeholderObject = GameObject.Find("AvatarPlaceholder");
+                if (placeholderObject != null)
+                {
+                    avatarPlaceholder = placeholderObject.GetComponent<Image>();
+                }
+            }
+
+            if (avatarPlaceholder == null)
+            {
+                Debug.LogWarning("[ProgressBar] AvatarPlaceholder is not assigned or found");
+                return;
+            }
+
+            if (runnerAvatar == null)
+            {
+                Debug.LogWarning("[ProgressBar] Received NULL avatar");
+                return;
+            }
+
+            Debug.Log($"[ProgressBar] Updating AvatarPlaceholder with: {runnerAvatar.name}");
+
+            avatarPlaceholder.sprite = runnerAvatar;
+            avatarPlaceholder.enabled = true;
+        }
 
         // Displays current leg distance progress in meters (0 -> RelayDistanceMeters)
         public void SetLegProgress(float currentMeters, float targetMeters)
@@ -24,7 +55,10 @@ namespace SteamRush.Features.UI.Views
                 // Resize width instead of fillAmount to preserve 9-slice rounded corners
                 var fillRect = fillBar.rectTransform;
                 float fullWidth = ((RectTransform)fillRect.parent).rect.width;
-                fillRect.sizeDelta = new Vector2(fullWidth * ratio, fillRect.sizeDelta.y);
+                fillRect.sizeDelta = new Vector2(
+                    fullWidth * ratio,
+                    fillRect.sizeDelta.y
+                );
 
                 if (avatarHandle != null)
                 {
@@ -46,7 +80,11 @@ namespace SteamRush.Features.UI.Views
                 else if (targetMeters >= 1000f)
                 {
                     float targetKm = targetMeters / 1000f;
-                    string targetKmStr = targetKm.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                    string targetKmStr = targetKm.ToString(
+                        "0.##",
+                        System.Globalization.CultureInfo.InvariantCulture
+                    );
+
                     if (clampedMeters < 1000f)
                     {
                         labelKm.text = $"{clampedMeters:F0}m/{targetKmStr}km";
