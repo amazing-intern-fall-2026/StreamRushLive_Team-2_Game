@@ -37,6 +37,13 @@ namespace SteamRush.Features.Runner
         private bool _isHandlingHit;
         private bool _isHyperDashActive;
         private float _shieldDeflectImmunityTimer = 0f;
+        // BUGFIX: miễn nhiễm sau khi Khiên đẩy văng xe chỉ áp dụng cho ĐÚNG xe đó (các collider
+        // phụ của cùng 1 obstacle, ví dụ nhiều mesh con), KHÔNG được áp dụng cho mọi va chạm khác.
+        // Trước đây dùng timer toàn cục (_shieldDeflectImmunityTimer > 0 chặn HandleInteraction()
+        // cho TẤT CẢ), nên nếu đổi làn tông trúng xe thứ 2 (hoàn toàn khác xe 1) trong 0.8s đó,
+        // HandleInteraction() bị return sớm ở đầu hàm — bỏ qua luôn TriggerHit/TryConsumeShield
+        // của xe thứ 2, nên không có phạt/i-frame, chỉ còn va chạm vật lý (Collider) làm chậm tốc độ.
+        private GameObject _shieldDeflectedObstacleRoot;
 
         public bool IsHandlingHit => _isHandlingHit;
         public bool IsHyperDashActive => _isHyperDashActive;
@@ -46,6 +53,10 @@ namespace SteamRush.Features.Runner
             if (_shieldDeflectImmunityTimer > 0f)
             {
                 _shieldDeflectImmunityTimer -= Time.deltaTime;
+                if (_shieldDeflectImmunityTimer <= 0f)
+                {
+                    _shieldDeflectedObstacleRoot = null;
+                }
             }
         }
 
@@ -98,7 +109,11 @@ namespace SteamRush.Features.Runner
 
         private void HandleInteraction(GameObject obj)
         {
-            if (_shieldDeflectImmunityTimer > 0f)
+            // Chỉ bỏ qua nếu đây đúng là obstacle (hoặc 1 collider con của nó) vừa bị Khiên đẩy
+            // văng — không còn chặn mọi va chạm khác trong lúc timer còn chạy.
+            if (_shieldDeflectImmunityTimer > 0f
+                && _shieldDeflectedObstacleRoot != null
+                && obj.transform.IsChildOf(_shieldDeflectedObstacleRoot.transform))
             {
                 return;
             }
@@ -220,7 +235,12 @@ namespace SteamRush.Features.Runner
         /// </summary>
         public void HandleObstacleHitFromSource(ObstacleBase obstacle)
         {
-            if (_isHandlingHit || _shieldDeflectImmunityTimer > 0f)
+            bool isDeflectedObstacle = _shieldDeflectImmunityTimer > 0f
+                && _shieldDeflectedObstacleRoot != null
+                && obstacle != null
+                && obstacle.transform.IsChildOf(_shieldDeflectedObstacleRoot.transform);
+
+            if (_isHandlingHit || isDeflectedObstacle)
             {
                 return;
             }
@@ -406,8 +426,12 @@ namespace SteamRush.Features.Runner
             bool blocked = itemEffects.ConsumeShield();
             if (blocked)
             {
-                // Short 0.8s immunity against secondary colliders of the deflected obstacle
+                // Short 0.8s immunity against secondary colliders of THIS SPECIFIC deflected
+                // obstacle only (e.g. multiple child meshes/colliders on the same car) — scoped
+                // via _shieldDeflectedObstacleRoot, checked against in HandleInteraction() /
+                // HandleObstacleHitFromSource() above. Does NOT affect any other obstacle.
                 _shieldDeflectImmunityTimer = 0.8f;
+                _shieldDeflectedObstacleRoot = obstacleObj;
 
                 if (obstacleObj != null)
                 {
