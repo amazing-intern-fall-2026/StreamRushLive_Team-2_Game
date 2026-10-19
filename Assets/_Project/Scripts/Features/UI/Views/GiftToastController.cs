@@ -2,6 +2,7 @@ using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using SteamRush.Core.Typography;
 
 namespace SteamRush.Features.UI.Views
 {
@@ -22,11 +23,6 @@ namespace SteamRush.Features.UI.Views
             showDuration = showDur;
             if (animDur > 0f) animDuration = animDur;
         }
-
-        // Strips unicode emojis to avoid TextMeshPro font missing glyph warnings
-        private static readonly System.Text.RegularExpressions.Regex EmojiRegex = new System.Text.RegularExpressions.Regex(
-            @"[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF\u2300-\u23FF\u2B50-\u2B55\uFE0F]",
-            System.Text.RegularExpressions.RegexOptions.Compiled);
 
         // Subscribed by GiftToastQueue to remove from active list upon dismiss
         // (both on natural expiry and force dismiss).
@@ -86,13 +82,13 @@ namespace SteamRush.Features.UI.Views
 
             if (viewerNameText != null)
             {
-                viewerNameText.text = string.IsNullOrEmpty(viewerName) ? viewerName : EmojiRegex.Replace(viewerName, "").Trim();
+                viewerNameText.text = ViewerNameSanitizer.SanitizeDisplayName(viewerName);
             }
 
             if (itemNameText != null)
             {
                 itemNameText.gameObject.SetActive(showItemName);
-                itemNameText.text = string.IsNullOrEmpty(itemName) ? itemName : EmojiRegex.Replace(itemName, "").Trim();
+                itemNameText.text = ViewerNameSanitizer.SanitizeMessage(itemName);
             }
 
             // Use scale + fade animations inside VerticalLayoutGroup to avoid layout conflicts
