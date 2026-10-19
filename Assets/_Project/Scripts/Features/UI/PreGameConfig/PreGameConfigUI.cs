@@ -334,7 +334,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         public void OnTestModeClicked()
         {
             ReadUIIntoData();
-            PreGameConfigManager.Instance?.StartTestMode();
+            PreGameConfigManager.Instance?.RequestSwitchMode(PreGameSessionMode.Offline);
         }
 
         public void OnGoLiveClicked()
@@ -346,7 +346,7 @@ namespace SteamRush.Features.UI.PreGameConfig
             }
 
             ReadUIIntoData();
-            PreGameConfigManager.Instance?.StartGoLive();
+            PreGameConfigManager.Instance?.RequestSwitchMode(PreGameSessionMode.Live);
         }
 
         public void OnCloseClicked()
