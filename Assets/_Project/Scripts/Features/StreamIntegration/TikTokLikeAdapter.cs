@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using SteamRush.Core;
+using SteamRush.Features.UI.PreGameConfig;
 
 namespace SteamRush.Features.StreamIntegration
 {
@@ -71,6 +72,8 @@ namespace SteamRush.Features.StreamIntegration
 
         private void OnLikeReceived(TikTokLikeEvent evt)
         {
+            if (!PreGameConfigManager.IsLiveSessionActive) return;
+
             EnsureReferences();
 
             if (string.IsNullOrEmpty(evt.UserId) || evt.TotalLike <= 0)

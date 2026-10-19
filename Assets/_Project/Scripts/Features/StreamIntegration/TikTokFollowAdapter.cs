@@ -4,6 +4,7 @@ using UnityEngine.Events;
 using SteamRush.Core;
 using SteamRush.Features.Runner;
 using SteamRush.Features.UI;
+using SteamRush.Features.UI.PreGameConfig;
 
 namespace SteamRush.Features.StreamIntegration
 {
@@ -63,6 +64,8 @@ namespace SteamRush.Features.StreamIntegration
 
         private void OnFollowReceived(TikTokFollowEvent evt)
         {
+            if (!PreGameConfigManager.IsLiveSessionActive) return;
+
             EnsureReferences();
 
             if (string.IsNullOrEmpty(evt.UserId))

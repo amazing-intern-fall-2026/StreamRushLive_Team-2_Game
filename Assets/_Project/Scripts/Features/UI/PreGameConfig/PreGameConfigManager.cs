@@ -51,6 +51,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         // True once the config modal has been closed at least once (the run is live / being played).
         // Only then is there state to lose, so only then does a mode switch need a reset confirmation.
         private bool _sessionInProgress = false;
+        public static bool IsLiveSessionActive { get; private set; } = false;
         [SerializeField] private bool _openOnStart = true;
         [SerializeField] private bool _isTestModeActive = false;
         [SerializeField] private GameObject _badgeDemoRun;
@@ -81,6 +82,7 @@ namespace SteamRush.Features.UI.PreGameConfig
                 return;
             }
             Instance = this;
+            IsLiveSessionActive = false;
 
             LoadConfig();
             BindOpenButton();
@@ -174,6 +176,7 @@ namespace SteamRush.Features.UI.PreGameConfig
 
         private static void ReloadActiveScene()
         {
+            IsLiveSessionActive = false;
             Time.timeScale = 1f;
             DOTween.KillAll();
             string sceneName = SceneManager.GetActiveScene().name;
@@ -454,6 +457,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         public void OpenConfigUI()
         {
             LoadConfig();
+            IsLiveSessionActive = false;
 
             if (_configUI != null)
             {
@@ -486,6 +490,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         public void StartTestMode()
         {
             _isTestModeActive = true;
+            IsLiveSessionActive = false;
             ApplyConfigToRuntime(connectTikTok: false);
             CloseConfigUI();
 
@@ -522,6 +527,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         public void StartGoLive()
         {
             _isTestModeActive = false;
+            IsLiveSessionActive = true;
             ApplyConfigToRuntime(connectTikTok: true);
             CloseConfigUI();
             UpdateDemoRunBadgeVisibility();

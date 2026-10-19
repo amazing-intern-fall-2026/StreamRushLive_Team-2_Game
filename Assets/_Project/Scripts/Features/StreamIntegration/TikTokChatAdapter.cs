@@ -2,6 +2,7 @@ using UnityEngine;
 using SteamRush.Core;
 using SteamRush.Features.Runner;
 using SteamRush.Features.UI;
+using SteamRush.Features.UI.PreGameConfig;
 
 namespace SteamRush.Features.StreamIntegration
 {
@@ -64,6 +65,8 @@ namespace SteamRush.Features.StreamIntegration
 
         private void OnChatReceived(TikTokChatEvent evt)
         {
+            if (!PreGameConfigManager.IsLiveSessionActive) return;
+
             if (_factionManager == null || _hudManager == null || _runnerController == null)
             {
                 EnsureReferences();
