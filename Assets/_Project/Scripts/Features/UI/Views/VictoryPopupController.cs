@@ -132,10 +132,23 @@ namespace SteamRush.Features.UI.Views
 
         private void OnResetButtonClicked()
         {
-            _isShowing = false;
-            gameObject.SetActive(false);
             AudioManager.Instance?.PlaySFX(SFXType.UIButtonClick);
-            PreGameConfigManager.ResetGameAndOpenSettings();
+            if (ConfirmationModal.IsShowing) return;
+
+            // Keep the victory popup visible if the streamer cancels.
+            ConfirmationModal.Show(
+                ConfirmationModal.T("Bắt đầu lại?", "Restart the game?"),
+                ConfirmationModal.T(
+                    "Bắt đầu lại sẽ reset toàn bộ màn chơi (năng lượng phe, điểm số, xe đang chạy, hàng chờ runner). Bạn có chắc chắn không?",
+                    "Restarting will reset the whole level (faction energy, score, active cars, runner queue). Are you sure?"),
+                ConfirmationModal.T("XÁC NHẬN / RESET", "CONFIRM / RESET"),
+                ConfirmationModal.T("HỦY", "CANCEL"),
+                onConfirm: () =>
+                {
+                    _isShowing = false;
+                    gameObject.SetActive(false);
+                    PreGameConfigManager.ResetGameAndOpenSettings();
+                });
         }
 
         // Accepts totalDistanceMeters and goalDistanceMeters (meters) matching ProgressBarController formatting logic.
