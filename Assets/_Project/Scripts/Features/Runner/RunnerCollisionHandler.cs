@@ -37,12 +37,8 @@ namespace SteamRush.Features.Runner
         private bool _isHandlingHit;
         private bool _isHyperDashActive;
         private float _shieldDeflectImmunityTimer = 0f;
-        // BUGFIX: miễn nhiễm sau khi Khiên đẩy văng xe chỉ áp dụng cho ĐÚNG xe đó (các collider
-        // phụ của cùng 1 obstacle, ví dụ nhiều mesh con), KHÔNG được áp dụng cho mọi va chạm khác.
-        // Trước đây dùng timer toàn cục (_shieldDeflectImmunityTimer > 0 chặn HandleInteraction()
-        // cho TẤT CẢ), nên nếu đổi làn tông trúng xe thứ 2 (hoàn toàn khác xe 1) trong 0.8s đó,
-        // HandleInteraction() bị return sớm ở đầu hàm — bỏ qua luôn TriggerHit/TryConsumeShield
-        // của xe thứ 2, nên không có phạt/i-frame, chỉ còn va chạm vật lý (Collider) làm chậm tốc độ.
+        // Shield deflect immunity is scoped to the specific deflected obstacle root (including child colliders).
+        // It does not block hits from other obstacles in adjacent lanes.
         private GameObject _shieldDeflectedObstacleRoot;
 
         public bool IsHandlingHit => _isHandlingHit;
@@ -109,8 +105,7 @@ namespace SteamRush.Features.Runner
 
         private void HandleInteraction(GameObject obj)
         {
-            // Chỉ bỏ qua nếu đây đúng là obstacle (hoặc 1 collider con của nó) vừa bị Khiên đẩy
-            // văng — không còn chặn mọi va chạm khác trong lúc timer còn chạy.
+            // Ignore interaction only if this is the obstacle (or a child collider) that was just deflected by shield
             if (_shieldDeflectImmunityTimer > 0f
                 && _shieldDeflectedObstacleRoot != null
                 && obj.transform.IsChildOf(_shieldDeflectedObstacleRoot.transform))

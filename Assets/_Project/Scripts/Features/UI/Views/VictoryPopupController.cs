@@ -139,8 +139,8 @@ namespace SteamRush.Features.UI.Views
             ConfirmationModal.Show(
                 ConfirmationModal.T("Bắt đầu lại?", "Restart the game?"),
                 ConfirmationModal.T(
-                    "Bắt đầu lại sẽ reset toàn bộ màn chơi (năng lượng phe, điểm số, xe đang chạy, hàng chờ runner). Bạn có chắc chắn không?",
-                    "Restarting will reset the whole level (faction energy, score, active cars, runner queue). Are you sure?"),
+                    "Bắt đầu lại sẽ làm mới tiến trình màn chơi từ vạch xuất phát. Bạn có muốn tiếp tục?",
+                    "Restarting will reset the run from the starting line. Do you want to continue?"),
                 ConfirmationModal.T("XÁC NHẬN / RESET", "CONFIRM / RESET"),
                 ConfirmationModal.T("HỦY", "CANCEL"),
                 onConfirm: () =>

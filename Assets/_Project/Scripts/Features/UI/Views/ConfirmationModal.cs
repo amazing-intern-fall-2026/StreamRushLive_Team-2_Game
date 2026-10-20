@@ -77,11 +77,17 @@ namespace SteamRush.Features.UI.Views
             if (_instance == this) _instance = null;
         }
 
+        private float _timeScaleBeforeOpen = 1f;
+
         private void Open(string title, string message, string confirmLabel, string cancelLabel,
                           Action onConfirm, Action onCancel)
         {
             _onConfirm = onConfirm;
             _onCancel = onCancel;
+
+            // Pause game timescale while the confirmation dialog is up
+            _timeScaleBeforeOpen = Time.timeScale;
+            Time.timeScale = 0f;
 
             _titleText.text = title;
             _messageText.text = message;
@@ -111,6 +117,8 @@ namespace SteamRush.Features.UI.Views
         {
             _onConfirm = null;
             _onCancel = null;
+            // Restore previous timescale if not reloading scene
+            Time.timeScale = _timeScaleBeforeOpen;
             gameObject.SetActive(false);
         }
 
@@ -120,9 +128,11 @@ namespace SteamRush.Features.UI.Views
         {
             var theme = HudTheme.Current;
             Color gold = theme != null ? (Color)theme.gold : (Color)new Color32(0xFC, 0xDA, 0x21, 0xFF);
-            Color textPrimary = theme != null ? (Color)theme.textPrimary : Color.white;
+            Sprite panelFrame = theme != null ? theme.panelFrame : null;
             Sprite pillGold = theme != null ? theme.pillGold : null;
             Sprite pillDark = theme != null ? theme.pillDark : null;
+            TMP_FontAsset fontTitle = theme != null && theme.fontHeavy != null ? theme.fontHeavy : (theme != null ? theme.fontBold : null);
+            TMP_FontAsset fontBody = theme != null && theme.fontBold != null ? theme.fontBold : null;
 
             // Full-screen dim backdrop (blocks clicks on everything behind the modal)
             var backdrop = CreateRect("Backdrop", transform);
@@ -131,36 +141,50 @@ namespace SteamRush.Features.UI.Views
             backdrop.offsetMin = Vector2.zero;
             backdrop.offsetMax = Vector2.zero;
             var backdropImg = backdrop.gameObject.AddComponent<Image>();
-            backdropImg.color = new Color(0f, 0f, 0f, 0.7f);
+            backdropImg.color = new Color(0f, 0f, 0f, 0.75f);
             backdropImg.raycastTarget = true;
 
-            // Card
+            // Card Panel
             var card = CreateRect("Card", backdrop);
-            Place(card, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(820f, 440f));
+            Place(card, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(860f, 470f));
             var cardImg = card.gameObject.AddComponent<Image>();
-            cardImg.color = new Color32(0x12, 0x2B, 0x36, 0xFF);
-            var cardOutline = card.gameObject.AddComponent<UnityEngine.UI.Outline>();
-            cardOutline.effectColor = gold;
-            cardOutline.effectDistance = new Vector2(3f, -3f);
 
-            // Title
-            _titleText = CreateText("Title", card, 46f, gold, FontStyles.Bold);
-            Place(_titleText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -62f), new Vector2(740f, 84f));
+            if (panelFrame != null)
+            {
+                cardImg.sprite = panelFrame;
+                cardImg.type = Image.Type.Sliced;
+                cardImg.pixelsPerUnitMultiplier = 0.75f;
+                cardImg.color = Color.white;
+            }
+            else
+            {
+                cardImg.color = new Color32(0x12, 0x2B, 0x36, 0xFA);
+                var cardOutline = card.gameObject.AddComponent<UnityEngine.UI.Outline>();
+                cardOutline.effectColor = gold;
+                cardOutline.effectDistance = new Vector2(3f, -3f);
+            }
 
-            // Message
-            _messageText = CreateText("Message", card, 31f, textPrimary, FontStyles.Normal);
+            // Header Title
+            _titleText = CreateText("Title", card, 44f, gold, FontStyles.Bold, fontTitle);
+            Place(_titleText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -65f), new Vector2(740f, 70f));
+
+            // Message Body - Crisp pure white with bold weight and dark outline shadow for high readability
+            _messageText = CreateText("Message", card, 28f, Color.white, FontStyles.Bold, fontBody);
             _messageText.textWrappingMode = TextWrappingModes.Normal;
-            Place(_messageText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, 8f), new Vector2(720f, 190f));
+            _messageText.lineSpacing = 16f;
+            _messageText.outlineWidth = 0.2f;
+            _messageText.outlineColor = new Color32(0x06, 0x1A, 0x24, 0xEE);
+            Place(_messageText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, 15f), new Vector2(740f, 180f));
 
-            // Buttons
+            // Buttons Container / Action Buttons
             var confirmBtn = CreateButton("BtnConfirm", card, pillGold, Color.white,
-                                          new Color32(0x1A, 0x1A, 0x1A, 0xFF), out _confirmText);
-            Place(confirmBtn.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(-170f, 72f), new Vector2(310f, 88f));
+                                          new Color32(0x1A, 0x1A, 0x1A, 0xFF), out _confirmText, fontTitle);
+            Place(confirmBtn.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(-170f, 75f), new Vector2(310f, 78f));
             confirmBtn.onClick.AddListener(HandleConfirm);
 
             var cancelBtn = CreateButton("BtnCancel", card, pillDark, Color.white,
-                                         new Color32(0xBF, 0xE3, 0xE8, 0xFF), out _cancelText);
-            Place(cancelBtn.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(170f, 72f), new Vector2(310f, 88f));
+                                         new Color32(0xBF, 0xE3, 0xE8, 0xFF), out _cancelText, fontTitle);
+            Place(cancelBtn.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(170f, 75f), new Vector2(310f, 78f));
             cancelBtn.onClick.AddListener(HandleCancel);
 
             // Fallback colours when the HUD theme has no pill sprites
@@ -184,10 +208,11 @@ namespace SteamRush.Features.UI.Views
             rt.sizeDelta = size;
         }
 
-        private static TextMeshProUGUI CreateText(string name, RectTransform parent, float size, Color color, FontStyles style)
+        private static TextMeshProUGUI CreateText(string name, RectTransform parent, float size, Color color, FontStyles style, TMP_FontAsset font = null)
         {
             var rt = CreateRect(name, parent);
             var tmp = rt.gameObject.AddComponent<TextMeshProUGUI>();
+            if (font != null) tmp.font = font;
             tmp.fontSize = size;
             tmp.color = color;
             tmp.fontStyle = style;
@@ -197,7 +222,7 @@ namespace SteamRush.Features.UI.Views
         }
 
         private static Button CreateButton(string name, RectTransform parent, Sprite sprite, Color tint,
-                                           Color labelColor, out TextMeshProUGUI label)
+                                           Color labelColor, out TextMeshProUGUI label, TMP_FontAsset font = null)
         {
             var rt = CreateRect(name, parent);
             var img = rt.gameObject.AddComponent<Image>();
@@ -205,13 +230,20 @@ namespace SteamRush.Features.UI.Views
             {
                 img.sprite = sprite;
                 img.type = Image.Type.Sliced;
+                img.pixelsPerUnitMultiplier = 0.8f;
             }
             img.color = tint;
 
             var btn = rt.gameObject.AddComponent<Button>();
             btn.targetGraphic = img;
 
-            label = CreateText("Label", rt, 30f, labelColor, FontStyles.Bold);
+            // Clean button hover and press transitions
+            var colors = btn.colors;
+            colors.highlightedColor = new Color(1.1f, 1.1f, 1.1f, 1f);
+            colors.pressedColor = new Color(0.85f, 0.85f, 0.85f, 1f);
+            btn.colors = colors;
+
+            label = CreateText("Label", rt, 26f, labelColor, FontStyles.Bold, font);
             label.rectTransform.anchorMin = Vector2.zero;
             label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMin = new Vector2(10f, 6f);

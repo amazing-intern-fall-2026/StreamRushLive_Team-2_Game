@@ -206,8 +206,8 @@ namespace SteamRush.Features.UI.PreGameConfig
             ConfirmationModal.Show(
                 ConfirmationModal.T("Reset màn chơi?", "Reset the game?"),
                 ConfirmationModal.T(
-                    $"Chuyển sang chế độ {modeName} sẽ reset toàn bộ màn chơi (năng lượng phe, điểm số, xe đang chạy, hàng chờ runner). Bạn có chắc chắn không?",
-                    $"Switching to {modeName} mode will reset the whole level (faction energy, score, active cars, runner queue). Are you sure?"),
+                    $"Chuyển sang chế độ {modeName} sẽ làm mới lại toàn bộ màn chơi từ đầu. Bạn có muốn tiếp tục?",
+                    $"Switching to {modeName} will reset the current game to the start. Do you want to continue?"),
                 ConfirmationModal.T("XÁC NHẬN / RESET", "CONFIRM / RESET"),
                 ConfirmationModal.T("HỦY", "CANCEL"),
                 onConfirm: () =>
