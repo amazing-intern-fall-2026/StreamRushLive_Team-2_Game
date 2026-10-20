@@ -6,6 +6,7 @@ using SteamRush.Track;
 using SteamRush.Features.StreamIntegration;
 using SteamRush.Features.UI;
 using SteamRush.Core;
+using SteamRush.Core.Typography;
 
 namespace SteamRush.Features.Runner
 {
@@ -555,7 +556,7 @@ namespace SteamRush.Features.Runner
             var tmp = nameplate.GetComponentInChildren<TMPro.TMP_Text>();
             if (tmp != null)
             {
-                tmp.text = displayName;
+                tmp.text = ViewerNameSanitizer.SanitizeDisplayName(displayName);
                 tmp.color = _nameColor;
             }
 
@@ -632,7 +633,9 @@ namespace SteamRush.Features.Runner
             }
 
             _hudManager.UpdateRunnerInfo(CurrentRunnerId, CurrentRunnerAvatar, false);
+            _hudManager.UpdateRunnerAvatar(CurrentRunnerAvatar);
             _hudManager.UpdateRunnerTarget(_runnerTransform);
+
             UpdateNextRunnerHud();
         }
 

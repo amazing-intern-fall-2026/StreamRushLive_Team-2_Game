@@ -8,6 +8,8 @@ using StreamRushLive.Features.Spawning;
 using SteamRush.Features.UI;
 using SteamRush.Features.UI.Views;
 
+using SteamRush.Features.UI.PreGameConfig;
+
 namespace SteamRush.Features.StreamIntegration
 {
     public enum GiftActionType
@@ -197,6 +199,8 @@ namespace SteamRush.Features.StreamIntegration
 
         private void OnGiftReceived(TikTokGiftEvent evt)
         {
+            if (!PreGameConfigManager.IsLiveSessionActive) return;
+
             EnsureReferences();
 
             if (string.IsNullOrEmpty(evt.UserId) || string.IsNullOrEmpty(evt.GiftName))

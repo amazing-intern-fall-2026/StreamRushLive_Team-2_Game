@@ -37,6 +37,9 @@ namespace SteamRush.Features.Runner
         private bool _isHandlingHit;
         private bool _isHyperDashActive;
         private float _shieldDeflectImmunityTimer = 0f;
+        // Shield deflect immunity is scoped to the specific deflected obstacle root (including child colliders).
+        // It does not block hits from other obstacles in adjacent lanes.
+        private GameObject _shieldDeflectedObstacleRoot;
 
         public bool IsHandlingHit => _isHandlingHit;
         public bool IsHyperDashActive => _isHyperDashActive;
@@ -46,6 +49,10 @@ namespace SteamRush.Features.Runner
             if (_shieldDeflectImmunityTimer > 0f)
             {
                 _shieldDeflectImmunityTimer -= Time.deltaTime;
+                if (_shieldDeflectImmunityTimer <= 0f)
+                {
+                    _shieldDeflectedObstacleRoot = null;
+                }
             }
         }
 
@@ -98,7 +105,10 @@ namespace SteamRush.Features.Runner
 
         private void HandleInteraction(GameObject obj)
         {
-            if (_shieldDeflectImmunityTimer > 0f)
+            // Ignore interaction only if this is the obstacle (or a child collider) that was just deflected by shield
+            if (_shieldDeflectImmunityTimer > 0f
+                && _shieldDeflectedObstacleRoot != null
+                && obj.transform.IsChildOf(_shieldDeflectedObstacleRoot.transform))
             {
                 return;
             }
@@ -220,7 +230,12 @@ namespace SteamRush.Features.Runner
         /// </summary>
         public void HandleObstacleHitFromSource(ObstacleBase obstacle)
         {
-            if (_isHandlingHit || _shieldDeflectImmunityTimer > 0f)
+            bool isDeflectedObstacle = _shieldDeflectImmunityTimer > 0f
+                && _shieldDeflectedObstacleRoot != null
+                && obstacle != null
+                && obstacle.transform.IsChildOf(_shieldDeflectedObstacleRoot.transform);
+
+            if (_isHandlingHit || isDeflectedObstacle)
             {
                 return;
             }
@@ -406,8 +421,12 @@ namespace SteamRush.Features.Runner
             bool blocked = itemEffects.ConsumeShield();
             if (blocked)
             {
-                // Short 0.8s immunity against secondary colliders of the deflected obstacle
+                // Short 0.8s immunity against secondary colliders of THIS SPECIFIC deflected
+                // obstacle only (e.g. multiple child meshes/colliders on the same car) — scoped
+                // via _shieldDeflectedObstacleRoot, checked against in HandleInteraction() /
+                // HandleObstacleHitFromSource() above. Does NOT affect any other obstacle.
                 _shieldDeflectImmunityTimer = 0.8f;
+                _shieldDeflectedObstacleRoot = obstacleObj;
 
                 if (obstacleObj != null)
                 {

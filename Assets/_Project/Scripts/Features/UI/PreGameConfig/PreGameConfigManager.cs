@@ -14,6 +14,14 @@ using StreamRushLive.Features.Spawning;
 
 namespace SteamRush.Features.UI.PreGameConfig
 {
+    /// <summary>Target of a Live / Offline (Sandbox Test) mode switch.</summary>
+    public enum PreGameSessionMode
+    {
+        None,
+        Live,
+        Offline
+    }
+
     [DisallowMultipleComponent]
     public class PreGameConfigManager : MonoBehaviour
     {
@@ -37,6 +45,13 @@ namespace SteamRush.Features.UI.PreGameConfig
 
         [Header("State")]
         public static bool ForceOpenSettingsOnStart { get; set; } = false;
+
+        // Mode chosen in the confirmation popup; survives the scene reload and is started in Start().
+        private static PreGameSessionMode _pendingMode = PreGameSessionMode.None;
+        // True once the config modal has been closed at least once (the run is live / being played).
+        // Only then is there state to lose, so only then does a mode switch need a reset confirmation.
+        private bool _sessionInProgress = false;
+        public static bool IsLiveSessionActive { get; private set; } = false;
         [SerializeField] private bool _openOnStart = true;
         [SerializeField] private bool _isTestModeActive = false;
         [SerializeField] private GameObject _badgeDemoRun;
@@ -67,6 +82,7 @@ namespace SteamRush.Features.UI.PreGameConfig
                 return;
             }
             Instance = this;
+            IsLiveSessionActive = false;
 
             LoadConfig();
             BindOpenButton();
@@ -108,7 +124,17 @@ namespace SteamRush.Features.UI.PreGameConfig
             BindOpenButton();
             ApplyConfigToRuntime(connectTikTok: false);
 
-            if (_openOnStart || ForceOpenSettingsOnStart)
+            // A mode switch was confirmed right before the scene reload: start that mode on the fresh scene.
+            PreGameSessionMode pendingMode = _pendingMode;
+            _pendingMode = PreGameSessionMode.None;
+
+            if (pendingMode != PreGameSessionMode.None)
+            {
+                ForceOpenSettingsOnStart = false;
+                Time.timeScale = 1f;
+                StartCoroutine(StartPendingModeNextFrame(pendingMode));
+            }
+            else if (_openOnStart || ForceOpenSettingsOnStart)
             {
                 ForceOpenSettingsOnStart = false;
                 OpenConfigUI();
@@ -116,19 +142,80 @@ namespace SteamRush.Features.UI.PreGameConfig
             else
             {
                 Time.timeScale = 1f;
+                _sessionInProgress = true;
             }
 
             UpdateDemoRunBadgeVisibility();
         }
 
+        // Wait one frame so every other component has finished its own Start() before the mode is applied.
+        private System.Collections.IEnumerator StartPendingModeNextFrame(PreGameSessionMode mode)
+        {
+            yield return null;
+
+            if (mode == PreGameSessionMode.Offline) StartTestMode();
+            else if (mode == PreGameSessionMode.Live) StartGoLive();
+        }
+
         public static void ResetGameAndOpenSettings()
         {
             Debug.Log("[PreGameConfigManager] ResetGameAndOpenSettings requested: restoring timescale, killing tweens, and reloading active scene.");
+            _pendingMode = PreGameSessionMode.None;
             ForceOpenSettingsOnStart = true;
+            ReloadActiveScene();
+        }
+
+        /// <summary>Resets the whole level (scene reload), then starts the given mode directly on the fresh scene.</summary>
+        public static void ResetGameAndStartMode(PreGameSessionMode mode)
+        {
+            Debug.Log($"[PreGameConfigManager] ResetGameAndStartMode requested ({mode}): reloading active scene, then starting the mode.");
+            _pendingMode = mode;
+            ForceOpenSettingsOnStart = false;
+            ReloadActiveScene();
+        }
+
+        private static void ReloadActiveScene()
+        {
+            IsLiveSessionActive = false;
             Time.timeScale = 1f;
             DOTween.KillAll();
             string sceneName = SceneManager.GetActiveScene().name;
             SceneManager.LoadScene(sceneName);
+        }
+
+        /// <summary>
+        /// Entry point for the "Go Live" / "Test Mode" buttons. If a run is already in progress, asks the streamer
+        /// to confirm a full reset first; on a fresh scene there is nothing to lose, so the mode starts directly.
+        /// </summary>
+        public void RequestSwitchMode(PreGameSessionMode target)
+        {
+            if (target == PreGameSessionMode.None) return;
+            if (ConfirmationModal.IsShowing) return;
+
+            if (!_sessionInProgress)
+            {
+                if (target == PreGameSessionMode.Offline) StartTestMode();
+                else StartGoLive();
+                return;
+            }
+
+            string modeName = target == PreGameSessionMode.Live
+                ? ConfirmationModal.T("LIVE (TikTok thật)", "LIVE (real TikTok)")
+                : ConfirmationModal.T("OFFLINE / Test", "OFFLINE / Test");
+
+            ConfirmationModal.Show(
+                ConfirmationModal.T("Reset màn chơi?", "Reset the game?"),
+                ConfirmationModal.T(
+                    $"Chuyển sang chế độ {modeName} sẽ làm mới lại toàn bộ màn chơi từ đầu. Bạn có muốn tiếp tục?",
+                    $"Switching to {modeName} will reset the current game to the start. Do you want to continue?"),
+                ConfirmationModal.T("XÁC NHẬN / RESET", "CONFIRM / RESET"),
+                ConfirmationModal.T("HỦY", "CANCEL"),
+                onConfirm: () =>
+                {
+                    // The scene reload re-reads the config from disk, so persist the values just read from the UI.
+                    SaveConfig();
+                    ResetGameAndStartMode(target);
+                });
         }
 
         private void Update()
@@ -370,6 +457,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         public void OpenConfigUI()
         {
             LoadConfig();
+            IsLiveSessionActive = false;
 
             if (_configUI != null)
             {
@@ -395,12 +483,14 @@ namespace SteamRush.Features.UI.PreGameConfig
             }
 
             Time.timeScale = 1f;
+            _sessionInProgress = true;
             UpdateDemoRunBadgeVisibility();
         }
 
         public void StartTestMode()
         {
             _isTestModeActive = true;
+            IsLiveSessionActive = false;
             ApplyConfigToRuntime(connectTikTok: false);
             CloseConfigUI();
 
@@ -437,6 +527,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         public void StartGoLive()
         {
             _isTestModeActive = false;
+            IsLiveSessionActive = true;
             ApplyConfigToRuntime(connectTikTok: true);
             CloseConfigUI();
             UpdateDemoRunBadgeVisibility();

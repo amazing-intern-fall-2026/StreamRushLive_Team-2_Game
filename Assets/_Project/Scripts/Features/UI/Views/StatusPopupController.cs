@@ -2,6 +2,7 @@ using DG.Tweening;
 using EasyTextEffects;
 using TMPro;
 using UnityEngine;
+using SteamRush.Core.Typography;
 
 namespace SteamRush.Features.UI.Views
 {
@@ -24,11 +25,6 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private bool noWrap = true;
         [Tooltip("Display optional icon alongside text.")]
         [SerializeField] private bool showIcon = false;
-
-        // Strips unicode emojis to avoid TextMeshPro font missing glyph warnings
-        private static readonly System.Text.RegularExpressions.Regex EmojiRegex = new System.Text.RegularExpressions.Regex(
-            @"[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF\u2300-\u23FF\u2B50-\u2B55\uFE0F]",
-            System.Text.RegularExpressions.RegexOptions.Compiled);
 
         // Faction color coding: Blue Team (buff) / Red Team (debuff) mapped from HudTheme.
         private static Color BuffColor => HudTheme.Current.blue;
@@ -82,11 +78,8 @@ namespace SteamRush.Features.UI.Views
             float activeHold = customHold > 0f ? customHold : holdDuration;
             activeHold = Mathf.Min(activeHold, activeDuration * 0.8f);
 
-            // Cleanse residual emojis from string
-            if (!string.IsNullOrEmpty(message))
-            {
-                message = EmojiRegex.Replace(message, "").Trim();
-            }
+            // Cleanse emojis and invisible characters from string
+            message = ViewerNameSanitizer.SanitizeMessage(message);
 
             bool isBlue = isBuff;
             if (!string.IsNullOrEmpty(message))

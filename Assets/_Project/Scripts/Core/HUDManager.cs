@@ -1,4 +1,5 @@
 using UnityEngine;
+using SteamRush.Core.Typography;
 using SteamRush.Features.UI.Views;
 
 namespace SteamRush.Features.UI
@@ -26,10 +27,6 @@ namespace SteamRush.Features.UI
         [SerializeField] private Color _buffAccentColor = new Color(0.35f, 0.75f, 1f, 1f);
         [SerializeField] private Color _debuffAccentColor = new Color(1f, 0.3f, 0.25f, 1f);
 
-        private static readonly System.Text.RegularExpressions.Regex EmojiRegex = new System.Text.RegularExpressions.Regex(
-            @"[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF\u2300-\u23FF\u2B50-\u2B55\uFE0F]",
-            System.Text.RegularExpressions.RegexOptions.Compiled);
-
         // Displays current leg distance progress (m / targetMeters) supplied by TrackProgressTracker
         public void UpdateLegProgress(float currentMeters, float targetMeters)
         {
@@ -40,6 +37,15 @@ namespace SteamRush.Features.UI
             }
 
             progressBar.SetLegProgress(currentMeters, targetMeters);
+        }
+
+        // Synchronizes the current runner avatar across HUD elements.
+        public void UpdateRunnerAvatar(Sprite avatar)
+        {
+            if (progressBar != null)
+            {
+                progressBar.SetRunnerAvatar(avatar);
+            }
         }
 
         // currentEnergy: normalized 0..1 value provided by caller.
@@ -83,7 +89,7 @@ namespace SteamRush.Features.UI
             }
             else
             {
-                nextRunnerLabel.text = name;
+                nextRunnerLabel.text = ViewerNameSanitizer.SanitizeDisplayName(name);
                 nextRunnerLabel.color = isVip ? nextRunnerVipColor : nextRunnerNormalColor;
             }
         }
@@ -108,9 +114,9 @@ namespace SteamRush.Features.UI
             string lower = message.ToLowerInvariant();
 
             // Suppress redundant notifications on Top Banner
-            if (lower.Contains("out of energy") || 
-                lower.Contains("not enough energy") || 
-                lower.Contains("ended - sedan") || 
+            if (lower.Contains("out of energy") ||
+                lower.Contains("not enough energy") ||
+                lower.Contains("ended - sedan") ||
                 lower.Contains("distance!"))
             {
                 return;
@@ -128,7 +134,7 @@ namespace SteamRush.Features.UI
 
             // Strip [Red Team] and [Blue Team] prefixes for cleaner display
             message = System.Text.RegularExpressions.Regex.Replace(message, @"\[(Blue|Red)\s*Team\]\s*:?\s*", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
-            message = EmojiRegex.Replace(message, "").Trim();
+            message = ViewerNameSanitizer.SanitizeMessage(message);
 
             if (statusPopupSpawner != null)
             {

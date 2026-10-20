@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using SteamRush.Core.Typography;
 
 namespace SteamRush.Features.UI.Views
 {
@@ -186,7 +187,7 @@ namespace SteamRush.Features.UI.Views
         {
             if (runnerName != null)
             {
-                runnerName.text = name;
+                runnerName.text = ViewerNameSanitizer.SanitizeDisplayName(name);
                 runnerName.color = isVip ? vipColor : normalColor;
             }
 
