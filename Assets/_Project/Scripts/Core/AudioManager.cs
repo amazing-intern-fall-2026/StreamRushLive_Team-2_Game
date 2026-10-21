@@ -481,7 +481,9 @@ public class AudioManager : MonoBehaviour
                 }
 
                 danceMusicSource.clip = entry.clip;
-                danceMusicSource.volume = sfxVolume * masterVolume * (entry.volumeMultiplier > 0f ? entry.volumeMultiplier : 1f);
+                danceMusicSource.time = 0f;
+                float multiplier = entry.volumeMultiplier > 0f ? entry.volumeMultiplier : 1f;
+                danceMusicSource.volume = Mathf.Max(bgmVolume, sfxVolume) * masterVolume * multiplier;
                 danceMusicSource.Play();
 
                 // Pause game BGM so dance music plays exclusively

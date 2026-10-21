@@ -317,8 +317,8 @@ namespace SteamRush.Features.StreamIntegration
             JObject json = ParseResponse(response);
             if (json == null || IsHistoricalEvent(json, "chat")) return;
 
-            string comment = ReadStringWithFallback(json, _commentPath, "comment", "text");
-            string userId = ReadStringWithFallback(json, _userIdPath, "userId", "uniqueId", "data.user.uniqueId");
+            string comment = ReadStringWithFallback(json, _commentPath, "comment", "text", "data.comment", "data.text", "data.message", "message");
+            string userId = ReadStringWithFallback(json, _userIdPath, "userId", "uniqueId", "data.user.uniqueId", "data.user.userId", "data.userId");
             if (string.IsNullOrEmpty(comment) || string.IsNullOrEmpty(userId)) return;
 
             string displayName = GetDisplayName(json, userId);
@@ -544,7 +544,8 @@ namespace SteamRush.Features.StreamIntegration
             if (eventTime > 0)
             {
                 if (eventTime < 10000000000L) eventTime *= 1000L;
-                if (eventTime < _sessionConnectUnixMs - 3000L)
+                // Allow a generous 60-second window to tolerate network buffer delay & client/server clock drift
+                if (eventTime < _sessionConnectUnixMs - 60000L)
                 {
                     if (_logEvents)
                     {

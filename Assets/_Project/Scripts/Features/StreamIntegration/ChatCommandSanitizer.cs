@@ -8,14 +8,70 @@ namespace SteamRush.Features.StreamIntegration
     // Pure C# logic class without MonoBehaviour dependency for unit testing.
     public class ChatCommandSanitizer
     {
-        private static readonly char[] _separatorChars = { ',', '.', '!', '-', '/' };
+        private static readonly char[] _separatorChars = { ',', '.', '!', '-', '/', '#', '@', ';', ':', '_', '|' };
         private static readonly Dictionary<string, string> _commandAliases = new Dictionary<string, string>
         {
+            // Lane 1 / Left
             { "1", "1" },
+            { "l1", "1" },
+            { "lane1", "1" },
+            { "lan1", "1" },
+            { "left", "left" },
+            { "l", "left" },
+            { "trai", "left" },
+            { "trái", "left" },
+            { "a", "left" },
+
+            // Lane 2 / Middle
             { "2", "2" },
+            { "l2", "2" },
+            { "lane2", "2" },
+            { "lan2", "2" },
+            { "mid", "2" },
+            { "middle", "2" },
+            { "giua", "2" },
+            { "giữa", "2" },
+
+            // Lane 3 / Right
             { "3", "3" },
+            { "l3", "3" },
+            { "lane3", "3" },
+            { "lan3", "3" },
+            { "right", "right" },
+            { "r", "right" },
+            { "phai", "right" },
+            { "phải", "right" },
+            { "d", "right" },
+
+            // Jump
             { "jump", "jump" },
-            { "j", "jump" }
+            { "j", "jump" },
+            { "nhay", "jump" },
+            { "nhảy", "jump" },
+            { "up", "jump" },
+            { "w", "jump" },
+            { "space", "jump" },
+
+            // Turbo / Fast
+            { "fast", "fast" },
+            { "speed", "fast" },
+            { "turbo", "fast" },
+            { "boost", "fast" },
+            { "nhanh", "fast" },
+
+            // Team join commands
+            { "blue", "blue" },
+            { "fan", "blue" },
+            { "teamblue", "blue" },
+            { "teamfan", "blue" },
+            { "xanh", "blue" },
+
+            { "red", "red" },
+            { "anti", "red" },
+            { "teamred", "red" },
+            { "teamanti", "red" },
+            { "do", "red" },
+            { "đỏ", "red" }
         };
         private const int _maxCommands = 3;
 

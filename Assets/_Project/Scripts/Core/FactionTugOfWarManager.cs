@@ -545,14 +545,14 @@ namespace SteamRush.Features.StreamIntegration
         {
             if (string.IsNullOrEmpty(message)) return false;
 
-            string normalized = message.Trim().ToLowerInvariant();
+            string normalized = message.Trim().ToLowerInvariant().TrimStart('#');
 
             FactionType target;
-            if (normalized == "blue")
+            if (normalized == "blue" || normalized == "fan" || normalized == "teamblue" || normalized == "teamfan" || normalized == "doi1" || normalized == "doixanh")
             {
                 target = FactionType.Blue;
             }
-            else if (normalized == "red")
+            else if (normalized == "red" || normalized == "anti" || normalized == "teamred" || normalized == "teamanti" || normalized == "doi2" || normalized == "doido")
             {
                 target = FactionType.Red;
             }

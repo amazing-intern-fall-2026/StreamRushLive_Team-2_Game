@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using SteamRush.Core;
 using SteamRush.Features.Runner;
@@ -63,9 +64,20 @@ namespace SteamRush.Features.StreamIntegration
             if (_runnerController == null) _runnerController = FindFirstObjectByType<ChatLaneRunnerController>();
         }
 
+        private readonly ChatCommandSanitizer _sanitizer = new ChatCommandSanitizer();
+
         private void OnChatReceived(TikTokChatEvent evt)
         {
-            if (!PreGameConfigManager.IsLiveSessionActive) return;
+            // Do not execute chat commands while the streamer is actively configuring settings in the modal
+            if (PreGameConfigManager.Instance != null && PreGameConfigManager.Instance.IsOpen)
+            {
+                return;
+            }
+
+            if (!PreGameConfigManager.IsLiveSessionActive && PreGameConfigManager.Instance != null && !PreGameConfigManager.Instance.IsTestModeActive)
+            {
+                return;
+            }
 
             if (_factionManager == null || _hudManager == null || _runnerController == null)
             {
@@ -78,7 +90,6 @@ namespace SteamRush.Features.StreamIntegration
             }
 
             string displayName = !string.IsNullOrEmpty(evt.DisplayName) ? evt.DisplayName : evt.UserId;
-            string trimmedCmd = evt.Comment.Trim().ToLowerInvariant();
 
             // Follower gate check
             if (_requireFollowToPlay && !_followerGate.CanSendCommand(evt.UserId))
@@ -96,23 +107,30 @@ namespace SteamRush.Features.StreamIntegration
                 Debug.Log($"[TikTokChatAdapter] Chat: [{displayName}] '{evt.Comment}'");
             }
 
-            // Team join commands
-            if (trimmedCmd == "blue" || trimmedCmd == "red")
+            List<string> commands = _sanitizer.SanitizeAndParse(evt.Comment);
+            if (commands == null || commands.Count == 0) return;
+
+            // Check if first command is team selection
+            string primaryCmd = commands[0];
+            if (primaryCmd == "blue" || primaryCmd == "red")
             {
-                HandleTeamSelection(evt.UserId, displayName, trimmedCmd);
+                HandleTeamSelection(evt.UserId, displayName, primaryCmd);
                 return;
             }
 
             // Gameplay command execution based on player faction
             FactionType faction = _factionManager != null ? _factionManager.GetFaction(evt.UserId) : FactionType.Blue;
 
-            if (faction == FactionType.Blue)
+            foreach (string cmd in commands)
             {
-                ExecuteBlueCommand(displayName, trimmedCmd);
-            }
-            else
-            {
-                ExecuteRedCommand(evt.UserId, displayName, trimmedCmd);
+                if (faction == FactionType.Blue)
+                {
+                    ExecuteBlueCommand(displayName, cmd);
+                }
+                else
+                {
+                    ExecuteRedCommand(evt.UserId, displayName, cmd);
+                }
             }
         }
 
@@ -120,30 +138,51 @@ namespace SteamRush.Features.StreamIntegration
         {
             if (_factionManager == null) return;
 
+            bool isBlue = command == "blue";
             bool changed = _factionManager.OnChatCommand(userId, command);
             if (changed)
             {
-                bool isBlue = _factionManager.GetFaction(userId) == FactionType.Blue;
                 string teamName = isBlue ? "Blue Team (Runner Support)" : "Red Team (Obstacle Hazard)";
                 ShowPopup($"[{displayName}] joined {teamName}!", isBlue);
+                if (isBlue) _hudManager?.ShowFanAction(displayName, "Joined Blue Team");
+                else _hudManager?.ShowAntiAction(displayName, "Joined Red Team");
+            }
+            else
+            {
+                if (isBlue) _hudManager?.ShowFanAction(displayName, "Team Blue!");
+                else _hudManager?.ShowAntiAction(displayName, "Team Red!");
             }
         }
 
         private void ExecuteBlueCommand(string displayName, string command)
         {
-            if (_runnerController != null && _runnerController.IsChatControlLocked) return;
+            if (_runnerController != null && _runnerController.IsChatControlLocked)
+            {
+                if (_logEvents)
+                {
+                    Debug.LogWarning("[TikTokChatAdapter] Chat control locked: Runner is configured for manual keyboard control only.");
+                }
+                return;
+            }
 
             if (command == "1" || command == "2" || command == "3" || command == "left" || command == "right")
             {
                 _runnerController?.ExecuteSingleCommand(command);
-                _hudManager?.ShowSupportAction(displayName, $"Lane {command}");
+                string laneDesc = command switch
+                {
+                    "1" or "left" => "Lane 1 (Left)",
+                    "2" => "Lane 2 (Mid)",
+                    "3" or "right" => "Lane 3 (Right)",
+                    _ => $"Lane {command}"
+                };
+                _hudManager?.ShowSupportAction(displayName, laneDesc);
             }
-            else if (command == "jump" || command == "j")
+            else if (command == "jump")
             {
                 _runnerController?.ExecuteSingleCommand("jump");
                 _hudManager?.ShowSupportAction(displayName, "Jump!");
             }
-            else if (command == "fast" || command == "speed")
+            else if (command == "fast")
             {
                 _runnerController?.ExecuteSingleCommand("fast");
                 _hudManager?.ShowSupportAction(displayName, "Turbo Boost!");
@@ -154,15 +193,25 @@ namespace SteamRush.Features.StreamIntegration
 
         private void ExecuteRedCommand(string userId, string displayName, string command)
         {
-            if (command == "1" || command == "2" || command == "3")
+            int laneIndex = command switch
             {
-                if (int.TryParse(command, out int laneIndex))
+                "1" or "left" => 1,
+                "2" => 2,
+                "3" or "right" => 3,
+                _ => -1
+            };
+
+            if (laneIndex >= 1 && laneIndex <= 3)
+            {
+                bool spawned = _factionManager != null && _factionManager.TrySpawnObstacleVehicle(userId, laneIndex);
+                if (spawned)
                 {
-                    bool spawned = _factionManager != null && _factionManager.TrySpawnObstacleVehicle(userId, laneIndex);
-                    if (spawned)
-                    {
-                        _hudManager?.ShowHazardAction(displayName, $"Car on Lane {laneIndex}!");
-                    }
+                    string laneName = laneIndex == 1 ? "1 (Left)" : (laneIndex == 2 ? "2 (Mid)" : "3 (Right)");
+                    _hudManager?.ShowHazardAction(displayName, $"Car on Lane {laneName}!");
+                }
+                else
+                {
+                    _hudManager?.ShowHazardAction(displayName, $"Need Energy ({_factionManager?.AntiLikes ?? 0})");
                 }
             }
         }
