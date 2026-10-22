@@ -7,6 +7,7 @@ using UnityEngine.Networking;
 using SteamRush.Core;
 using SteamRush.Features.Runner;
 using SteamRush.Features.UI;
+using SteamRush.Features.UI.PreGameConfig;
 
 namespace SteamRush.Features.StreamIntegration
 {
@@ -280,29 +281,63 @@ namespace SteamRush.Features.StreamIntegration
         {
             if (string.IsNullOrEmpty(avatarUrl)) yield break;
 
-            // Prefer JPEG/PNG over WebP since UnityWebRequestTexture does not support WebP natively
-            if (avatarUrl.Contains(".webp") && !avatarUrl.Contains(".jpeg") && !avatarUrl.Contains(".jpg"))
+            int backendPort = PreGameConfigManager.Instance != null && PreGameConfigManager.Instance.CurrentConfig != null 
+                ? PreGameConfigManager.Instance.CurrentConfig.backendPort 
+                : 9091;
+
+            string targetUrl = avatarUrl;
+            bool isLocalProxy = avatarUrl.StartsWith("http://localhost:", StringComparison.OrdinalIgnoreCase) ||
+                                avatarUrl.StartsWith("http://127.0.0.1:", StringComparison.OrdinalIgnoreCase);
+
+            if (!isLocalProxy && (avatarUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || avatarUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
             {
-                avatarUrl = avatarUrl.Replace(".webp", ".jpeg");
+                targetUrl = $"http://localhost:{backendPort}/api/avatar-proxy?url={UnityWebRequest.EscapeURL(avatarUrl)}";
             }
 
-            using (UnityWebRequest imgReq = UnityWebRequestTexture.GetTexture(avatarUrl))
+            Sprite loaded = null;
+            yield return StartCoroutine(FetchAvatarSprite(targetUrl, s => loaded = s));
+
+            if (loaded == null && !isLocalProxy)
             {
-                imgReq.timeout = 10;
+                yield return StartCoroutine(FetchAvatarSprite(avatarUrl, s => loaded = s));
+            }
+
+            if (loaded != null)
+            {
+                onLoaded?.Invoke(loaded);
+            }
+        }
+
+        private IEnumerator FetchAvatarSprite(string url, Action<Sprite> onLoaded)
+        {
+            if (string.IsNullOrEmpty(url)) yield break;
+
+            using (UnityWebRequest imgReq = UnityWebRequest.Get(url))
+            {
+                imgReq.SetRequestHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                imgReq.timeout = 8;
                 yield return imgReq.SendWebRequest();
 
-                if (imgReq.result == UnityWebRequest.Result.Success)
+                if (imgReq.result == UnityWebRequest.Result.Success && imgReq.downloadHandler != null && imgReq.downloadHandler.data != null)
                 {
-                    Texture2D tex = DownloadHandlerTexture.GetContent(imgReq);
-                    if (tex != null)
+                    byte[] data = imgReq.downloadHandler.data;
+                    if (data.Length > 0)
                     {
-                        Sprite sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
-                        onLoaded?.Invoke(sprite);
+                        // True enables mipchain generation for ultra-sharp 3D world sampling
+                        Texture2D tex = new Texture2D(2, 2, TextureFormat.RGBA32, true);
+                        if (tex.LoadImage(data))
+                        {
+                            tex.filterMode = FilterMode.Trilinear;
+                            tex.anisoLevel = 16;
+                            tex.Apply(true, false);
+                            Sprite sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+                            onLoaded?.Invoke(sprite);
+                        }
                     }
                 }
                 else if (_logEvents)
                 {
-                    Debug.LogWarning($"[TikTokProfileSync] Failed to download avatar from CDN: {imgReq.error}");
+                    Debug.LogWarning($"[TikTokProfileSync] Failed to fetch avatar texture from {url}: {imgReq.error}");
                 }
             }
         }

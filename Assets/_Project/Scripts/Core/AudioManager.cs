@@ -47,10 +47,8 @@ public enum SFXType
 }
 
 /// <summary>
-/// [EN] Centralized audio manager managing background music (BGM), sound effects (SFX), dance music, and UI feedback.
+/// Centralized audio manager managing background music (BGM), sound effects (SFX), dance music, and UI feedback.
 /// Supports volume adjustment, muting, crossfading, anti-spam throttling, and dedicated audio sources.
-/// [VI] Quản lý âm thanh tập trung, điều phối nhạc nền (BGM), hiệu ứng âm thanh (SFX), nhạc nhảy và âm thanh UI.
-/// Hỗ trợ chỉnh âm lượng, bật tắt âm thanh (mute), chuyển mượt (crossfade), chống spam âm thanh và các AudioSource riêng biệt.
 /// </summary>
 [DisallowMultipleComponent]
 public class AudioManager : MonoBehaviour
@@ -76,9 +74,9 @@ public class AudioManager : MonoBehaviour
         [SerializeField] private List<SFXEntry> sfxEntries = new List<SFXEntry>();
 
         [Header("Anti-Spam / Duplicate Prevention")]
-        [Tooltip("[EN] When enabled, consecutive requests to play the same SFX within minSFXRepeatInterval will be ignored to prevent audio spam.\n[VI] Khi bật, các yêu cầu phát cùng một SFX trong khoảng minSFXRepeatInterval sẽ bị bỏ qua để chống spam.")]
+        [Tooltip("When enabled, consecutive requests to play the same SFX within minSFXRepeatInterval will be ignored to prevent audio spam.")]
         [SerializeField] private bool preventDuplicateSFX = true;
-        [Tooltip("[EN] Minimum interval (seconds) between playing the same SFX type to prevent frame spam while allowing sequential feedback.\n[VI] Khoảng cách tối thiểu (giây) giữa các lần phát cùng loại SFX để chống trùng lặp âm thanh.")]
+        [Tooltip("Minimum interval (seconds) between playing the same SFX type to prevent frame spam while allowing sequential feedback.")]
         [SerializeField] private float minSFXRepeatInterval = 0.12f;
 
         [System.Serializable]

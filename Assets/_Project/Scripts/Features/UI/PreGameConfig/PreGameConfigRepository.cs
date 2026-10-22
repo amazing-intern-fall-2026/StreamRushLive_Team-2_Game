@@ -9,10 +9,8 @@ using StreamRushLive.Features.Gifts;
 namespace SteamRush.Features.UI.PreGameConfig
 {
     /// <summary>
-    /// [EN] Single Responsibility: Loads, sanitizes, syncs, and persists PreGameConfigData
+    /// Single Responsibility: Loads, sanitizes, syncs, and persists PreGameConfigData
     /// to local JSON storage (persistentDataPath) and PlayerPrefs fallback.
-    /// [VI] Đơn trách nhiệm: Tải, kiểm tra hợp lệ, đồng bộ và lưu trữ dữ liệu PreGameConfigData
-    /// vào tệp JSON cục bộ (persistentDataPath) và phương án dự phòng PlayerPrefs.
     /// </summary>
     public class PreGameConfigRepository
     {
@@ -107,6 +105,12 @@ namespace SteamRush.Features.UI.PreGameConfig
                 {
                     config.targetDistanceMeters = config.finiteTargetDistanceMeters;
                 }
+            }
+
+            // Default inactivity timeout to 120s (2 minutes) if unassigned
+            if (config.memberInactivityTimeoutSeconds <= 0f)
+            {
+                config.memberInactivityTimeoutSeconds = 120f;
             }
 
             // Temporarily disable manual keyboard controls

@@ -7,14 +7,13 @@ using SteamRush.Features.StreamIntegration;
 namespace SteamRush.Features.Runner
 {
     /// <summary>
-    /// [EN] Simulates a TikTok Live session with real-time audience interaction, likes, faction tug-of-war, and queue handovers.
-    /// [VI] Giả lập phiên TikTok Live với tương tác khán giả theo thời gian thực, thả tim, kéo co phe phái và chuyển giao hàng đợi.
+    /// Simulates a TikTok Live session with real-time audience interaction, likes, faction tug-of-war, and queue handovers.
     /// </summary>
     public class LiveSessionDemoRunner : MonoBehaviour
     {
         public static LiveSessionDemoRunner Instance { get; private set; }
 
-        // [EN] Bilingual pool of Fan chat commands / [VI] Danh sách lệnh chat Fan song ngữ (Anh - Việt)
+        // Pool of Fan chat commands
         private static readonly string[] _fanChatPool = 
         { 
             "1", "2", "3", "left", "right", "jump", "blue", "switch",
@@ -22,7 +21,7 @@ namespace SteamRush.Features.Runner
             "sang trái", "sang phải", "nhảy", "nhảy lên", "đội xanh", "chuyển làn"
         };
 
-        // [EN] Bilingual pool of Anti chat commands / [VI] Danh sách lệnh chat Anti song ngữ (Anh - Việt)
+        // Pool of Anti chat commands
         private static readonly string[] _antiChatPool = 
         { 
             "1", "2", "3", "red", "fast",
@@ -521,8 +520,7 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// [EN] Simulates continuous viewer chat commands (both English and Vietnamese) and vehicle obstacle spawns (0.8s - 2.0s interval).
-        /// [VI] Giả lập các lệnh chat liên tục của khán giả (cả tiếng Anh và tiếng Việt) và triệu hồi xe cản đường (chu kỳ 0.8s - 2.0s).
+        /// Simulates continuous viewer chat commands and vehicle obstacle spawns (0.8s - 2.0s interval).
         /// </summary>
         private IEnumerator SimulateChatLoop()
         {
@@ -544,14 +542,14 @@ namespace SteamRush.Features.Runner
 
                 if (isFan)
                 {
-                    // [EN] Pick a Fan user and select a bilingual command / [VI] Chọn người xem phe Fan và lệnh chat song ngữ
+                    // Pick a Fan user and select a command
                     string fanUser = BaseFanNames[Random.Range(0, BaseFanNames.Length)];
                     string command = _fanChatPool[Random.Range(0, _fanChatPool.Length)];
                     DispatchViewerAction(() => console.SimulateViewerChat(fanUser, command));
                 }
                 else
                 {
-                    // [EN] Pick an Anti user and select a bilingual command / [VI] Chọn người xem phe Anti và lệnh chat song ngữ
+                    // Pick an Anti user and select a command
                     string antiUser = BaseAntiNames[Random.Range(0, BaseAntiNames.Length)];
                     string command = _antiChatPool[Random.Range(0, _antiChatPool.Length)];
                     DispatchViewerAction(() => console.SimulateViewerChat(antiUser, command));

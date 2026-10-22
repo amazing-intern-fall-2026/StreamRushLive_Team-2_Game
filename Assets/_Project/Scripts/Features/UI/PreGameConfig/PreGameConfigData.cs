@@ -127,34 +127,35 @@ namespace SteamRush.Features.UI.PreGameConfig
     [Serializable]
     public class PreGameConfigData
     {
-        // === A. BASIC CONFIG / CẤU HÌNH CƠ BẢN ===
-        public string language = "en"; // [EN] "en" (English) or "vi" (Vietnamese) / [VI] "en" (Tiếng Anh) hoặc "vi" (Tiếng Việt)
+        // === A. BASIC CONFIG ===
+        public string language = "en"; // "en" (English) or "vi" (Vietnamese)
         public string tiktokUsername = "";
-        public int targetDistanceOptionIndex = 1; // [EN] 0: 500m, 1: 1km, 2: 5km, 3: Infinite / [VI] 0: 500m, 1: 1km, 2: 5km, 3: Vô hạn
+        public int targetDistanceOptionIndex = 1; // 0: 500m, 1: 1km, 2: 5km, 3: Infinite
         public float targetDistanceMeters = 1000000f; // 1,000 km (1,000,000 meters)
         public float finiteTargetDistanceMeters = 1000000f; // 1,000 km
         public bool isInfiniteDistance = false;
         public List<PreGameGiftItemConfig> gifts = new List<PreGameGiftItemConfig>();
 
-        // === B. ADVANCED CONFIG / CẤU HÌNH NÂNG CAO ===
-        // [EN] Fan & Energy / [VI] Phe Fan & Năng lượng
+        // === B. ADVANCED CONFIG ===
+        // Fan & Energy
         public int laneChangeEnergyCost = 10;
         public int jumpEnergyCost = 20;
         public float freeControlDuration = 30f;
         public float sprintBuffDuration = 30f;
-        public bool enableKeyboardControl = false; // [EN] Default: OFF (manual player control disabled) / [VI] Mặc định: TẮT (vô hiệu hóa phím tay)
+        public float memberInactivityTimeoutSeconds = 120f; // Inactivity timeout in seconds (2 minutes)
+        public bool enableKeyboardControl = false; // Default: OFF (manual player control disabled)
 
-        // [EN] Anti & Obstacles / [VI] Phe Anti & Xe cản đường
+        // Anti & Obstacles
         public bool autoSpawnOnFullEnergy = true;
         public int maxConcurrentCars = 2;
 
-        // [EN] Collision Penalties / [VI] Hình phạt va chạm
+        // Collision Penalties
         public float distancePenaltyMeters = 100f;
         public float sedanEnergyPenaltyPercent = 20f;
         public float pickupEnergyPenaltyPercent = 40f;
         public float heavyTruckEnergyPenaltyPercent = 60f;
 
-        // === C. LIVE DEMO SIMULATION / GIẢ LẬP LIVE DEMO (LiveSessionDemoRunner) ===
+        // === C. LIVE DEMO SIMULATION (LiveSessionDemoRunner) ===
         public bool enableLiveDemoSimulation = false;
         public bool enableSimulatedChats = false;
         public bool enableSimulatedGifts = false;
@@ -162,7 +163,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         public bool enableSimulatedFollowers = false;
         public bool enableSimulatedStreamDelay = false;
 
-        // === D. DEBUG & TESTING TOOLS / CÔNG CỤ DEBUG & KIỂM THỬ ===
+        // === D. DEBUG & TESTING TOOLS ===
         public bool showHowToPlayGuide = true;
         public bool showGiftInfoPanel = true;
         public bool showStopwatchTimer = true;

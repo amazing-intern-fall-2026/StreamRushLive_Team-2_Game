@@ -10,18 +10,12 @@ using SteamRush.Core.Localization;
 namespace SteamRush.Features.UI.PreGameConfig
 {
     /// <summary>
-    /// [EN] Manager & Coordinator for the PreGameConfig modal UI.
+    /// Manager & Coordinator for the PreGameConfig modal UI.
     /// Orchestrates sub-views according to Single Responsibility Principle (SRP):
     /// - PreGameGeneralSettingsView: Manages general game parameters & demo simulation toggles.
     /// - PreGameGiftsTableView: Manages the interactive gift configurations table.
     /// - PreGameBackendSettingsView: Manages backend connectivity, ports, and lifecycle commands.
     /// - PreGameLiveVerifier: Manages live room connectivity testing and GoLive authorization.
-    /// [VI] Quản lý & điều phối giao diện popup PreGameConfig.
-    /// Điều phối các khung nhìn phụ theo nguyên lý Đơn trách nhiệm (SRP):
-    /// - PreGameGeneralSettingsView: Quản lý thông số chung và các toggle giả lập demo.
-    /// - PreGameGiftsTableView: Quản lý bảng cấu hình quà tặng tương tác.
-    /// - PreGameBackendSettingsView: Quản lý kết nối backend, cổng mạng và lệnh tiến trình.
-    /// - PreGameLiveVerifier: Quản lý kiểm tra kết nối phòng live và cấp quyền GoLive.
     /// </summary>
     public class PreGameConfigUI : MonoBehaviour
     {

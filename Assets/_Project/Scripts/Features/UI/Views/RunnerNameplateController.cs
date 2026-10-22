@@ -44,7 +44,7 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private float scaleMultiplier = 1.6f;
 
         [Tooltip("Diameter size of the avatar in pixels.")]
-        [SerializeField] private float avatarSize = 90f;
+        [SerializeField] private float avatarSize = 80f;
 
         [Tooltip("Font size of the runner name text.")]
         [SerializeField] private float nameFontSize = 42f;
@@ -120,9 +120,28 @@ namespace SteamRush.Features.UI.Views
             }
         }
 
+        [Header("Default Visuals")]
+        [Tooltip("Fallback default avatar sprite if runner does not provide one.")]
+        [SerializeField] private Sprite defaultAvatar;
+        private Sprite _initialAvatar;
+
         private void Awake()
         {
             cachedCamera = Camera.main;
+
+            // Increase world-space dynamic pixel density so avatars and fonts render razor sharp
+            var scaler = GetComponent<UnityEngine.UI.CanvasScaler>();
+            if (scaler != null)
+            {
+                scaler.dynamicPixelsPerUnit = 4f;
+                scaler.referencePixelsPerUnit = 100f;
+            }
+
+            // Cache initial avatar sprite to serve as fallback.
+            if (avatar != null && avatar.sprite != null)
+            {
+                _initialAvatar = avatar.sprite;
+            }
 
             if (target != null && nameplateAnchor == null)
             {
@@ -138,18 +157,31 @@ namespace SteamRush.Features.UI.Views
             ApplyVisualSizing();
         }
 
-
-
         public void ApplyVisualSizing()
         {
             transform.localScale = Vector3.one * (0.005f * scaleMultiplier);
 
+            float avatarCenterY = 12f + (avatarSize * 0.5f);
+
             if (avatar != null)
             {
+                // When avatar is parented inside a Mask GameObject ("Avatar"), scale the parent mask container
+                Transform avatarParent = avatar.transform.parent != null && avatar.transform.parent != transform 
+                    ? avatar.transform.parent 
+                    : avatar.transform;
+
+                RectTransform parentRect = avatarParent.GetComponent<RectTransform>();
+                if (parentRect != null)
+                {
+                    parentRect.sizeDelta = new Vector2(avatarSize, avatarSize);
+                    parentRect.anchoredPosition = new Vector2(0f, avatarCenterY);
+                }
+
                 RectTransform avatarRect = avatar.GetComponent<RectTransform>();
-                if (avatarRect != null)
+                if (avatarRect != null && avatar.transform.parent == transform)
                 {
                     avatarRect.sizeDelta = new Vector2(avatarSize, avatarSize);
+                    avatarRect.anchoredPosition = new Vector2(0f, avatarCenterY);
                 }
 
                 Transform glow = transform.Find("Glow");
@@ -158,7 +190,8 @@ namespace SteamRush.Features.UI.Views
                     RectTransform glowRect = glow.GetComponent<RectTransform>();
                     if (glowRect != null)
                     {
-                        glowRect.sizeDelta = new Vector2(avatarSize * 1.45f, avatarSize * 1.45f);
+                        glowRect.sizeDelta = new Vector2(avatarSize * 1.25f, avatarSize * 1.25f);
+                        glowRect.anchoredPosition = new Vector2(0f, avatarCenterY);
                     }
                 }
             }
@@ -170,6 +203,7 @@ namespace SteamRush.Features.UI.Views
                 if (nameRect != null)
                 {
                     nameRect.sizeDelta = new Vector2(Mathf.Max(240f, nameFontSize * 6.5f), nameFontSize * 1.4f);
+                    nameRect.anchoredPosition = new Vector2(0f, -15f);
                 }
             }
         }
@@ -182,7 +216,7 @@ namespace SteamRush.Features.UI.Views
             gameObject.SetActive(target != null);
         }
 
-        // Updates display name, avatar, and VIP badge status on nameplate
+        // Updates display name, avatar, and VIP badge status on nameplate.
         public void SetRunnerInfo(string name, Sprite runnerAvatar, bool isVip)
         {
             if (runnerName != null)
@@ -191,9 +225,18 @@ namespace SteamRush.Features.UI.Views
                 runnerName.color = isVip ? vipColor : normalColor;
             }
 
-            if (avatar != null && runnerAvatar != null)
+            if (avatar != null)
             {
-                avatar.sprite = runnerAvatar;
+                // If new avatar provided, use it; otherwise fallback to default avatar so previous runner's avatar is replaced.
+                Sprite fallback = defaultAvatar != null ? defaultAvatar : _initialAvatar;
+                Sprite finalSprite = runnerAvatar != null ? runnerAvatar : fallback;
+                avatar.sprite = finalSprite;
+
+                if (finalSprite != null && finalSprite.texture != null)
+                {
+                    finalSprite.texture.filterMode = FilterMode.Trilinear;
+                    finalSprite.texture.anisoLevel = 16;
+                }
             }
         }
 

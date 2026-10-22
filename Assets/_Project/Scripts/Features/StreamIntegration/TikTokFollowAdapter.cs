@@ -88,7 +88,8 @@ namespace SteamRush.Features.StreamIntegration
 
             if (_queueManager != null)
             {
-                _queueManager.EnqueueFollowerAsRunner(displayName);
+                // Enqueue follower with profile avatar URL
+                _queueManager.EnqueueFollowerAsRunner(evt.UserId, displayName, evt.ProfilePictureUrl);
             }
 
             if (_showPopups && _hudManager != null)

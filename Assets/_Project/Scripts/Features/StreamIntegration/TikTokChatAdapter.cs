@@ -8,10 +8,8 @@ using SteamRush.Features.UI.PreGameConfig;
 namespace SteamRush.Features.StreamIntegration
 {
     /// <summary>
-    /// [EN] Listens for TikTok chat events via EventBus and translates chat commands into in-game gameplay actions.
+    /// Listens for TikTok chat events via EventBus and translates chat commands into in-game gameplay actions.
     /// Handles team selection (Blue / Red), runner movement controls, and anti obstacle placement.
-    /// [VI] Lắng nghe sự kiện bình luận TikTok qua EventBus và chuyển đổi lệnh chat thành hành động gameplay trong game.
-    /// Xử lý chọn phe (Xanh / Đỏ), điều khiển di chuyển nhân vật và thả xe cản đường của phe Anti.
     /// </summary>
     [DisallowMultipleComponent]
     public class TikTokChatAdapter : MonoBehaviour
@@ -22,7 +20,7 @@ namespace SteamRush.Features.StreamIntegration
         [SerializeField] private ChatLaneRunnerController _runnerController;
 
         [Header("Follower Gate Configuration")]
-        [Tooltip("[EN] If TRUE: Viewers must follow on TikTok Live to send commands. If FALSE: Anyone can play immediately.\n[VI] Nếu TRUE: Người xem phải follow TikTok Live mới gửi được lệnh. Nếu FALSE: Ai cũng chơi được ngay.")]
+        [Tooltip("If TRUE: Viewers must follow on TikTok Live to send commands. If FALSE: Anyone can play immediately.")]
         [SerializeField] private bool _requireFollowToPlay = false;
 
         [Header("Feedback & Diagnostics")]
@@ -70,8 +68,7 @@ namespace SteamRush.Features.StreamIntegration
 
         private void OnChatReceived(TikTokChatEvent evt)
         {
-            // [EN] Do not execute chat commands while the streamer is actively configuring settings in the modal
-            // [VI] Không thực thi lệnh chat khi streamer đang mở bảng cài đặt cấu hình PreGame
+            // Do not execute chat commands while the streamer is actively configuring settings in the modal
             if (PreGameConfigManager.Instance != null && PreGameConfigManager.Instance.IsOpen)
             {
                 return;
@@ -98,7 +95,7 @@ namespace SteamRush.Features.StreamIntegration
 
             string displayName = !string.IsNullOrEmpty(evt.DisplayName) ? evt.DisplayName : evt.UserId;
 
-            // [EN] Follower gate check / [VI] Kiểm tra điều kiện follow kênh
+            // Follower gate check
             if (_requireFollowToPlay && !_followerGate.CanSendCommand(evt.UserId))
             {
                 if (_logEvents)
@@ -117,7 +114,7 @@ namespace SteamRush.Features.StreamIntegration
             List<string> commands = _sanitizer.SanitizeAndParse(evt.Comment);
             if (commands == null || commands.Count == 0) return;
 
-            // [EN] Check if first command is team selection / [VI] Kiểm tra xem lệnh đầu tiên có phải là chọn phe không
+            // Check if first command is team selection
             string primaryCmd = commands[0];
             if (primaryCmd == "blue" || primaryCmd == "red")
             {
@@ -125,9 +122,21 @@ namespace SteamRush.Features.StreamIntegration
                 return;
             }
 
-            // [EN] Gameplay command execution based on player faction
-            // [VI] Thực thi lệnh gameplay dựa theo phe của người xem
-            FactionType faction = _factionManager != null ? _factionManager.GetFaction(evt.UserId) : FactionType.Blue;
+            // Gameplay command execution based on player faction
+            FactionType faction = FactionType.Blue;
+            if (_factionManager != null)
+            {
+                if (!_factionManager.TryGetFaction(evt.UserId, out faction) &&
+                    !_factionManager.TryGetFaction(displayName, out faction))
+                {
+                    if (_logEvents)
+                    {
+                        Debug.Log($"[TikTokChatAdapter] {displayName} ({evt.UserId}) sent command '{evt.Comment}' but has not joined a team yet.");
+                    }
+                    ShowPopup($"[{displayName}] Type 'blue' or 'red' to join!", false);
+                    return;
+                }
+            }
 
             foreach (string cmd in commands)
             {

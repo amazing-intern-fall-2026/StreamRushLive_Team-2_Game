@@ -64,6 +64,25 @@ namespace SteamRush.Features.StreamIntegration
 
         private readonly FollowerGate _followerGate = new FollowerGate();
         private readonly Dictionary<string, FactionType> _userFactions = new Dictionary<string, FactionType>();
+        private readonly Dictionary<string, float> _userLastActiveTime = new Dictionary<string, float>();
+
+        [Header("Viewer Activity & Expiration")]
+        [Tooltip("Seconds of inactivity after which a viewer is removed from team count. Default: 120s (2 minutes). Set 0 to disable.")]
+        [SerializeField] private float _memberInactivityTimeoutSeconds = 120f;
+        [SerializeField] private bool _enableInactivityExpiration = true;
+        private float _expirationCheckTimer;
+
+        public float MemberInactivityTimeoutSeconds
+        {
+            get => _memberInactivityTimeoutSeconds;
+            set => _memberInactivityTimeoutSeconds = Mathf.Max(0f, value);
+        }
+
+        public bool EnableInactivityExpiration
+        {
+            get => _enableInactivityExpiration;
+            set => _enableInactivityExpiration = value;
+        }
 
         public int BlueMemberCount
         {
@@ -232,6 +251,52 @@ namespace SteamRush.Features.StreamIntegration
             };
         }
 
+        private void OnEnable()
+        {
+            EventBus.Subscribe<TikTokUserLeaveEvent>(OnUserLeaveReceived);
+            EventBus.Subscribe<TikTokChatEvent>(OnUserChatActivity);
+            EventBus.Subscribe<TikTokLikeEvent>(OnUserLikeActivity);
+            EventBus.Subscribe<TikTokGiftEvent>(OnUserGiftActivity);
+        }
+
+        private void OnDisable()
+        {
+            EventBus.Unsubscribe<TikTokUserLeaveEvent>(OnUserLeaveReceived);
+            EventBus.Unsubscribe<TikTokChatEvent>(OnUserChatActivity);
+            EventBus.Unsubscribe<TikTokLikeEvent>(OnUserLikeActivity);
+            EventBus.Unsubscribe<TikTokGiftEvent>(OnUserGiftActivity);
+        }
+
+        // Handles explicit viewer leave event from TikTokLiveClient socket.
+        private void OnUserLeaveReceived(TikTokUserLeaveEvent evt)
+        {
+            RemoveUser(evt.UserId);
+        }
+
+        private void OnUserChatActivity(TikTokChatEvent evt)
+        {
+            if (HasFaction(evt.UserId))
+            {
+                RecordUserActivity(evt.UserId);
+            }
+        }
+
+        private void OnUserLikeActivity(TikTokLikeEvent evt)
+        {
+            if (HasFaction(evt.UserId))
+            {
+                RecordUserActivity(evt.UserId);
+            }
+        }
+
+        private void OnUserGiftActivity(TikTokGiftEvent evt)
+        {
+            if (HasFaction(evt.UserId))
+            {
+                RecordUserActivity(evt.UserId);
+            }
+        }
+
         private void Start()
         {
             SyncFactionValues();
@@ -302,11 +367,33 @@ namespace SteamRush.Features.StreamIntegration
                     TryAutoSpawnCarFromFullEnergy();
                 }
             }
+
+            // Periodically check and evict inactive viewers from team membership.
+            if (_enableInactivityExpiration && _memberInactivityTimeoutSeconds > 0)
+            {
+                _expirationCheckTimer += Time.deltaTime;
+                if (_expirationCheckTimer >= 1.5f)
+                {
+                    _expirationCheckTimer = 0f;
+                    CheckExpiredMembers();
+                }
+            }
         }
 
         public FactionType GetFaction(string userId)
         {
             return _userFactions.TryGetValue(userId, out FactionType faction) ? faction : _defaultFaction;
+        }
+
+        // Tries to retrieve faction for a user without falling back to default faction.
+        public bool TryGetFaction(string userId, out FactionType faction)
+        {
+            if (!string.IsNullOrEmpty(userId) && _userFactions.TryGetValue(userId, out faction))
+            {
+                return true;
+            }
+            faction = _defaultFaction;
+            return false;
         }
 
         public void OnLikeReceived(string userId)
@@ -316,7 +403,13 @@ namespace SteamRush.Features.StreamIntegration
                 return;
             }
 
-            FactionType faction = GetFaction(userId);
+            // Only viewers who have explicitly joined a team contribute like energy.
+            if (!TryGetFaction(userId, out FactionType faction))
+            {
+                return;
+            }
+
+            RecordUserActivity(userId);
             AddLikes(faction, 1);
         }
 
@@ -566,6 +659,8 @@ namespace SteamRush.Features.StreamIntegration
                 return false;
             }
 
+            RecordUserActivity(userId);
+
             if (_userFactions.TryGetValue(userId, out FactionType current) && current == target)
             {
                 return false;
@@ -579,6 +674,7 @@ namespace SteamRush.Features.StreamIntegration
         {
             if (!_followerGate.CanSendCommand(userId)) return;
 
+            RecordUserActivity(userId);
             SetFaction(userId, isTrapGift ? FactionType.Red : FactionType.Blue);
         }
 
@@ -683,8 +779,76 @@ namespace SteamRush.Features.StreamIntegration
 
         public void SetFaction(string userId, FactionType faction)
         {
+            if (string.IsNullOrEmpty(userId)) return;
             _userFactions[userId] = faction;
+            RecordUserActivity(userId);
             _factionMemberCountsChanged.Invoke(FanMemberCount, AntiMemberCount);
+        }
+
+        // Updates the last active timestamp for a user in the faction pool.
+        public void RecordUserActivity(string userId)
+        {
+            if (string.IsNullOrEmpty(userId)) return;
+            _userLastActiveTime[userId] = Time.time;
+        }
+
+        // Removes a viewer from team membership and refreshes team counts.
+        public bool RemoveUser(string userId)
+        {
+            if (string.IsNullOrEmpty(userId)) return false;
+            bool removed = _userFactions.Remove(userId);
+            _userLastActiveTime.Remove(userId);
+            if (removed)
+            {
+                _factionMemberCountsChanged.Invoke(FanMemberCount, AntiMemberCount);
+                Debug.Log($"[FactionTugOfWarManager] Removed inactive/departed viewer: '{userId}'. Remaining Blue: {BlueMemberCount}, Red: {RedMemberCount}");
+            }
+            return removed;
+        }
+
+        // Clears all registered team memberships and resets member counts to 0.
+        public void ClearAllMembers()
+        {
+            _userFactions.Clear();
+            _userLastActiveTime.Clear();
+            _factionMemberCountsChanged.Invoke(0, 0);
+        }
+
+        // Periodically checks and removes viewers who have been inactive longer than the timeout window.
+        private void CheckExpiredMembers()
+        {
+            if (_userFactions.Count == 0) return;
+
+            float now = Time.time;
+            List<string> toRemove = null;
+
+            foreach (var kvp in _userFactions)
+            {
+                string uid = kvp.Key;
+                if (_userLastActiveTime.TryGetValue(uid, out float lastTime))
+                {
+                    if (now - lastTime > _memberInactivityTimeoutSeconds)
+                    {
+                        toRemove ??= new List<string>();
+                        toRemove.Add(uid);
+                    }
+                }
+                else
+                {
+                    _userLastActiveTime[uid] = now;
+                }
+            }
+
+            if (toRemove != null && toRemove.Count > 0)
+            {
+                foreach (var uid in toRemove)
+                {
+                    _userFactions.Remove(uid);
+                    _userLastActiveTime.Remove(uid);
+                }
+                _factionMemberCountsChanged.Invoke(FanMemberCount, AntiMemberCount);
+                Debug.Log($"[FactionTugOfWarManager] Evicted {toRemove.Count} inactive viewer(s). New counts -> Blue: {BlueMemberCount}, Red: {RedMemberCount}");
+            }
         }
     }
 }

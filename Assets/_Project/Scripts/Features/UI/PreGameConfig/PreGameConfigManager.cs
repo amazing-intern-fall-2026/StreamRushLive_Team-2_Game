@@ -11,8 +11,7 @@ using StreamRushLive.Features.Gifts;
 namespace SteamRush.Features.UI.PreGameConfig
 {
     /// <summary>
-    /// [EN] Target of a Live / Offline (Sandbox Test) mode switch.
-    /// [VI] Mục tiêu chuyển đổi giữa chế độ Live và chế độ Offline (Chơi thử Sandbox).
+    /// Target of a Live / Offline (Sandbox Test) mode switch.
     /// </summary>
     public enum PreGameSessionMode
     {
@@ -22,12 +21,9 @@ namespace SteamRush.Features.UI.PreGameConfig
     }
 
     /// <summary>
-    /// [EN] Central coordinator for PreGame configuration lifecycle, UI modal interactions, and session mode state transitions.
+    /// Central coordinator for PreGame configuration lifecycle, UI modal interactions, and session mode state transitions.
     /// Storage & persistence delegated to PreGameConfigRepository.
     /// Runtime translation & application delegated to PreGameConfigApplier.
-    /// [VI] Bộ điều phối trung tâm cho vòng đời cấu hình PreGame, tương tác giao diện và chuyển đổi trạng thái chế độ phiên chơi.
-    /// Lưu trữ cấu hình được ủy quyền cho PreGameConfigRepository.
-    /// Chuyển đổi và áp dụng lúc runtime được ủy quyền cho PreGameConfigApplier.
     /// </summary>
     [DisallowMultipleComponent]
     public class PreGameConfigManager : MonoBehaviour
@@ -54,8 +50,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         [Header("State")]
         public static bool ForceOpenSettingsOnStart { get; set; } = false;
 
-        // [EN] Mode chosen in the confirmation popup; survives scene reload and starts in Start().
-        // [VI] Chế độ được chọn trong popup xác nhận; tồn tại qua reload scene và kích hoạt trong Start().
+        // Mode chosen in the confirmation popup; survives scene reload and starts in Start().
         private static PreGameSessionMode _pendingMode = PreGameSessionMode.None;
         public static bool IsLiveSessionActive { get; private set; } = false;
         [SerializeField] private PreGameSessionMode _activeSessionMode = PreGameSessionMode.None;

@@ -13,9 +13,11 @@ namespace StreamRushLive.Features.Gifts
     public class GiftContext
     {
         public string SenderName { get; set; } = "Viewer";
+        public string SenderUserId { get; set; } = null;
         public FactionType Faction { get; set; } = FactionType.Blue;
         public int TotalCoins { get; set; } = 0;
         public float CustomValue { get; set; } = -1f;
+        public string ProfilePictureUrl { get; set; } = null;
 
         // Runtime Subsystems & Services
         public GiftManager GiftManager { get; set; }

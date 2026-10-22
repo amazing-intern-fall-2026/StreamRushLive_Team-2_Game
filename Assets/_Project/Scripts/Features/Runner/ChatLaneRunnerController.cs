@@ -7,43 +7,40 @@ namespace SteamRush.Features.Runner
     using StreamRushLive.Features.VFX;
 
     /// <summary>
-    /// [EN] Chat command parser and energy-gating coordinator for the Runner.
+    /// Chat command parser and energy-gating coordinator for the Runner.
     /// Receives viewer chat commands (1, 2, 3, jump, slide, fast, etc.), checks Fan energy costs,
     /// and delegates physical execution to RunnerMovement.
-    /// [VI] Bộ phân tích lệnh chat và điều phối tiêu hao năng lượng cho nhân vật chạy (Runner).
-    /// Tiếp nhận các lệnh chat của người xem (1, 2, 3, nhảy, trượt, tăng tốc...), kiểm tra năng lượng phe Fan,
-    /// và ủy quyền thực thi di chuyển vật lý cho RunnerMovement.
     /// </summary>
     [RequireComponent(typeof(RunnerMovement))]
     [RequireComponent(typeof(RunnerCollisionHandler))]
     public class ChatLaneRunnerController : MonoBehaviour
     {
         [Header("Command Queue")]
-        [Tooltip("[EN] Maximum commands accepted per comment.\n[VI] Số lượng lệnh tối đa chấp nhận trên mỗi bình luận.")]
+        [Tooltip("Maximum commands accepted per comment.")]
         [SerializeField] private int _maxCommandsPerBatch = 3;
-        [Tooltip("[EN] Minimum interval between consecutive fast/slow queue commands.\n[VI] Khoảng nghỉ tối thiểu giữa các lệnh tăng/giảm tốc liên tiếp.")]
+        [Tooltip("Minimum interval between consecutive fast/slow queue commands.")]
         [SerializeField] private float _nonLaneCommandDelay = 0.1f;
 
         [Header("Speed Commands (fast)")]
-        [Tooltip("[EN] World scroll speed on fast command (default: 18.0 m/s).\n[VI] Tốc độ cuộn thế giới khi nhận lệnh chạy nhanh (mặc định: 18.0 m/s).")]
+        [Tooltip("World scroll speed on fast command (default: 18.0 m/s).")]
         [SerializeField] private float _fastTargetSpeed = 18f;
 
         [Header("Energy & Faction References")]
-        [Tooltip("[EN] FactionTugOfWarManager reference for Fan energy costs.\n[VI] Tham chiếu FactionTugOfWarManager để tính năng lượng Fan.")]
+        [Tooltip("FactionTugOfWarManager reference for Fan energy costs.")]
         [SerializeField] private FactionTugOfWarManager _factionManager;
-        [Tooltip("[EN] RunnerEnergySystem reference for syncing lane change costs.\n[VI] Tham chiếu RunnerEnergySystem để đồng bộ chi phí đổi làn.")]
+        [Tooltip("RunnerEnergySystem reference for syncing lane change costs.")]
         [SerializeField] private StreamRushLive.Features.Spawning.RunnerEnergySystem _energySystem;
 
         [Header("Control Energy Costs (GDD v1.4.1 Section 2.2)")]
-        [Tooltip("[EN] Fan energy cost per lane change (default: 10 points).\n[VI] Năng lượng Fan tiêu hao cho mỗi lần đổi làn (mặc định: 10 điểm).")]
+        [Tooltip("Fan energy cost per lane change (default: 10 points).")]
         [SerializeField] private int _laneChangeEnergyCost = 10;
-        [Tooltip("[EN] Fan energy cost per jump (default: 20 points).\n[VI] Năng lượng Fan tiêu hao cho mỗi lần nhảy (mặc định: 20 điểm).")]
+        [Tooltip("Fan energy cost per jump (default: 20 points).")]
         [SerializeField] private int _jumpEnergyCost = 20;
 
         [Header("Control Lock On Hit")]
-        [Tooltip("[EN] Automatically lock all runner controls when pushed back by obstacle or vehicle.\n[VI] Tự động khóa điều khiển khi nhân vật bị chướng ngại vật hoặc xe đẩy lùi.")]
+        [Tooltip("Automatically lock all runner controls when pushed back by obstacle or vehicle.")]
         [SerializeField] private bool _lockControlOnKnockback = true;
-        [Tooltip("[EN] Extra stun / control lock duration after knockback finishes (seconds).\n[VI] Thời gian choáng / khóa điều khiển cộng thêm sau khi kết thúc đẩy lùi (giây).")]
+        [Tooltip("Extra stun / control lock duration after knockback finishes (seconds).")]
         [SerializeField] private float _extraControlLockDuration = 0.25f;
 
         private float _controlLockTimer = 0f;
@@ -471,15 +468,13 @@ namespace SteamRush.Features.Runner
         }
 
         /// <summary>
-        /// [EN] Automatically switches to a different lane (0: Left, 1: Mid, 2: Right).
-        /// [VI] Tự động chuyển sang làn khác (0: Trái, 1: Giữa, 2: Phải).
+        /// Automatically switches to a different lane (0: Left, 1: Mid, 2: Right).
         /// </summary>
         public bool SwitchLaneAuto()
         {
             if (IsControlLocked || _runnerMovement == null) return false;
             int cur = _runnerMovement.CurrentLaneIndex;
-            // [EN] Lane 0: Left, Lane 1: Mid, Lane 2: Right
-            // [VI] Làn 0: Trái, Làn 1: Giữa, Làn 2: Phải
+            // Lane 0: Left, Lane 1: Mid, Lane 2: Right
             int target = cur switch
             {
                 0 => 1,

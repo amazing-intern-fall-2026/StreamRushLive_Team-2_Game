@@ -106,14 +106,26 @@ namespace SteamRush.Features.StreamIntegration
             _processedLikeStepsByUser[evt.UserId] = newSteps;
             int stepsGained = newSteps - oldSteps;
             int energyAmount = stepsGained * _energyPerStep;
-
-            FactionType faction = _factionManager != null ? _factionManager.GetFaction(evt.UserId) : FactionType.Blue;
             string displayName = !string.IsNullOrEmpty(evt.DisplayName) ? evt.DisplayName : evt.UserId;
 
-            if (_factionManager != null)
+            if (_factionManager == null)
             {
-                _factionManager.AddLikes(faction, energyAmount);
+                return;
             }
+
+            // Only viewers who have explicitly joined a faction (Blue or Red) contribute like energy.
+            // If the viewer has not joined any team yet, their likes do NOT add energy to either team.
+            if (!_factionManager.TryGetFaction(evt.UserId, out FactionType faction) &&
+                !_factionManager.TryGetFaction(displayName, out faction))
+            {
+                if (_logEvents)
+                {
+                    Debug.Log($"[TikTokLikeAdapter] LIKE: {displayName} ({evt.UserId}) sent likes but has not joined a team yet - skipping team energy addition.");
+                }
+                return;
+            }
+
+            _factionManager.AddLikes(faction, energyAmount);
 
             // Anti-spam cooldown for like audio
             if (Time.unscaledTime - _lastLikeSFXTime >= _likeSFXCooldown)

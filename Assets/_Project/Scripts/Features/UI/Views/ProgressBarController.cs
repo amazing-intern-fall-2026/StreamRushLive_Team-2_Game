@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using SteamRush.Features.Runner;
 
 namespace SteamRush.Features.UI.Views
 {
@@ -13,35 +14,132 @@ namespace SteamRush.Features.UI.Views
         // Runner avatar handle slides horizontally along progress bar based on percentage
         [SerializeField] private RectTransform avatarHandle;
         [SerializeField] private Image avatarPlaceholder;
+        [SerializeField] private Sprite defaultAvatar;
+        private Sprite _initialAvatar;
 
-        // Updates the avatar displayed on the progress bar.
-        public void SetRunnerAvatar(Sprite runnerAvatar)
+        private void Awake()
         {
-            if (avatarPlaceholder == null)
+            EnsureReferences();
+        }
+
+        private void Start()
+        {
+            EnsureReferences();
+
+            // Synchronize initial runner avatar on start if QueueManager is already running.
+            var queueManager = ChatRunnerQueueManager.Instance;
+            if (queueManager != null && queueManager.CurrentRunnerAvatar != null)
             {
-                GameObject placeholderObject = GameObject.Find("AvatarPlaceholder");
-                if (placeholderObject != null)
+                SetRunnerAvatar(queueManager.CurrentRunnerAvatar);
+            }
+        }
+
+        private void OnValidate()
+        {
+            EnsureReferences();
+        }
+
+        // Ensures all UI references are resolved automatically if not assigned in Inspector.
+        public void EnsureReferences()
+        {
+            if (avatarHandle == null)
+            {
+                Transform h = transform.Find("AvatarHandle");
+                if (h != null)
                 {
-                    avatarPlaceholder = placeholderObject.GetComponent<Image>();
+                    avatarHandle = h.GetComponent<RectTransform>();
                 }
             }
 
             if (avatarPlaceholder == null)
             {
-                Debug.LogWarning("[ProgressBar] AvatarPlaceholder is not assigned or found");
-                return;
+                // Find avatar image in AvatarHandle hierarchy.
+                Transform imgTr = transform.Find("AvatarHandle/AvatarMask/AvatarImage") ??
+                                  transform.Find("AvatarHandle/AvatarMask/AvatarPlaceholder") ??
+                                  transform.Find("AvatarHandle/AvatarImage") ??
+                                  transform.Find("AvatarHandle/AvatarPlaceholder") ??
+                                  transform.Find("AvatarImage") ??
+                                  transform.Find("AvatarPlaceholder");
+
+                if (imgTr != null)
+                {
+                    avatarPlaceholder = imgTr.GetComponent<Image>();
+                }
+                else if (avatarHandle != null)
+                {
+                    // Deep search in AvatarHandle children for avatar image component.
+                    var mask = avatarHandle.GetComponentInChildren<Mask>(true);
+                    if (mask != null)
+                    {
+                        foreach (Transform child in mask.transform)
+                        {
+                            var childImg = child.GetComponent<Image>();
+                            if (childImg != null)
+                            {
+                                avatarPlaceholder = childImg;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (avatarPlaceholder == null)
+                    {
+                        var images = avatarHandle.GetComponentsInChildren<Image>(true);
+                        foreach (var img in images)
+                        {
+                            string n = img.gameObject.name.ToLower();
+                            if (n.Contains("avatar") || n.Contains("image") || n.Contains("placeholder"))
+                            {
+                                avatarPlaceholder = img;
+                                break;
+                            }
+                        }
+                    }
+                }
             }
 
-            if (runnerAvatar == null)
+            if (fillBar == null)
             {
-                Debug.LogWarning("[ProgressBar] Received NULL avatar");
+                Transform f = transform.Find("Fill");
+                if (f != null)
+                {
+                    fillBar = f.GetComponent<Image>();
+                }
+            }
+
+            if (labelKm == null)
+            {
+                labelKm = GetComponentInChildren<TMP_Text>();
+            }
+
+            // Cache default/initial placeholder sprite.
+            if (avatarPlaceholder != null && avatarPlaceholder.sprite != null && _initialAvatar == null)
+            {
+                _initialAvatar = avatarPlaceholder.sprite;
+            }
+        }
+
+        // Updates the avatar displayed on the progress bar handle.
+        public void SetRunnerAvatar(Sprite runnerAvatar)
+        {
+            EnsureReferences();
+
+            if (avatarPlaceholder == null)
+            {
+                Debug.LogWarning("[ProgressBar] AvatarPlaceholder/AvatarImage component is not assigned or found in children.");
                 return;
             }
 
-            Debug.Log($"[ProgressBar] Updating AvatarPlaceholder with: {runnerAvatar.name}");
+            // If runner avatar is provided, display it; otherwise fallback to default avatar so previous runner's avatar is replaced.
+            Sprite displaySprite = runnerAvatar != null 
+                ? runnerAvatar 
+                : (defaultAvatar != null ? defaultAvatar : _initialAvatar);
 
-            avatarPlaceholder.sprite = runnerAvatar;
-            avatarPlaceholder.enabled = true;
+            if (displaySprite != null)
+            {
+                avatarPlaceholder.sprite = displaySprite;
+                avatarPlaceholder.enabled = true;
+            }
         }
 
         // Displays current leg distance progress in meters (0 -> RelayDistanceMeters)

@@ -11,10 +11,8 @@ using StreamRushLive.Features.Spawning;
 namespace SteamRush.Features.UI.PreGameConfig
 {
     /// <summary>
-    /// [EN] Single Responsibility: Translates and applies a PreGameConfigData model
+    /// Single Responsibility: Translates and applies a PreGameConfigData model
     /// to all runtime game systems, managers, UI overlays, and network clients.
-    /// [VI] Đơn trách nhiệm: Chuyển đổi và áp dụng mô hình dữ liệu PreGameConfigData
-    /// vào tất cả các hệ thống runtime, manager, giao diện UI và client mạng.
     /// </summary>
     public class PreGameConfigApplier
     {
@@ -22,7 +20,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         {
             if (config == null) return;
 
-            // 0. [EN] Language Localization / [VI] Ngôn ngữ bản địa hóa
+            // 0. Language Localization
             if (LocalizationManager.Instance != null && !string.IsNullOrEmpty(config.language))
             {
                 var targetLang = string.Equals(config.language, "vi", StringComparison.OrdinalIgnoreCase)
@@ -34,7 +32,7 @@ namespace SteamRush.Features.UI.PreGameConfig
                 }
             }
 
-            // 1. [EN] Goal Distance / [VI] Cự ly mục tiêu
+            // 1. Goal Distance
             var tracker = UnityEngine.Object.FindFirstObjectByType<TrackProgressTracker>();
             if (tracker != null)
             {
@@ -94,11 +92,15 @@ namespace SteamRush.Features.UI.PreGameConfig
                 }
             }
 
-            // 4. Faction Auto Spawn Car
+            // 4. Faction Auto Spawn Car & Inactivity Timeout
             var faction = UnityEngine.Object.FindFirstObjectByType<FactionTugOfWarManager>();
             if (faction != null)
             {
                 faction.AutoSpawnOnFullEnergy = config.autoSpawnOnFullEnergy;
+                if (config.memberInactivityTimeoutSeconds > 0)
+                {
+                    faction.MemberInactivityTimeoutSeconds = config.memberInactivityTimeoutSeconds;
+                }
             }
 
             // 5. Spawner Max Obstacles

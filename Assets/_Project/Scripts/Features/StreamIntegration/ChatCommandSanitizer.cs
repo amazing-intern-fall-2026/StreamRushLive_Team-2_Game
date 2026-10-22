@@ -5,17 +5,15 @@ using UnityEngine;
 namespace SteamRush.Features.StreamIntegration
 {
     /// <summary>
-    /// [EN] Sanitizes and parses control commands from livestream comments (up to 3 commands per message).
+    /// Sanitizes and parses control commands from livestream comments (up to 3 commands per message).
     /// Pure C# logic class without MonoBehaviour dependency for unit testing.
-    /// [VI] Chuẩn hóa và phân tích lệnh điều khiển từ bình luận livestream (tối đa 3 lệnh mỗi tin nhắn).
-    /// Lớp logic thuần C# không phụ thuộc MonoBehaviour để phục vụ unit test.
     /// </summary>
     public class ChatCommandSanitizer
     {
         private static readonly char[] _separatorChars = { ',', '.', '!', '-', '/', '#', '@', ';', ':', '_', '|' };
         private static readonly Dictionary<string, string> _phraseAliases = new Dictionary<string, string>
         {
-            // [EN] Switch lane phrases / [VI] Cụm từ chuyển làn (chuyển làn / đổi làn)
+            // Switch lane phrases
             { "chuyển làn 1", "1" },
             { "chuyen lan 1", "1" },
             { "chuyển làn 2", "2" },
@@ -35,7 +33,7 @@ namespace SteamRush.Features.StreamIntegration
             { "làn ba", "3" },
             { "lan ba", "3" },
 
-            // [EN] Directional switch phrases / [VI] Cụm từ chuyển hướng trái phải
+            // Directional switch phrases
             { "chuyển làn trái", "left" },
             { "chuyen lan trai", "left" },
             { "chuyển làn phải", "right" },
@@ -57,7 +55,7 @@ namespace SteamRush.Features.StreamIntegration
             { "rẽ phải", "right" },
             { "re phai", "right" },
 
-            // [EN] Generic switch lane phrases / [VI] Cụm từ chuyển làn chung -> switch
+            // Generic switch lane phrases -> switch
             { "chuyển làn", "switch" },
             { "chuyen lan", "switch" },
             { "đổi làn", "switch" },
@@ -69,14 +67,14 @@ namespace SteamRush.Features.StreamIntegration
             { "switch lane", "switch" },
             { "change lane", "switch" },
 
-            // [EN] Jump phrases / [VI] Cụm từ nhảy lên
+            // Jump phrases
             { "nhảy lên", "jump" },
             { "nhay len", "jump" },
             { "bật lên", "jump" },
             { "bat len", "jump" },
             { "jump up", "jump" },
 
-            // [EN] Team join phrases / [VI] Cụm từ chọn phe (Xanh / Đỏ)
+            // Team join phrases
             { "team blue", "blue" },
             { "team fan", "blue" },
             { "đội xanh", "blue" },
@@ -95,7 +93,7 @@ namespace SteamRush.Features.StreamIntegration
 
         private static readonly Dictionary<string, string> _commandAliases = new Dictionary<string, string>
         {
-            // [EN] Lane 1 / Left / [VI] Làn 1 / Bên trái
+            // Lane 1 / Left
             { "1", "1" },
             { "l1", "1" },
             { "lane1", "1" },
@@ -106,7 +104,7 @@ namespace SteamRush.Features.StreamIntegration
             { "trái", "left" },
             { "a", "left" },
 
-            // [EN] Lane 2 / Middle / [VI] Làn 2 / Ở giữa
+            // Lane 2 / Middle
             { "2", "2" },
             { "l2", "2" },
             { "lane2", "2" },
@@ -116,7 +114,7 @@ namespace SteamRush.Features.StreamIntegration
             { "giua", "2" },
             { "giữa", "2" },
 
-            // [EN] Lane 3 / Right / [VI] Làn 3 / Bên phải
+            // Lane 3 / Right
             { "3", "3" },
             { "l3", "3" },
             { "lane3", "3" },
@@ -127,7 +125,7 @@ namespace SteamRush.Features.StreamIntegration
             { "phải", "right" },
             { "d", "right" },
 
-            // [EN] Jump / [VI] Nhảy
+            // Jump
             { "jump", "jump" },
             { "j", "jump" },
             { "nhay", "jump" },
@@ -136,14 +134,14 @@ namespace SteamRush.Features.StreamIntegration
             { "w", "jump" },
             { "space", "jump" },
 
-            // [EN] Turbo / Fast / [VI] Chạy nhanh / Tăng tốc
+            // Turbo / Fast
             { "fast", "fast" },
             { "speed", "fast" },
             { "turbo", "fast" },
             { "boost", "fast" },
             { "nhanh", "fast" },
 
-            // [EN] Switch Lane / [VI] Chuyển đổi làn
+            // Switch Lane
             { "switch", "switch" },
             { "chuyenlan", "switch" },
             { "chuyểnlan", "switch" },
@@ -152,7 +150,7 @@ namespace SteamRush.Features.StreamIntegration
             { "chuyen", "switch" },
             { "chuyển", "switch" },
 
-            // [EN] Team join commands / [VI] Lệnh chọn phe
+            // Team join commands
             { "blue", "blue" },
             { "fan", "blue" },
             { "teamblue", "blue" },
@@ -169,8 +167,7 @@ namespace SteamRush.Features.StreamIntegration
         private const int _maxCommands = 3;
 
         /// <summary>
-        /// [EN] Normalizes separators to whitespace, lowercases input, and extracts up to 3 valid commands.
-        /// [VI] Chuẩn hóa các dấu phân cách thành khoảng trắng, chuyển chữ thường và trích xuất tối đa 3 lệnh hợp lệ.
+        /// Normalizes separators to whitespace, lowercases input, and extracts up to 3 valid commands.
         /// </summary>
         public List<string> SanitizeAndParse(string rawInput)
         {
@@ -199,8 +196,7 @@ namespace SteamRush.Features.StreamIntegration
 
             string normalizedInput = normalizedBuilder.ToString().ToLowerInvariant();
 
-            // 1. [EN] Match multi-word phrases first (e.g. "chuyển làn 1", "chuyển làn", "đội xanh")
-            //    [VI] Khớp các cụm từ nhiều chữ trước (ví dụ "chuyển làn 1", "chuyển làn", "đội xanh")
+            // 1. Match multi-word phrases first (e.g. "switch lane 1", "switch lane", "blue team")
             foreach (var kvp in _phraseAliases)
             {
                 if (normalizedInput.Contains(kvp.Key))
@@ -213,8 +209,7 @@ namespace SteamRush.Features.StreamIntegration
                 }
             }
 
-            // 2. [EN] Tokenize remaining words for single-token aliases
-            //    [VI] Tách các từ còn lại để khớp các lệnh từ đơn
+            // 2. Tokenize remaining words for single-token aliases
             string[] tokens = normalizedInput.Split((char[])null, System.StringSplitOptions.RemoveEmptyEntries);
 
             foreach (string token in tokens)
