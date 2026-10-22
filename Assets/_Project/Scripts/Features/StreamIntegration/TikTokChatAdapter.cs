@@ -8,8 +8,10 @@ using SteamRush.Features.UI.PreGameConfig;
 namespace SteamRush.Features.StreamIntegration
 {
     /// <summary>
-    /// Listens for TikTok chat events via EventBus and translates chat commands into in-game gameplay actions.
+    /// [EN] Listens for TikTok chat events via EventBus and translates chat commands into in-game gameplay actions.
     /// Handles team selection (Blue / Red), runner movement controls, and anti obstacle placement.
+    /// [VI] Lắng nghe sự kiện bình luận TikTok qua EventBus và chuyển đổi lệnh chat thành hành động gameplay trong game.
+    /// Xử lý chọn phe (Xanh / Đỏ), điều khiển di chuyển nhân vật và thả xe cản đường của phe Anti.
     /// </summary>
     [DisallowMultipleComponent]
     public class TikTokChatAdapter : MonoBehaviour
@@ -20,7 +22,7 @@ namespace SteamRush.Features.StreamIntegration
         [SerializeField] private ChatLaneRunnerController _runnerController;
 
         [Header("Follower Gate Configuration")]
-        [Tooltip("If TRUE: Viewers must follow on TikTok Live to send commands. If FALSE: Anyone can play immediately.")]
+        [Tooltip("[EN] If TRUE: Viewers must follow on TikTok Live to send commands. If FALSE: Anyone can play immediately.\n[VI] Nếu TRUE: Người xem phải follow TikTok Live mới gửi được lệnh. Nếu FALSE: Ai cũng chơi được ngay.")]
         [SerializeField] private bool _requireFollowToPlay = false;
 
         [Header("Feedback & Diagnostics")]
@@ -68,13 +70,18 @@ namespace SteamRush.Features.StreamIntegration
 
         private void OnChatReceived(TikTokChatEvent evt)
         {
-            // Do not execute chat commands while the streamer is actively configuring settings in the modal
+            // [EN] Do not execute chat commands while the streamer is actively configuring settings in the modal
+            // [VI] Không thực thi lệnh chat khi streamer đang mở bảng cài đặt cấu hình PreGame
             if (PreGameConfigManager.Instance != null && PreGameConfigManager.Instance.IsOpen)
             {
                 return;
             }
 
-            if (!PreGameConfigManager.IsLiveSessionActive && PreGameConfigManager.Instance != null && !PreGameConfigManager.Instance.IsTestModeActive)
+            bool isTikTokConnected = TikTokLiveClient.Instance != null && TikTokLiveClient.Instance.IsConnected;
+            bool isLiveActive = PreGameConfigManager.IsLiveSessionActive || isTikTokConnected;
+            bool isTestActive = PreGameConfigManager.Instance != null && PreGameConfigManager.Instance.IsTestModeActive;
+
+            if (!isLiveActive && !isTestActive)
             {
                 return;
             }
@@ -91,7 +98,7 @@ namespace SteamRush.Features.StreamIntegration
 
             string displayName = !string.IsNullOrEmpty(evt.DisplayName) ? evt.DisplayName : evt.UserId;
 
-            // Follower gate check
+            // [EN] Follower gate check / [VI] Kiểm tra điều kiện follow kênh
             if (_requireFollowToPlay && !_followerGate.CanSendCommand(evt.UserId))
             {
                 if (_logEvents)
@@ -110,7 +117,7 @@ namespace SteamRush.Features.StreamIntegration
             List<string> commands = _sanitizer.SanitizeAndParse(evt.Comment);
             if (commands == null || commands.Count == 0) return;
 
-            // Check if first command is team selection
+            // [EN] Check if first command is team selection / [VI] Kiểm tra xem lệnh đầu tiên có phải là chọn phe không
             string primaryCmd = commands[0];
             if (primaryCmd == "blue" || primaryCmd == "red")
             {
@@ -118,7 +125,8 @@ namespace SteamRush.Features.StreamIntegration
                 return;
             }
 
-            // Gameplay command execution based on player faction
+            // [EN] Gameplay command execution based on player faction
+            // [VI] Thực thi lệnh gameplay dựa theo phe của người xem
             FactionType faction = _factionManager != null ? _factionManager.GetFaction(evt.UserId) : FactionType.Blue;
 
             foreach (string cmd in commands)
@@ -165,7 +173,7 @@ namespace SteamRush.Features.StreamIntegration
                 return;
             }
 
-            if (command == "1" || command == "2" || command == "3" || command == "left" || command == "right")
+            if (command == "1" || command == "2" || command == "3" || command == "left" || command == "right" || command == "switch")
             {
                 _runnerController?.ExecuteSingleCommand(command);
                 string laneDesc = command switch
@@ -173,6 +181,7 @@ namespace SteamRush.Features.StreamIntegration
                     "1" or "left" => "Lane 1 (Left)",
                     "2" => "Lane 2 (Mid)",
                     "3" or "right" => "Lane 3 (Right)",
+                    "switch" => "Switch Lane",
                     _ => $"Lane {command}"
                 };
                 _hudManager?.ShowSupportAction(displayName, laneDesc);
@@ -198,6 +207,7 @@ namespace SteamRush.Features.StreamIntegration
                 "1" or "left" => 1,
                 "2" => 2,
                 "3" or "right" => 3,
+                "switch" => Random.Range(1, 4),
                 _ => -1
             };
 

@@ -73,10 +73,12 @@ namespace SteamRush.Core
     public readonly struct RequestCarSpawnEvent
     {
         public readonly int LaneIndex; // 0 = Random, 1 = Left, 2 = Center, 3 = Right
+        public readonly StreamRushLive.Features.Spawning.ObstacleType? Tier;
 
-        public RequestCarSpawnEvent(int laneIndex = 0)
+        public RequestCarSpawnEvent(int laneIndex = 0, StreamRushLive.Features.Spawning.ObstacleType? tier = null)
         {
             LaneIndex = laneIndex;
+            Tier = tier;
         }
     }
 

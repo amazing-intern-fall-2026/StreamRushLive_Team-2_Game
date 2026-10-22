@@ -582,22 +582,28 @@ namespace SteamRush.Features.StreamIntegration
             SetFaction(userId, isTrapGift ? FactionType.Red : FactionType.Blue);
         }
 
-        public bool TrySpawnObstacleVehicle(string userId, int laneIndex)
+        public bool TrySpawnObstacleVehicle(string userId, int laneIndex, StreamRushLive.Features.Spawning.ObstacleType? tier = null)
         {
             if (!_followerGate.CanSendCommand(userId)) return false;
 
             var spawner = FindFirstObjectByType<StreamRushLive.Features.Spawning.SingleObstacleSpawner>();
             bool isUnlimited = spawner != null && spawner.IsUnlimitedModeActive;
 
+            // Resolve tier using active vehicle phase if present (e.g. Train or Animals phase)
+            StreamRushLive.Features.Spawning.ObstacleType resolvedTier = tier 
+                ?? (spawner != null && spawner.ActiveVehiclePhase.HasValue ? spawner.ActiveVehiclePhase.Value : StreamRushLive.Features.Spawning.ObstacleType.Car);
+
+            int cost = GetVehicleEnergyCost(resolvedTier);
+
             if (!isUnlimited)
             {
-                if (!TrySpendRedEnergy(_antiCarLaneCost))
+                if (!TrySpendRedEnergy(cost))
                 {
                     return false;
                 }
             }
 
-            EventBus.Publish(new RequestCarSpawnEvent(laneIndex));
+            EventBus.Publish(new RequestCarSpawnEvent(laneIndex, resolvedTier));
             AudioManager.Instance?.PlaySFX(SFXType.AntiCarSpawn);
             return true;
         }

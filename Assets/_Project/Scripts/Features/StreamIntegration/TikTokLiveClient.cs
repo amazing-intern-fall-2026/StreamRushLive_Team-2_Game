@@ -9,14 +9,20 @@ using SteamRush.Core;
 namespace SteamRush.Features.StreamIntegration
 {
     /// <summary>
-    /// Network connection hub for TikTok Live over Socket.IO.
+    /// [EN] Network connection hub for TikTok Live over Socket.IO.
     /// Dedicated solely to managing backend connection lifecycle, raw packet parsing,
     /// and dispatching strongly-typed events via EventBus.
     /// Specific gameplay logic is handled by modular adapters (Chat, Like, Follow, Gift, Profile).
+    /// [VI] Trung tâm kết nối mạng cho TikTok Live qua Socket.IO.
+    /// Chuyên trách quản lý vòng đời kết nối backend, phân tích gói tin thô,
+    /// và phát các sự kiện định kiểu mạnh qua EventBus.
+    /// Logic gameplay cụ thể được xử lý bởi các adapter dạng mô-đun (Chat, Like, Follow, Gift, Profile).
     /// </summary>
     [DisallowMultipleComponent]
     public class TikTokLiveClient : MonoBehaviour
     {
+        public static TikTokLiveClient Instance { get; private set; }
+
         [Header("Backend Connection")]
         [Tooltip("TikTok Live backend Socket.IO URL (default port: 3001).")]
         [SerializeField] private string _serverUrl = "http://localhost:3001";
@@ -124,11 +130,20 @@ namespace SteamRush.Features.StreamIntegration
 
         private void Awake()
         {
+            Instance = this;
             EnsureAdapters();
             // Automatically correct old HTTP port references (9090 or 9091) to Socket.IO port 3001
             if (!string.IsNullOrEmpty(_serverUrl) && (_serverUrl.Contains(":9090") || _serverUrl.Contains(":9091")))
             {
                 _serverUrl = "http://localhost:3001";
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
             }
         }
 

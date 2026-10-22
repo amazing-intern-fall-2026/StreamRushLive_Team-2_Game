@@ -206,6 +206,7 @@ namespace SteamRush.Features.Runner
                         "2" => "Lane 2 (Mid)",
                         "3" => "Lane 3 (Right)",
                         "jump" or "j" => "Jump",
+                        "switch" => "Switch Lane",
                         _ => $"Cmd: {firstCmd}"
                     };
                     hudManager?.ShowFanAction(followerName, actionDesc);

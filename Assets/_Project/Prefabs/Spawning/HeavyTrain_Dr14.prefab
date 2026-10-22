@@ -1379,7 +1379,7 @@ MonoBehaviour:
   energyPenaltyPercent: 60
   hitStopDuration: 0.25
   distancePenaltyMeters: 400
-  _vehicleTier: 2
+  _obstacleType: 2
   _knockbackDistance: 4.2
   _knockbackDuration: 0.7
   _drivingSpeed: 5.2

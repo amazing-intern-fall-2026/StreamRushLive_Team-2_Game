@@ -378,7 +378,7 @@ namespace SteamRush.Features.StreamIntegration
                 }
                 else if (lowerName.Contains("car") || lowerName.Contains("sedan") || lowerName.Contains("chili") || evt.TotalCoins >= 10)
                 {
-                    _giftManager?.SpawnObstacleVehicle(ObstacleType.Car, displayName);
+                    _giftManager?.SpawnObstacleVehicle(ObstacleType.Car, displayName, true);
                 }
                 else
                 {

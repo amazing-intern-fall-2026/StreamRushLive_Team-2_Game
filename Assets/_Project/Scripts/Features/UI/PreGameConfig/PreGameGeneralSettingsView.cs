@@ -7,8 +7,10 @@ using SteamRush.Features.Runner;
 namespace SteamRush.Features.UI.PreGameConfig
 {
     /// <summary>
-    /// Manages the General / Basic game settings inputs in PreGameConfig UI.
+    /// [EN] Manages the General / Basic game settings inputs in PreGameConfig UI.
     /// Handles user profile, target distance, energy costs, buff durations, anti vehicle settings, and live demo simulation toggles.
+    /// [VI] Quản lý các trường nhập cài đặt chung / cơ bản trong giao diện PreGameConfig.
+    /// Xử lý hồ sơ người dùng, cự ly mục tiêu, chi phí năng lượng, thời lượng buff, cấu hình xe cản đường và các toggle giả lập live demo.
     /// </summary>
     public class PreGameGeneralSettingsView : MonoBehaviour
     {

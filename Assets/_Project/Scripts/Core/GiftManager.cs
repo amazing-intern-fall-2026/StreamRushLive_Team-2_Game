@@ -431,7 +431,7 @@ namespace StreamRushLive.Features.Gifts
         }
 
         /// <summary>
-        /// Activates Pickup Truck Phase.
+        /// Activates Pickup Truck Phase and spawns an Animals obstacle immediately.
         /// </summary>
         public bool ActivatePickupTruckPhase(string sender = "Red Team", float customDuration = -1f)
         {
@@ -440,6 +440,7 @@ namespace StreamRushLive.Features.Gifts
             if (_obstacleSpawner != null)
             {
                 _obstacleSpawner.ActivatePickupTruckPhase(duration);
+                _obstacleSpawner.TriggerSpawnCarTier(ObstacleType.Animals, -1, true);
                 _hudManager?.ShowAntiAction(sender, $"Animals Phase ({duration:F0}s)");
                 _hudManager?.ShowStatusPopup($"[{sender}] Animals Phase!", false);
                 AudioManager.Instance?.PlaySFX(SFXType.PickupHorn, 0.9f);
@@ -450,7 +451,7 @@ namespace StreamRushLive.Features.Gifts
         }
 
         /// <summary>
-        /// Activates Train Phase.
+        /// Activates Train Phase and spawns a Train obstacle immediately.
         /// </summary>
         public bool ActivateHeavyTruckPhase(string sender = "Red Team", float customDuration = -1f)
         {
@@ -459,6 +460,7 @@ namespace StreamRushLive.Features.Gifts
             if (_obstacleSpawner != null)
             {
                 _obstacleSpawner.ActivateHeavyTruckPhase(duration);
+                _obstacleSpawner.TriggerSpawnCarTier(ObstacleType.Trains, -1, true);
                 _hudManager?.ShowAntiAction(sender, $"Train Phase ({duration:F0}s)");
                 _hudManager?.ShowStatusPopup($"[{sender}] Train Phase!", false);
                 AudioManager.Instance?.PlaySFX(SFXType.HeavyTruckHorn, 1.0f);
@@ -469,9 +471,9 @@ namespace StreamRushLive.Features.Gifts
         }
 
         /// <summary>
-        /// Spawns an obstacle vehicle for Red Team, deducting configured energy cost.
+        /// Spawns an obstacle vehicle for Red Team, deducting configured energy cost (or bypassed if gift).
         /// </summary>
-        public bool SpawnObstacleVehicle(ObstacleType type, string sender = "Red Team")
+        public bool SpawnObstacleVehicle(ObstacleType type, string sender = "Red Team", bool ignoreEnergy = false)
         {
             ResolveReferences();
             if (_obstacleSpawner == null) return false;
@@ -480,7 +482,7 @@ namespace StreamRushLive.Features.Gifts
             var carConfig = GetCarConfig(type);
             int cost = carConfig != null ? carConfig.energyCost : 100;
 
-            if (!isUnlimited && _factionManager != null)
+            if (!ignoreEnergy && !isUnlimited && _factionManager != null)
             {
                 if (!_factionManager.TrySpendRedEnergy(cost))
                 {
@@ -490,7 +492,7 @@ namespace StreamRushLive.Features.Gifts
                 }
             }
 
-            bool spawned = _obstacleSpawner.TriggerSpawnCarTier(type);
+            bool spawned = _obstacleSpawner.TriggerSpawnCarTier(type, -1, ignoreEnergy);
             if (spawned)
             {
                 string tierName = carConfig != null ? carConfig.vehicleName : type.ToString();
@@ -513,7 +515,7 @@ namespace StreamRushLive.Features.Gifts
                 }
                 return true;
             }
-            else if (!isUnlimited && _factionManager != null)
+            else if (!ignoreEnergy && !isUnlimited && _factionManager != null)
             {
                 // Refund energy if lane is blocked
                 _factionManager.AddRedEnergy(cost);

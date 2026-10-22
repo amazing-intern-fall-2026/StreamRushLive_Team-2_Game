@@ -157,7 +157,7 @@ namespace SteamRush.Features.Runner
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
             {
-                StreamRushLive.Features.Gifts.GiftManager.Instance.SpawnObstacleVehicle(StreamRushLive.Features.Spawning.ObstacleType.Animals, sender);
+                StreamRushLive.Features.Gifts.GiftManager.Instance.SpawnObstacleVehicle(StreamRushLive.Features.Spawning.ObstacleType.Animals, sender, true);
                 return;
             }
 
@@ -215,7 +215,7 @@ namespace SteamRush.Features.Runner
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
             {
-                StreamRushLive.Features.Gifts.GiftManager.Instance.SpawnObstacleVehicle(StreamRushLive.Features.Spawning.ObstacleType.Trains, sender);
+                StreamRushLive.Features.Gifts.GiftManager.Instance.SpawnObstacleVehicle(StreamRushLive.Features.Spawning.ObstacleType.Trains, sender, true);
                 return;
             }
 
