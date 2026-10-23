@@ -137,4 +137,19 @@ namespace SteamRush.Features.StreamIntegration
             DisplayName = displayName;
         }
     }
+
+    /// <summary>
+    /// Published when a viewer leaves the livestream, stops watching, or exits their faction/team.
+    /// </summary>
+    public readonly struct TikTokUserLeaveEvent
+    {
+        public readonly string UserId;
+        public readonly string DisplayName;
+
+        public TikTokUserLeaveEvent(string userId, string displayName = null)
+        {
+            UserId = userId;
+            DisplayName = !string.IsNullOrEmpty(displayName) ? displayName : userId;
+        }
+    }
 }

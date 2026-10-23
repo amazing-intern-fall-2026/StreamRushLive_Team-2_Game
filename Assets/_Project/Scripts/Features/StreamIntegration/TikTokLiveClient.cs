@@ -17,6 +17,8 @@ namespace SteamRush.Features.StreamIntegration
     [DisallowMultipleComponent]
     public class TikTokLiveClient : MonoBehaviour
     {
+        public static TikTokLiveClient Instance { get; private set; }
+
         [Header("Backend Connection")]
         [Tooltip("TikTok Live backend Socket.IO URL (default port: 3001).")]
         [SerializeField] private string _serverUrl = "http://localhost:3001";
@@ -124,11 +126,20 @@ namespace SteamRush.Features.StreamIntegration
 
         private void Awake()
         {
+            Instance = this;
             EnsureAdapters();
             // Automatically correct old HTTP port references (9090 or 9091) to Socket.IO port 3001
             if (!string.IsNullOrEmpty(_serverUrl) && (_serverUrl.Contains(":9090") || _serverUrl.Contains(":9091")))
             {
                 _serverUrl = "http://localhost:3001";
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
             }
         }
 
@@ -267,6 +278,9 @@ namespace SteamRush.Features.StreamIntegration
                 _socket.OnUnityThread(_likeEvent, OnRawLikeReceived);
                 _socket.OnUnityThread(_giftEvent, OnRawGiftReceived);
                 _socket.OnUnityThread("share", OnRawShareReceived);
+                _socket.OnUnityThread("leave", OnRawUserLeaveReceived);
+                _socket.OnUnityThread("userLeave", OnRawUserLeaveReceived);
+                _socket.OnUnityThread("memberLeave", OnRawUserLeaveReceived);
                 _socket.OnUnityThread("tiktokConnected", OnRawTikTokConnected);
                 _socket.OnUnityThread("tiktokDisconnected", OnRawTikTokDisconnected);
                 _socket.OnUnityThread("roomInfo", OnRawRoomInfoReceived);
@@ -317,12 +331,13 @@ namespace SteamRush.Features.StreamIntegration
             JObject json = ParseResponse(response);
             if (json == null || IsHistoricalEvent(json, "chat")) return;
 
-            string comment = ReadStringWithFallback(json, _commentPath, "comment", "text");
-            string userId = ReadStringWithFallback(json, _userIdPath, "userId", "uniqueId", "data.user.uniqueId");
+            string comment = ReadStringWithFallback(json, _commentPath, "comment", "text", "data.comment", "data.text", "data.message", "message");
+            string userId = ReadStringWithFallback(json, _userIdPath, "userId", "uniqueId", "data.user.uniqueId", "data.user.userId", "data.userId");
             if (string.IsNullOrEmpty(comment) || string.IsNullOrEmpty(userId)) return;
 
             string displayName = GetDisplayName(json, userId);
-            string avatar = ReadStringWithFallback(json, "data.user.profilePictureUrl", "profilePictureUrl");
+            // Extract follower/chatter avatar URL with multi-schema fallback.
+            string avatar = ReadAvatarUrl(json);
 
             EventBus.Publish(new TikTokChatEvent(userId, displayName, comment, avatar));
         }
@@ -336,7 +351,8 @@ namespace SteamRush.Features.StreamIntegration
             if (string.IsNullOrEmpty(userId)) return;
 
             string displayName = GetDisplayName(json, userId);
-            string avatar = ReadStringWithFallback(json, "data.user.profilePictureUrl", "profilePictureUrl");
+            // Extract follower avatar URL with multi-schema fallback.
+            string avatar = ReadAvatarUrl(json);
 
             EventBus.Publish(new TikTokFollowEvent(userId, displayName, avatar));
         }
@@ -395,7 +411,8 @@ namespace SteamRush.Features.StreamIntegration
             }
 
             string giftIconUrl = ReadStringWithFallback(json, "giftIconUrl", "data.giftIconUrl", "giftPictureUrl", "gift.icon.url_list[0]");
-            string avatar = ReadStringWithFallback(json, "data.user.profilePictureUrl", "profilePictureUrl");
+            // Extract gifter avatar URL with multi-schema fallback.
+            string avatar = ReadAvatarUrl(json);
 
             EventBus.Publish(new TikTokGiftEvent(
                 userId, displayName, giftId, giftName, giftIconUrl, coins, repeatCount, totalValue, avatar));
@@ -410,6 +427,24 @@ namespace SteamRush.Features.StreamIntegration
             string displayName = GetDisplayName(json, userId);
 
             EventBus.Publish(new TikTokShareEvent(userId, displayName));
+        }
+
+        // Handles viewer leave/disconnect event from socket and publishes to EventBus.
+        private void OnRawUserLeaveReceived(SocketIOResponse response)
+        {
+            JObject json = ParseResponse(response);
+            if (json == null) return;
+
+            string userId = ReadStringWithFallback(json, _userIdPath, "userId", "uniqueId", "data.user.uniqueId", "data.uniqueId", "data.userId");
+            if (string.IsNullOrEmpty(userId)) return;
+
+            string displayName = GetDisplayName(json, userId);
+            if (_logEvents)
+            {
+                Debug.Log($"[TikTokLiveClient] Viewer left: [{displayName}] ({userId})");
+            }
+
+            EventBus.Publish(new TikTokUserLeaveEvent(userId, displayName));
         }
 
         private void OnRawTikTokConnected(SocketIOResponse response)
@@ -513,6 +548,29 @@ namespace SteamRush.Features.StreamIntegration
             return string.Empty;
         }
 
+        // Robust helper to extract avatar image URL across various TikTok live socket schemas.
+        private static string ReadAvatarUrl(JObject json)
+        {
+            if (json == null) return string.Empty;
+            return ReadStringWithFallback(
+                json,
+                "data.user.profilePictureUrl",
+                "data.user.avatarThumb.urls[0]",
+                "data.user.avatarMedium.urls[0]",
+                "data.user.avatarLarge.urls[0]",
+                "data.profilePictureUrl",
+                "profilePictureUrl",
+                "avatarThumb.urls[0]",
+                "avatarMedium.urls[0]",
+                "avatarLarge.urls[0]",
+                "avatarThumb",
+                "avatarUrl",
+                "avatar",
+                "user.profilePictureUrl",
+                "user.avatarThumb.urls[0]"
+            );
+        }
+
         private static string NormalizeUniqueId(string raw)
         {
             return string.IsNullOrWhiteSpace(raw) ? string.Empty : raw.Trim().TrimStart('@');
@@ -544,7 +602,8 @@ namespace SteamRush.Features.StreamIntegration
             if (eventTime > 0)
             {
                 if (eventTime < 10000000000L) eventTime *= 1000L;
-                if (eventTime < _sessionConnectUnixMs - 3000L)
+                // Allow a generous 60-second window to tolerate network buffer delay & client/server clock drift
+                if (eventTime < _sessionConnectUnixMs - 60000L)
                 {
                     if (_logEvents)
                     {

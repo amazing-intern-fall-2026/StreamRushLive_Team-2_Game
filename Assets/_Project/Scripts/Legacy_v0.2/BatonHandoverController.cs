@@ -194,11 +194,24 @@ namespace SteamRush.Relay
             GameObject proxyObj = Instantiate(_pendingNextOutfit, spawnPosition, spawnRotation);
             proxyObj.name = $"Proxy_{_pendingNextOutfit.name}";
 
-            // 2. Disable colliders on proxy to avoid unwanted collisions
-            Collider[] colliders = proxyObj.GetComponentsInChildren<Collider>();
-            for (int i = 0; i < colliders.Length; i++)
+            // 2. Disable colliders and strip physics on proxy to avoid unwanted collisions/falling
+            foreach (var rb in proxyObj.GetComponentsInChildren<Rigidbody>(true))
             {
-                colliders[i].enabled = false;
+                rb.isKinematic = true;
+                rb.useGravity = false;
+                Destroy(rb);
+            }
+
+            foreach (var col in proxyObj.GetComponentsInChildren<Collider>(true))
+            {
+                col.enabled = false;
+            }
+
+            foreach (var mb in proxyObj.GetComponentsInChildren<MonoBehaviour>(true))
+            {
+                if (mb is HandoverProxyController || mb is MovingWorldObject) continue;
+                mb.enabled = false;
+                Destroy(mb);
             }
 
             // 3. Attach HandoverProxyController

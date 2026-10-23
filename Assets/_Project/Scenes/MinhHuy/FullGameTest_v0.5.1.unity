@@ -31629,12 +31629,15 @@ MonoBehaviour:
   heavyTruckPrefabs:
   - {fileID: 5496137347064624847, guid: 4c7df5585dce14234a256c9edcb7c739, type: 3}
   carDrivingSpeed: 7
+  laserIndicatorPrefab: {fileID: 1032388337236806535, guid: d5ac3a8b980aeeb48a3b0441733a7813, type: 3}
   playerReference: {fileID: 913794228}
   worldSpeedManager: {fileID: 1580461031}
   laneOffsetLeft: 3
   laneOffsetCenter: 0
   laneOffsetRight: -3
   spawnDistanceAhead: 85
+  laserWarningDuration: 3.5
+  laserBlinkInterval: 0.15
   maxConcurrentObstacles: 2
   unlimitedModeDuration: 60
   vehiclePhaseDuration: 60
@@ -32562,7 +32565,6 @@ MonoBehaviour:
   - {fileID: 107314, guid: 841e8e4f1a54c754396b7559d1cc6fad, type: 3}
   - {fileID: 166044, guid: adad89669382b0743a2c2f162c9601b0, type: 3}
   - {fileID: 153682, guid: 48b470c6a762f60438c631f219257520, type: 3}
-  - {fileID: 183828, guid: 5f6cbb0f4dd572e47ab1ee6c2a3a36d1, type: 3}
   - {fileID: 191860, guid: 498a13929c1393e44be1126bcadc448b, type: 3}
   _nameColor: {r: 1, g: 1, b: 1, a: 1}
   _roadsideOutlineMaterial: {fileID: 2100000, guid: 463ed965cb30778428d85eb85d78005f, type: 2}

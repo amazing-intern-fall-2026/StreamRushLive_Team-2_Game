@@ -233,7 +233,7 @@ namespace SteamRush.Features.StreamIntegration
             _giftPanelController?.HighlightGift(evt.GiftId, evt.GiftName);
 
             // Priority 1: Match configured gift mappings
-            if (TryExecuteGiftMapping(evt.GiftId, evt.GiftName, displayName, evt.RepeatCount, evt.TotalCoins, faction))
+            if (TryExecuteGiftMapping(evt.GiftId, evt.GiftName, displayName, evt.RepeatCount, evt.TotalCoins, faction, evt.ProfilePictureUrl, evt.UserId))
             {
                 return;
             }
@@ -242,7 +242,7 @@ namespace SteamRush.Features.StreamIntegration
             ExecuteFallbackGift(evt, displayName, lowerName, faction);
         }
 
-        private bool TryExecuteGiftMapping(int giftId, string giftName, string displayName, int repeatCount, int totalCoins, FactionType faction)
+        private bool TryExecuteGiftMapping(int giftId, string giftName, string displayName, int repeatCount, int totalCoins, FactionType faction, string profilePictureUrl = null, string userId = null)
         {
             if (_giftMappings == null || _giftMappings.Count == 0) return false;
 
@@ -261,22 +261,24 @@ namespace SteamRush.Features.StreamIntegration
 
             if (matched == null) return false;
 
-            ExecuteActionByEnum(matched.action, displayName, faction, matched.customValue);
+            ExecuteActionByEnum(matched.action, displayName, faction, matched.customValue, profilePictureUrl, userId);
             return true;
         }
 
         /// <summary>
         /// Executes gift action by GiftActionType using IGiftAction command pattern.
         /// </summary>
-        public void ExecuteActionByEnum(GiftActionType action, string displayName, FactionType faction, float customValue = -1f)
+        public void ExecuteActionByEnum(GiftActionType action, string displayName, FactionType faction, float customValue = -1f, string profilePictureUrl = null, string userId = null)
         {
             EnsureReferences();
 
             var context = new GiftContext
             {
                 SenderName = displayName,
+                SenderUserId = userId,
                 Faction = faction,
                 CustomValue = customValue,
+                ProfilePictureUrl = profilePictureUrl,
                 GiftManager = _giftManager,
                 QueueManager = _queueManager,
                 FactionManager = _factionManager,
@@ -310,7 +312,8 @@ namespace SteamRush.Features.StreamIntegration
 
             if (lowerName.Contains("follow") || lowerName.Contains("vip") || lowerName.Contains("ticket") || lowerName.Contains("runner") || lowerName.Contains("crown"))
             {
-                _queueManager?.EnqueueFollowerAsRunner(displayName);
+                // Enqueue viewer with profile avatar
+                _queueManager?.EnqueueFollowerAsRunner(evt.UserId, displayName, evt.ProfilePictureUrl);
                 ShowPopup($"Runner: [{displayName}]", true);
                 return;
             }
@@ -378,7 +381,7 @@ namespace SteamRush.Features.StreamIntegration
                 }
                 else if (lowerName.Contains("car") || lowerName.Contains("sedan") || lowerName.Contains("chili") || evt.TotalCoins >= 10)
                 {
-                    _giftManager?.SpawnObstacleVehicle(ObstacleType.Car, displayName);
+                    _giftManager?.SpawnObstacleVehicle(ObstacleType.Car, displayName, true);
                 }
                 else
                 {

@@ -41,11 +41,11 @@ namespace SteamRush.Features.StreamIntegration
             {
                 if (evt.LaneIndex >= 1 && evt.LaneIndex <= 3)
                 {
-                    _spawner.TriggerSpawnCarOnLane(evt.LaneIndex);
+                    _spawner.TriggerSpawnCarOnLane(evt.LaneIndex, evt.Tier);
                 }
                 else
                 {
-                    _spawner.TriggerSpawnObstacleFromRedEnergy();
+                    _spawner.TriggerSpawnObstacleFromRedEnergy(evt.Tier);
                 }
             }
             else

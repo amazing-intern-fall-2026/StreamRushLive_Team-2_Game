@@ -1,15 +1,16 @@
 using System;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using TMPro;
 using SteamRush.Features.UI;
 
 namespace SteamRush.Features.UI.Views
 {
     /// <summary>
-    /// Controls the HUD Game Audio toggle button/icon.
-    /// Allows the streamer or player to mute/unmute game audio by clicking the icon or pressing 'M'.
-    /// Updates icon sprites, colors, button glow, and triggers HUD status toast.
+    /// Controls the HUD Game Audio toggle button.
+    /// Toggles Mute / Unmute when clicked or via 'M' key shortcut.
+    /// Provides clear visual feedback on the button icon, color, and outline glow.
     /// </summary>
     [RequireComponent(typeof(Button))]
     public class AudioToggleController : MonoBehaviour
@@ -45,11 +46,26 @@ namespace SteamRush.Features.UI.Views
 
         private bool _isMuted = false;
 
+        public bool IsMuted => _isMuted;
+
+        public float CurrentVolume
+        {
+            get => AudioManager.Instance != null ? AudioManager.Instance.MasterVolume : AudioListener.volume;
+            set => SetVolume(value, true);
+        }
+
         private void Awake()
         {
             if (_button == null) _button = GetComponent<Button>();
             if (_bgImage == null) _bgImage = GetComponent<Image>();
             if (_outline == null) _outline = GetComponent<Outline>();
+
+            // Ensure any legacy mini volume popup child is cleaned up
+            var legacyPopup = transform.Find("MiniAudioVolumePopup");
+            if (legacyPopup != null)
+            {
+                Destroy(legacyPopup.gameObject);
+            }
 
             if (_button != null)
             {
@@ -60,11 +76,11 @@ namespace SteamRush.Features.UI.Views
 
         private void Start()
         {
-            // Sync with current mute state
             if (AudioManager.Instance != null)
             {
                 _isMuted = AudioManager.Instance.IsMuted;
                 AudioManager.Instance.OnMuteStateChanged += OnExternalMuteStateChanged;
+                AudioManager.Instance.OnVolumeChanged += OnExternalVolumeChanged;
             }
             else
             {
@@ -79,6 +95,7 @@ namespace SteamRush.Features.UI.Views
             if (AudioManager.Instance != null)
             {
                 AudioManager.Instance.OnMuteStateChanged -= OnExternalMuteStateChanged;
+                AudioManager.Instance.OnVolumeChanged -= OnExternalVolumeChanged;
             }
 
             if (_button != null)
@@ -89,28 +106,27 @@ namespace SteamRush.Features.UI.Views
 
         private void Update()
         {
-            bool keyPressed = false;
+            bool toggleKeyPressed = false;
 #if ENABLE_INPUT_SYSTEM
             if (UnityEngine.InputSystem.Keyboard.current != null && UnityEngine.InputSystem.Keyboard.current.mKey.wasPressedThisFrame)
             {
-                keyPressed = true;
+                toggleKeyPressed = true;
             }
 #elif ENABLE_LEGACY_INPUT_MANAGER
             if (Input.GetKeyDown(_shortcutKey))
             {
-                keyPressed = true;
+                toggleKeyPressed = true;
             }
 #else
             if (UnityEngine.InputSystem.Keyboard.current != null && UnityEngine.InputSystem.Keyboard.current.mKey.wasPressedThisFrame)
             {
-                keyPressed = true;
+                toggleKeyPressed = true;
             }
 #endif
 
-            if (keyPressed)
+            if (toggleKeyPressed)
             {
-                // Don't trigger if user is typing in an active input field
-                var currentObj = UnityEngine.EventSystems.EventSystem.current?.currentSelectedGameObject;
+                var currentObj = EventSystem.current?.currentSelectedGameObject;
                 if (currentObj != null && (currentObj.GetComponent<TMP_InputField>() != null || currentObj.GetComponent<InputField>() != null))
                 {
                     return;
@@ -140,12 +156,41 @@ namespace SteamRush.Features.UI.Views
             }
             else
             {
-                AudioListener.volume = _isMuted ? 0f : 1f;
+                AudioListener.volume = _isMuted ? 0f : PlayerPrefs.GetFloat("Game_Audio_MasterVolume", 1f);
                 PlayerPrefs.SetInt("Game_Audio_Muted", _isMuted ? 1 : 0);
                 PlayerPrefs.Save();
             }
 
             UpdateVisuals(showToast);
+        }
+
+        public void SetVolume(float volume, bool showFeedback = true)
+        {
+            float clamped = Mathf.Clamp01(volume);
+
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.MasterVolume = clamped;
+            }
+            else
+            {
+                if (!_isMuted) AudioListener.volume = clamped;
+                PlayerPrefs.SetFloat("Game_Audio_MasterVolume", clamped);
+                PlayerPrefs.Save();
+            }
+
+            UpdateVisuals(false);
+
+            if (showFeedback && _showStatusPopup)
+            {
+                var hud = FindFirstObjectByType<HUDManager>();
+                if (hud != null)
+                {
+                    int percent = Mathf.RoundToInt(clamped * 100f);
+                    string msg = _isMuted ? "Game Audio: MUTED" : $"Game Audio: {percent}%";
+                    hud.ShowStatusPopup(msg, !_isMuted);
+                }
+            }
         }
 
         private void OnExternalMuteStateChanged(bool muted)
@@ -155,6 +200,11 @@ namespace SteamRush.Features.UI.Views
                 _isMuted = muted;
                 UpdateVisuals(false);
             }
+        }
+
+        private void OnExternalVolumeChanged(float volume)
+        {
+            UpdateVisuals(false);
         }
 
         private void UpdateVisuals(bool showToast)

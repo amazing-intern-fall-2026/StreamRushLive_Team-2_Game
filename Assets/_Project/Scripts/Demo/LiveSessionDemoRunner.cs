@@ -13,6 +13,21 @@ namespace SteamRush.Features.Runner
     {
         public static LiveSessionDemoRunner Instance { get; private set; }
 
+        // Pool of Fan chat commands
+        private static readonly string[] _fanChatPool = 
+        { 
+            "1", "2", "3", "left", "right", "jump", "blue", "switch",
+            "làn 1", "làn 2", "làn 3", "chuyển làn 1", "chuyển làn 2", "chuyển làn 3", 
+            "sang trái", "sang phải", "nhảy", "nhảy lên", "đội xanh", "chuyển làn"
+        };
+
+        // Pool of Anti chat commands
+        private static readonly string[] _antiChatPool = 
+        { 
+            "1", "2", "3", "red", "fast",
+            "làn 1", "làn 2", "làn 3", "đội đỏ", "nhanh"
+        };
+
         [Header("Operation State")]
         [Tooltip("Automatically start live simulation upon entering Play Mode")]
         [SerializeField] private bool autoStart = true;
@@ -527,38 +542,17 @@ namespace SteamRush.Features.Runner
 
                 if (isFan)
                 {
+                    // Pick a Fan user and select a command
                     string fanUser = BaseFanNames[Random.Range(0, BaseFanNames.Length)];
-                    float roll = Random.value;
-
-                    if (roll < 0.70f)
-                    {
-                        int lane = Random.Range(1, 4);
-                        DispatchViewerAction(() => console.SimulateViewerChat(fanUser, lane.ToString()));
-                    }
-                    else if (roll < 0.90f)
-                    {
-                        string jumpCmd = Random.value < 0.5f ? "jump" : "j";
-                        DispatchViewerAction(() => console.SimulateViewerChat(fanUser, jumpCmd));
-                    }
-                    else
-                    {
-                        DispatchViewerAction(() => console.SimulateViewerChat(fanUser, "blue"));
-                    }
+                    string command = _fanChatPool[Random.Range(0, _fanChatPool.Length)];
+                    DispatchViewerAction(() => console.SimulateViewerChat(fanUser, command));
                 }
                 else
                 {
+                    // Pick an Anti user and select a command
                     string antiUser = BaseAntiNames[Random.Range(0, BaseAntiNames.Length)];
-                    float roll = Random.value;
-
-                    if (roll < 0.85f)
-                    {
-                        int lane = Random.Range(1, 4);
-                        DispatchViewerAction(() => console.SimulateViewerChat(antiUser, lane.ToString()));
-                    }
-                    else
-                    {
-                        DispatchViewerAction(() => console.SimulateViewerChat(antiUser, "red"));
-                    }
+                    string command = _antiChatPool[Random.Range(0, _antiChatPool.Length)];
+                    DispatchViewerAction(() => console.SimulateViewerChat(antiUser, command));
                 }
             }
         }

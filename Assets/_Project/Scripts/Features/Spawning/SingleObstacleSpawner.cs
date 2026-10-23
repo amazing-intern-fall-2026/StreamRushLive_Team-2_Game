@@ -3,15 +3,21 @@ using System.Collections.Generic;
 using SteamRush.Track;
 using SteamRush.Features.Runner;
 using SteamRush.Features.UI.Views;
-using UnityEngine.InputSystem;
 using UnityEngine;
 
 namespace StreamRushLive.Features.Spawning
 {
+    /// <summary>
+    /// Coordinates obstacle spawning workflow (laser warning, lane dispatching, vehicle activation).
+    /// Delegated responsibilities:
+    /// - ObstacleLaneManager: Concurrency, lane offsets, and lane occupancy tracking.
+    /// - ObstacleTierResolver: Prefab resolution and collider/trigger setup.
+    /// - ObstacleLaserWarningService: Warning strip instantiation, scaling, and blinking countdown.
+    /// </summary>
     public class SingleObstacleSpawner : MonoBehaviour
     {
         [Header("Obstacle Car Settings")]
-        [Tooltip("Prefab xe Urban Street Car (fallback).")]
+        [Tooltip("Urban Street Car prefab (fallback).")]
         [SerializeField] private GameObject urbanCarPrefab;
 
         [Tooltip("List of PolygonCity vehicle models (general fallback).")]
@@ -56,6 +62,34 @@ namespace StreamRushLive.Features.Spawning
         [Tooltip("Spawn distance ahead of player in meters.")]
         [SerializeField] private float spawnDistanceAhead = 35f;
 
+        [Header("Warning Laser Settings")]
+        [Tooltip("Prefab laser warning strip spawned ahead of car to warn player.")]
+        [SerializeField] private GameObject laserIndicatorPrefab;
+
+        [Tooltip("Laser warning duration before car spawns (in seconds).")]
+        [SerializeField] private float laserWarningDuration = 3.5f;
+
+        [Tooltip("Blink frequency interval for warning laser (in seconds).")]
+        [SerializeField] private float laserBlinkInterval = 0.15f;
+
+        public GameObject LaserIndicatorPrefab
+        {
+            get => laserIndicatorPrefab;
+            set => laserIndicatorPrefab = value;
+        }
+
+        public float LaserWarningDuration
+        {
+            get => laserWarningDuration;
+            set => laserWarningDuration = Mathf.Max(0.1f, value);
+        }
+
+        public float LaserBlinkInterval
+        {
+            get => laserBlinkInterval;
+            set => laserBlinkInterval = Mathf.Max(0.01f, value);
+        }
+
         [Header("Obstacle Concurrency Limit")]
         [Tooltip("Maximum concurrent active obstacles to ensure at least one open lane for runner.")]
         [SerializeField] private int maxConcurrentObstacles = 2;
@@ -91,50 +125,33 @@ namespace StreamRushLive.Features.Spawning
         /// <summary>Remaining seconds of active vehicle phase.</summary>
         public float VehiclePhaseRemainingTime => _vehiclePhaseRemainingTime;
 
-        // Spawning lock (GDD v1.4.1 - Victory Celebration): called when Runner crosses finish line archway;
-        // completely halts all subsequent obstacle and vehicle spawning requests.
+        // Victory Celebration lock: halts all subsequent obstacle and vehicle spawning requests.
         private bool _spawningLocked;
         public bool IsSpawningLocked => _spawningLocked;
 
-        public void SetSpawningLocked(bool locked)
-        {
-            _spawningLocked = locked;
-        }
-        private class ActiveObstacle
-        {
-            public int LaneIndex;
-            public float LaneZ;
-            public GameObject LaserInstance;
-            public GameObject CarInstance;
-            public Transform PlayerRef;
-            public bool IsPendingSpawn;
-
-            public bool IsActive
-            {
-                get
-                {
-                    if (IsPendingSpawn) return true;
-                    if (LaserInstance != null) return true;
-                    if (CarInstance != null)
-                    {
-                        // Vehicle remains an active obstacle until passing behind player
-                        float playerX = PlayerRef != null ? PlayerRef.position.x : 0f;
-                        return CarInstance.transform.position.x > playerX - 1.5f;
-                    }
-                    return false;
-                }
-            }
-        }
-
-        private readonly List<ActiveObstacle> _activeObstacles = new List<ActiveObstacle>();
+        // SOLID Subsystems
+        private readonly ObstacleLaneManager _laneManager = new ObstacleLaneManager();
+        private readonly ObstacleTierResolver _tierResolver = new ObstacleTierResolver();
+        private ObstacleLaserWarningService _laserWarningService;
 
         public int MaxConcurrentObstacles
         {
-            get => maxConcurrentObstacles;
-            set => maxConcurrentObstacles = Mathf.Max(1, value);
+            get => _laneManager.MaxConcurrentObstacles;
+            set
+            {
+                maxConcurrentObstacles = value;
+                _laneManager.MaxConcurrentObstacles = value;
+            }
         }
 
-        public int ActiveObstacleCount => GetActiveObstacleCount();
+        public int ActiveObstacleCount => _laneManager.ActiveCount;
+
+        private void Awake()
+        {
+            _laneManager.Configure(laneOffsetLeft, laneOffsetCenter, laneOffsetRight, maxConcurrentObstacles);
+            _tierResolver.Initialize(urbanCarPrefab, vehiclePrefabs, sedanCarPrefabs, pickupTruckPrefabs, heavyTruckPrefabs);
+            _laserWarningService = new ObstacleLaserWarningService(this);
+        }
 
         private void Start()
         {
@@ -142,89 +159,57 @@ namespace StreamRushLive.Features.Spawning
             {
                 worldSpeedManager = FindFirstObjectByType<WorldSpeedManager>();
             }
+
+            EnsureLaserPrefab();
         }
 
-        private void CleanupInactiveObstacles()
+        private void EnsureLaserPrefab()
         {
-            _activeObstacles.RemoveAll(o => !o.IsActive);
-        }
-
-        public int GetActiveObstacleCount()
-        {
-            CleanupInactiveObstacles();
-            return _activeObstacles.Count;
-        }
-
-        public bool CanSpawnObstacle()
-        {
-            CleanupInactiveObstacles();
-            return _isUnlimitedModeActive || _activeObstacles.Count < maxConcurrentObstacles;
-        }
-
-        public bool CanSpawnObstacleOnLane(int laneIndex)
-        {
-            CleanupInactiveObstacles();
-            if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
+            if (laserIndicatorPrefab == null)
             {
-                return false;
+                laserIndicatorPrefab = Resources.Load<GameObject>("Spawning/LaserIndicator");
             }
-
-            foreach (var obs in _activeObstacles)
-            {
-                if (obs.LaneIndex == laneIndex && obs.IsActive)
-                {
-                    return false;
-                }
-            }
-
-            return true;
         }
 
-        public float GetLaneOffsetZ(int laneIndex)
+        public void SetSpawningLocked(bool locked)
         {
-            if (laneIndex == 1) return laneOffsetLeft;       // +3.0f (Left lane)
-            if (laneIndex == 3) return laneOffsetRight;      // -3.0f (Right lane)
-            return laneOffsetCenter;                         //  0.0f (Middle lane)
+            _spawningLocked = locked;
+            if (locked)
+            {
+                _laneManager.ClearPendingLasers();
+            }
         }
+
+        public int GetActiveObstacleCount() => _laneManager.ActiveCount;
+
+        public bool CanSpawnObstacle() => _laneManager.CanSpawnObstacle(_isUnlimitedModeActive);
+
+        public bool CanSpawnObstacleOnLane(int laneIndex) => _laneManager.CanSpawnObstacleOnLane(laneIndex, _isUnlimitedModeActive);
+
+        public float GetLaneOffsetZ(int laneIndex) => _laneManager.GetLaneOffsetZ(laneIndex);
 
         /// <summary>
         /// Spawns vehicle of specified type (Car, Animals, Trains).
         /// Randomizes lane if laneIndex <= 0.
         /// </summary>
-        public bool TriggerSpawnCarTier(ObstacleType tier, int laneIndex = -1)
+        public bool TriggerSpawnCarTier(ObstacleType tier, int laneIndex = -1, bool forceSpawn = false)
         {
             if (_spawningLocked) return false;
 
-            CleanupInactiveObstacles();
-
-            if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
+            if (!forceSpawn && !_laneManager.CanSpawnObstacle(_isUnlimitedModeActive))
             {
                 Debug.LogWarning($"[SingleObstacleSpawner] Max concurrent obstacles reached ({maxConcurrentObstacles})! Dropped spawn request for {tier}.");
                 return false;
             }
 
-            int targetLane = laneIndex;
-            if (targetLane <= 0 || targetLane > 3)
+            int targetLane = _laneManager.ResolveTargetLane(laneIndex, forceSpawn, _isUnlimitedModeActive);
+            if (targetLane < 1 || targetLane > 3)
             {
-                List<int> availableLanes = new List<int>();
-                for (int i = 1; i <= 3; i++)
-                {
-                    if (CanSpawnObstacleOnLane(i)) availableLanes.Add(i);
-                }
-                if (availableLanes.Count == 0)
-                {
-                    Debug.LogWarning($"[SingleObstacleSpawner] No open lane available to spawn {tier}.");
-                    return false;
-                }
-                targetLane = availableLanes[Random.Range(0, availableLanes.Count)];
-            }
-            else if (!CanSpawnObstacleOnLane(targetLane))
-            {
-                Debug.LogWarning($"[SingleObstacleSpawner] Lane {targetLane} already has an active obstacle! Skipped duplicate spawn.");
+                Debug.LogWarning($"[SingleObstacleSpawner] No open lane available to spawn {tier}.");
                 return false;
             }
 
-            float selectedLane = GetLaneOffsetZ(targetLane);
+            float selectedLane = _laneManager.GetLaneOffsetZ(targetLane);
             SpawnCarOnSelectedLane(targetLane, selectedLane, tier);
             return true;
         }
@@ -238,25 +223,13 @@ namespace StreamRushLive.Features.Spawning
         {
             if (_spawningLocked) return false;
 
-            CleanupInactiveObstacles();
-
-            if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
+            if (!_laneManager.CanSpawnObstacleOnLane(laneIndex, _isUnlimitedModeActive))
             {
-                Debug.LogWarning($"[SingleObstacleSpawner] Max concurrent obstacles reached ({maxConcurrentObstacles})! Dropped spawn request for Lane {laneIndex}.");
+                Debug.LogWarning($"[SingleObstacleSpawner] Lane {laneIndex} occupied or max concurrent obstacles reached! Dropped spawn request.");
                 return false;
             }
 
-            // Check if target lane is already occupied
-            foreach (var obs in _activeObstacles)
-            {
-                if (obs.LaneIndex == laneIndex && obs.IsActive)
-                {
-                    Debug.LogWarning($"[SingleObstacleSpawner] Lane {laneIndex} already has an active obstacle. Dropped duplicate spawn request.");
-                    return false;
-                }
-            }
-
-            float selectedLane = GetLaneOffsetZ(laneIndex);
+            float selectedLane = _laneManager.GetLaneOffsetZ(laneIndex);
             SpawnCarOnSelectedLane(laneIndex, selectedLane, tier);
             return true;
         }
@@ -270,31 +243,20 @@ namespace StreamRushLive.Features.Spawning
         {
             if (_spawningLocked) return false;
 
-            CleanupInactiveObstacles();
-
-            if (!_isUnlimitedModeActive && _activeObstacles.Count >= maxConcurrentObstacles)
+            if (!_laneManager.CanSpawnObstacle(_isUnlimitedModeActive))
             {
                 Debug.LogWarning($"[SingleObstacleSpawner] Max concurrent obstacles reached ({maxConcurrentObstacles})! Dropped Red Energy spawn request.");
                 return false;
             }
 
-            List<int> availableLanes = new List<int>();
-            for (int i = 1; i <= 3; i++)
-            {
-                if (CanSpawnObstacleOnLane(i))
-                {
-                    availableLanes.Add(i);
-                }
-            }
-
-            if (availableLanes.Count == 0)
+            int targetLane = _laneManager.ResolveTargetLane(-1, false, _isUnlimitedModeActive);
+            if (targetLane < 1 || targetLane > 3)
             {
                 Debug.LogWarning("[SingleObstacleSpawner] No open lane available to spawn vehicle from Red Energy.");
                 return false;
             }
 
-            int chosenLane = availableLanes[Random.Range(0, availableLanes.Count)];
-            return TriggerSpawnCarOnLane(chosenLane, tier);
+            return TriggerSpawnCarOnLane(targetLane, tier);
         }
 
 #pragma warning disable CS0618
@@ -336,29 +298,16 @@ namespace StreamRushLive.Features.Spawning
             Debug.Log("[SingleObstacleSpawner] Unlimited Mode finished.");
         }
 
-        // ============================================================
-        // VEHICLE SPECIAL PHASE - PICKUP / HEAVY
-        // ============================================================
-
-        /// <summary>
-        /// Activates Pickup Truck Phase. Future spawned vehicles during this phase spawn as Pickup / Animals.
-        /// </summary>
         public void ActivatePickupTruckPhase(float customDuration = -1f)
         {
             ActivateVehiclePhase(ObstacleType.Animals, customDuration);
         }
 
-        /// <summary>
-        /// Activates Heavy Truck Phase. Future spawned vehicles during this phase spawn as Heavy Truck / Train.
-        /// </summary>
         public void ActivateHeavyTruckPhase(float customDuration = -1f)
         {
             ActivateVehiclePhase(ObstacleType.Trains, customDuration);
         }
 
-        /// <summary>
-        /// Activates or transitions vehicle phase. Resets phase duration timer.
-        /// </summary>
         private void ActivateVehiclePhase(ObstacleType phase, float customDuration = -1f)
         {
             if (_vehiclePhaseCoroutine != null)
@@ -373,14 +322,9 @@ namespace StreamRushLive.Features.Spawning
 
             _vehiclePhaseCoroutine = StartCoroutine(VehiclePhaseRoutine(phase));
 
-            Debug.Log(
-                $"[SingleObstacleSpawner] Vehicle Phase = {_activeVehiclePhase} " +
-                $"for {_vehiclePhaseRemainingTime:F0}s.");
+            Debug.Log($"[SingleObstacleSpawner] Vehicle Phase = {_activeVehiclePhase} for {_vehiclePhaseRemainingTime:F0}s.");
         }
 
-        /// <summary>
-        /// Vehicle phase countdown coroutine. Returns to default Sedan upon completion.
-        /// </summary>
         private IEnumerator VehiclePhaseRoutine(ObstacleType phase)
         {
             while (_activeVehiclePhase.HasValue &&
@@ -389,25 +333,18 @@ namespace StreamRushLive.Features.Spawning
             {
                 _vehiclePhaseRemainingTime -= Time.deltaTime;
                 _vehiclePhaseRemainingTime = Mathf.Max(0f, _vehiclePhaseRemainingTime);
-
                 yield return null;
             }
 
-            if (_activeVehiclePhase.HasValue &&
-                _activeVehiclePhase.Value == phase)
+            if (_activeVehiclePhase.HasValue && _activeVehiclePhase.Value == phase)
             {
                 _activeVehiclePhase = null;
                 _vehiclePhaseRemainingTime = 0f;
                 _vehiclePhaseCoroutine = null;
-
                 Debug.Log($"[SingleObstacleSpawner] Vehicle Phase {phase} ended. Returning to default Sedan.");
             }
         }
 
-        // Debug toggle for Unlimited Cars mode
-        /// <summary>
-        /// [DEBUG] Toggles Unlimited Mode without time limit for QA testing.
-        /// </summary>
         public void SetUnlimitedModeDebug(bool isActive)
         {
             if (_unlimitedModeCoroutine != null)
@@ -428,9 +365,6 @@ namespace StreamRushLive.Features.Spawning
             Debug.Log($"[SingleObstacleSpawner] Unlimited Mode = {isActive}.");
         }
 
-        /// <summary>
-        /// Checks whether the rain weather hazard / environment gift is currently active.
-        /// </summary>
         public bool IsRainHazardActive()
         {
             var wm = SteamRush.Features.Environment.WeatherHazardManager.Instance;
@@ -444,7 +378,6 @@ namespace StreamRushLive.Features.Spawning
                 return wm.IsHazardActive;
             }
 
-            // Fallback for isolated test environments without WeatherHazardManager
             var rainObj = GameObject.Find("FX_Rain");
             if (rainObj != null && rainObj.activeInHierarchy) return true;
 
@@ -453,11 +386,7 @@ namespace StreamRushLive.Features.Spawning
 
         private void SpawnCarOnSelectedLane(int laneIndex, float selectedLane, ObstacleType? tier = null)
         {
-            if (playerReference == null)
-            {
-                var runner = FindFirstObjectByType<ChatLaneRunnerController>();
-                if (runner != null) playerReference = runner.transform;
-            }
+            ResolvePlayerReference();
 
             if (playerReference == null)
             {
@@ -465,33 +394,58 @@ namespace StreamRushLive.Features.Spawning
                 return;
             }
 
+            EnsureLaserPrefab();
+
+            GameObject laserInstance = _laserWarningService.SpawnLaserIndicator(
+                laserIndicatorPrefab,
+                playerReference,
+                selectedLane,
+                spawnDistanceAhead);
+
             var obstacle = new ActiveObstacle
             {
                 LaneIndex = laneIndex,
                 LaneZ = selectedLane,
-                LaserInstance = null,
+                LaserInstance = laserInstance,
                 CarInstance = null,
                 PlayerRef = playerReference,
-                IsPendingSpawn = false
+                IsPendingSpawn = true
             };
-            _activeObstacles.Add(obstacle);
+            _laneManager.RegisterObstacle(obstacle);
 
-            InstantiateCar(obstacle, selectedLane, tier);
+            if (laserInstance != null)
+            {
+                _laserWarningService.StartLaserCountdown(
+                    obstacle,
+                    laserInstance,
+                    playerReference,
+                    selectedLane,
+                    spawnDistanceAhead,
+                    laserWarningDuration,
+                    laserBlinkInterval,
+                    () => _spawningLocked,
+                    () => InstantiateCar(obstacle, selectedLane, tier));
+            }
+            else
+            {
+                InstantiateCar(obstacle, selectedLane, tier);
+            }
         }
 
-        /// <summary>
-        /// Resolves obstacle vehicle type based on active phase and request parameters.
-        /// </summary>
         private ObstacleType GetVehicleTierForSpawn(ObstacleType? requestedTier)
         {
+            if (_activeVehiclePhase.HasValue)
+            {
+                if (requestedTier.HasValue && requestedTier.Value != ObstacleType.Car)
+                {
+                    return requestedTier.Value;
+                }
+                return _activeVehiclePhase.Value;
+            }
+
             if (requestedTier.HasValue)
             {
                 return requestedTier.Value;
-            }
-
-            if (_activeVehiclePhase.HasValue)
-            {
-                return _activeVehiclePhase.Value;
             }
 
             return ObstacleType.Car;
@@ -499,11 +453,7 @@ namespace StreamRushLive.Features.Spawning
 
         private GameObject InstantiateCar(ActiveObstacle obstacle, float selectedLane, ObstacleType? requestedTier)
         {
-            if (playerReference == null)
-            {
-                var runner = FindFirstObjectByType<ChatLaneRunnerController>();
-                if (runner != null) playerReference = runner.transform;
-            }
+            ResolvePlayerReference();
 
             if (playerReference == null)
             {
@@ -511,16 +461,14 @@ namespace StreamRushLive.Features.Spawning
                 return null;
             }
 
-            // Resolve tier at actual instantiation time
             ObstacleType chosenTier = GetVehicleTierForSpawn(requestedTier);
 
-            // Instantiate vehicle at spawnDistanceAhead ahead of player
             Vector3 carSpawnPosition = new Vector3(
                 playerReference.position.x + spawnDistanceAhead,
                 0.05f,
                 selectedLane);
 
-            GameObject prefabToSpawn = GetCarPrefab(chosenTier);
+            GameObject prefabToSpawn = _tierResolver.ResolvePrefab(chosenTier);
             if (prefabToSpawn == null)
             {
                 Debug.LogWarning("[SingleObstacleSpawner] No vehicle prefabs available to spawn!");
@@ -528,51 +476,11 @@ namespace StreamRushLive.Features.Spawning
                 return null;
             }
 
-            // Rotate vehicle facing incoming runner (-X)
             Quaternion spawnRot = Quaternion.Euler(0f, -90f, 0f);
-
-            GameObject carInstance = Instantiate(
-                prefabToSpawn,
-                carSpawnPosition,
-                spawnRot);
+            GameObject carInstance = Instantiate(prefabToSpawn, carSpawnPosition, spawnRot);
 
             carInstance.name = $"ObstacleCar_{chosenTier}_{prefabToSpawn.name}";
-            try { carInstance.tag = "Obstacle"; } catch { }
-
-            Collider[] existingColliders = carInstance.GetComponentsInChildren<Collider>(true);
-            for (int i = 0; i < existingColliders.Length; i++)
-            {
-                if (existingColliders[i] != null)
-                {
-                    existingColliders[i].enabled = false;
-                }
-            }
-
-            var box = carInstance.GetComponent<BoxCollider>();
-            if (box == null) box = carInstance.AddComponent<BoxCollider>();
-            box.isTrigger = true;
-            box.enabled = true;
-
-            switch (chosenTier)
-            {
-                case ObstacleType.Trains:
-                    box.size = new Vector3(2.6f, 3.2f, 7.5f);
-                    box.center = new Vector3(0f, 1.6f, 0f);
-                    break;
-                case ObstacleType.Animals:
-                    box.size = new Vector3(2.5f, 2.2f, 5.5f);
-                    box.center = new Vector3(0f, 1.1f, 0f);
-                    break;
-                default: // ObstacleType.Car
-                    box.size = new Vector3(2.2f, 1.6f, 4.8f);
-                    box.center = new Vector3(0f, 0.8f, 0f);
-                    break;
-            }
-
-            var rb = carInstance.GetComponent<Rigidbody>();
-            if (rb == null) rb = carInstance.AddComponent<Rigidbody>();
-            rb.isKinematic = true;
-            rb.useGravity = false;
+            _tierResolver.ConfigurePhysics(carInstance, chosenTier);
 
             if (obstacle != null)
             {
@@ -585,48 +493,13 @@ namespace StreamRushLive.Features.Spawning
             return carInstance;
         }
 
-        public GameObject GetCarPrefab(ObstacleType tier)
-        {
-            List<GameObject> list = tier switch
-            {
-                ObstacleType.Trains => heavyTruckPrefabs,
-                ObstacleType.Animals => pickupTruckPrefabs,
-                _ => sedanCarPrefabs
-            };
-
-            if (list != null && list.Count > 0)
-            {
-                var valid = list.FindAll(p => p != null);
-                if (valid.Count > 0)
-                {
-                    return valid[Random.Range(0, valid.Count)];
-                }
-            }
-
-            return GetCarPrefab();
-        }
+        public GameObject GetCarPrefab(ObstacleType tier) => _tierResolver.ResolvePrefab(tier);
 
 #pragma warning disable CS0618
         [System.Obsolete("VehicleTier is deprecated. Use ObstacleType instead.")]
         public GameObject GetCarPrefab(VehicleTier tier) => GetCarPrefab((ObstacleType)tier);
 #pragma warning restore CS0618
 
-        private GameObject GetCarPrefab()
-        {
-            if (vehiclePrefabs != null && vehiclePrefabs.Count > 0)
-            {
-                var valid = vehiclePrefabs.FindAll(p => p != null);
-                if (valid.Count > 0)
-                {
-                    return valid[Random.Range(0, valid.Count)];
-                }
-            }
-            return urbanCarPrefab;
-        }
-
-        /// <summary>
-        /// Activates direct gift actions on Runner / Blue team.
-        /// </summary>
         public bool TriggerActivateSupportGift(int laneIndex = 0, bool isShield = false)
         {
             if (StreamRushLive.Features.Gifts.GiftManager.Instance != null)
@@ -675,15 +548,13 @@ namespace StreamRushLive.Features.Spawning
             dynamicObs.Initialize(worldSpeedManager, dynamicObs.DrivingSpeed);
         }
 
-        private void InitializeWorldMovement(GameObject instance)
+        private void ResolvePlayerReference()
         {
-            MovingWorldObject movingObject = instance.GetComponent<MovingWorldObject>();
-            if (movingObject == null)
+            if (playerReference == null)
             {
-                movingObject = instance.AddComponent<MovingWorldObject>();
+                var runner = FindFirstObjectByType<ChatLaneRunnerController>();
+                if (runner != null) playerReference = runner.transform;
             }
-
-            movingObject.Initialize(worldSpeedManager);
         }
     }
 }

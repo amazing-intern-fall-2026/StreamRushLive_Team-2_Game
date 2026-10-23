@@ -126,7 +126,7 @@ namespace SteamRush.Features.Runner
             var (followerName, command) = ParseFollowerAndInput(rawInput);
             string trimmedCmd = command.Trim().ToLowerInvariant();
 
-            if (trimmedCmd == "blue" || trimmedCmd == "#blue")
+            if (trimmedCmd == "blue" || trimmedCmd == "#blue" || trimmedCmd == "fan" || trimmedCmd == "#fan")
             {
                 bool isSwitching = factionManager != null && factionManager.HasFaction(followerName) && factionManager.GetFaction(followerName) == FactionType.Red;
                 factionManager?.SetFaction(followerName, FactionType.Blue);
@@ -134,7 +134,7 @@ namespace SteamRush.Features.Runner
                 hudManager?.ShowFanAction(followerName, actionText);
                 return;
             }
-            else if (trimmedCmd == "red" || trimmedCmd == "#red")
+            else if (trimmedCmd == "red" || trimmedCmd == "#red" || trimmedCmd == "anti" || trimmedCmd == "#anti")
             {
                 bool isSwitching = factionManager != null && factionManager.HasFaction(followerName) && factionManager.GetFaction(followerName) == FactionType.Blue;
                 factionManager?.SetFaction(followerName, FactionType.Red);
@@ -206,6 +206,7 @@ namespace SteamRush.Features.Runner
                         "2" => "Lane 2 (Mid)",
                         "3" => "Lane 3 (Right)",
                         "jump" or "j" => "Jump",
+                        "switch" => "Switch Lane",
                         _ => $"Cmd: {firstCmd}"
                     };
                     hudManager?.ShowFanAction(followerName, actionDesc);

@@ -5,14 +5,16 @@ using UnityEngine.Events;
 using SteamRush.Track;
 using SteamRush.Features.StreamIntegration;
 using SteamRush.Features.UI;
+using SteamRush.Features.UI.PreGameConfig;
 using SteamRush.Core;
-using SteamRush.Core.Typography;
 
 namespace SteamRush.Features.Runner
 {
     /// <summary>
-    /// Manages the queue of followers participating as runners in the roadside baton handover relay.
-    /// Following on stream immediately queues viewers or spawns them ahead on the sidewalk as the next runner.
+    /// Coordinates the queue of followers participating as runners in the roadside baton handover relay.
+    /// Delegated responsibilities:
+    /// - RunnerOutfitRegistry: Outfit variant selection and visual mesh swapping.
+    /// - RoadsideHandoverProxySpawner: Spawning, positioning, physics stripping, and nameplate attachment for roadside proxies.
     /// </summary>
     public class ChatRunnerQueueManager : MonoBehaviour
     {
@@ -66,14 +68,36 @@ namespace SteamRush.Features.Runner
         [Tooltip("Material used for roadside waiting character outline (e.g. Cyan/Blue).")]
         [SerializeField] private Material _roadsideOutlineMaterial;
         [Tooltip("Outline color for roadside character.")]
-        [SerializeField] private Color _roadsideOutlineColor = new Color(0.15f, 0.75f, 1f, 1f); // Electric Cyan Blue
+        [SerializeField] private Color _roadsideOutlineColor = new Color(0.15f, 0.75f, 1f, 1f);
         [SerializeField] private float _roadsideOutlineWidth = 0.015f;
 
         [Serializable] public class WaitingStateChangedEvent : UnityEvent<bool> { }
         [SerializeField] private WaitingStateChangedEvent _waitingStateChanged = new WaitingStateChangedEvent();
         public WaitingStateChangedEvent WaitingStateChanged => _waitingStateChanged;
 
-        private readonly Queue<string> _followerQueue = new Queue<string>();
+        // Represents a follower queued to become a relay runner, including avatar metadata.
+        [Serializable]
+        public class FollowerQueueEntry
+        {
+            public string RunnerId;
+            public string DisplayName;
+            public string AvatarUrl;
+            public Sprite AvatarSprite;
+            public bool IsVip;
+
+            public FollowerQueueEntry(string runnerId, string displayName = null, string avatarUrl = null, Sprite avatarSprite = null, bool isVip = false)
+            {
+                RunnerId = runnerId;
+                DisplayName = !string.IsNullOrEmpty(displayName) ? displayName : runnerId;
+                AvatarUrl = avatarUrl;
+                AvatarSprite = avatarSprite;
+                IsVip = isVip;
+            }
+        }
+
+        private readonly Queue<FollowerQueueEntry> _followerQueue = new Queue<FollowerQueueEntry>();
+        private readonly Dictionary<string, Sprite> _avatarCache = new Dictionary<string, Sprite>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _downloadingUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         private float _distanceSinceLastLeg;
         private bool _isWaitingForFollower;
@@ -81,9 +105,13 @@ namespace SteamRush.Features.Runner
 
         private GameObject _activeProxy;
         private bool _proxySpawnedForCurrentLeg;
-        private string _currentOutfitName = "";
         private GameObject _pendingNextOutfit;
         private string _pendingNextRunnerId = "";
+        private FollowerQueueEntry _pendingNextEntry;
+
+        // SOLID Subsystems
+        private readonly RunnerOutfitRegistry _outfitRegistry = new RunnerOutfitRegistry();
+        private readonly RoadsideHandoverProxySpawner _proxySpawner = new RoadsideHandoverProxySpawner();
 
         public string CurrentRunnerId { get; private set; }
         public bool CurrentRunnerIsVip => false;
@@ -95,18 +123,20 @@ namespace SteamRush.Features.Runner
 
         public event Action<string, int> OnRunnerChanged;
 
-        /// <summary>
-        /// Peeks the next runner in queue or the roadside waiting runner.
-        /// </summary>
         public (string name, bool isVip)? PeekNextRunner()
         {
+            if (_proxySpawnedForCurrentLeg && _pendingNextEntry != null)
+            {
+                return (_pendingNextEntry.DisplayName, _pendingNextEntry.IsVip);
+            }
             if (_proxySpawnedForCurrentLeg && !string.IsNullOrEmpty(_pendingNextRunnerId))
             {
                 return (_pendingNextRunnerId, false);
             }
             if (_followerQueue.Count > 0)
             {
-                return (_followerQueue.Peek(), false);
+                var peek = _followerQueue.Peek();
+                return (peek.DisplayName, peek.IsVip);
             }
             return null;
         }
@@ -133,9 +163,6 @@ namespace SteamRush.Features.Runner
             set => _pauseWhenQueueEmpty = value;
         }
 
-        /// <summary>
-        /// Clears follower queue and destroys any active roadside proxy.
-        /// </summary>
         public void ClearQueue(bool clearActiveRoadsideProxy = true)
         {
             _followerQueue.Clear();
@@ -144,14 +171,13 @@ namespace SteamRush.Features.Runner
                 Destroy(_activeProxy);
                 _activeProxy = null;
                 _proxySpawnedForCurrentLeg = false;
+                _pendingNextEntry = null;
+                _pendingNextRunnerId = string.Empty;
             }
             UpdateNextRunnerHud();
             OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
         }
 
-        /// <summary>
-        /// Enables or disables automatic mock follower generation.
-        /// </summary>
         public void SetMockFollowersEnabled(bool enabled, bool clearExistingQueue = true)
         {
             _autoReplenishMockQueue = enabled;
@@ -161,10 +187,7 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        /// <summary>
-        /// Updates current runner display info (Display Name + Avatar Sprite).
-        /// Typically called by stream integration when syncing host channel profile.
-        /// </summary>
+        // Sets active runner with explicit avatar or cached avatar fallback.
         public void SetCurrentRunner(string runnerId, Sprite avatarSprite = null, bool isVip = false)
         {
             if (!string.IsNullOrEmpty(runnerId))
@@ -174,6 +197,18 @@ namespace SteamRush.Features.Runner
             if (avatarSprite != null)
             {
                 _currentRunnerAvatar = avatarSprite;
+                if (!string.IsNullOrEmpty(runnerId))
+                {
+                    _avatarCache[runnerId] = avatarSprite;
+                }
+            }
+            else if (!string.IsNullOrEmpty(runnerId) && _avatarCache.TryGetValue(runnerId, out var cached))
+            {
+                _currentRunnerAvatar = cached;
+            }
+            else
+            {
+                _currentRunnerAvatar = _defaultAvatar;
             }
             UpdateRunnerHud();
             OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
@@ -196,17 +231,20 @@ namespace SteamRush.Features.Runner
                 _worldSpeedManager = FindFirstObjectByType<WorldSpeedManager>();
             }
 
-            if (_runnerTransform != null)
-            {
-                foreach (Transform child in _runnerTransform)
-                {
-                    if (child.name.StartsWith("Character_") && child.gameObject.activeSelf)
-                    {
-                        _currentOutfitName = CleanOutfitName(child.name);
-                        break;
-                    }
-                }
-            }
+            _outfitRegistry.Initialize(_runnerTransform, _outfitVariants);
+            _proxySpawner.Initialize(
+                _roadsideProxyPrefab,
+                _nameplatePrefab,
+                _spawnAheadMeters,
+                _leftSidewalkZ,
+                _leftSidewalkRotY,
+                _rightSidewalkZ,
+                _rightSidewalkRotY,
+                _sidewalkY,
+                _nameColor,
+                _roadsideOutlineMaterial,
+                _roadsideOutlineColor,
+                _roadsideOutlineWidth);
         }
 
         private void Start()
@@ -241,7 +279,7 @@ namespace SteamRush.Features.Runner
             {
                 foreach (var f in _initialFollowers)
                 {
-                    _followerQueue.Enqueue(f);
+                    _followerQueue.Enqueue(new FollowerQueueEntry(f, f, null, null, false));
                 }
             }
             else
@@ -264,42 +302,65 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        /// <summary>
-        /// Backwards compatibility forwarder for legacy callers.
-        /// </summary>
         [Obsolete("TryEnqueueFollower is legacy. Use EnqueueFollowerAsRunner instead.")]
-        public void TryEnqueueFollower(string userId)
-        {
-            EnqueueFollowerAsRunner(userId);
-        }
+        public void TryEnqueueFollower(string userId) => EnqueueFollowerAsRunner(userId);
 
-        /// <summary>
-        /// Backwards compatibility forwarder for legacy callers.
-        /// </summary>
         [Obsolete("TryEnqueuePriorityFollower is legacy. Use EnqueueFollowerAsRunner instead.")]
-        public void TryEnqueuePriorityFollower(string userId)
-        {
-            EnqueueFollowerAsRunner(userId);
-        }
+        public void TryEnqueuePriorityFollower(string userId) => EnqueueFollowerAsRunner(userId);
 
-        /// <summary>
-        /// When a viewer follows, they immediately get queued or spawned ahead as the next roadside handover runner.
-        /// </summary>
-        public void EnqueueFollowerAsRunner(string userId)
+        // Enqueues follower as runner with user identifier only (backwards compatibility).
+        public void EnqueueFollowerAsRunner(string userId) => EnqueueFollowerAsRunner(userId, userId, null, null, false);
+
+        // Enqueues follower with avatar url, pre-loaded sprite, and VIP status (backwards compatibility).
+        public void EnqueueFollowerAsRunner(string userId, string avatarUrl, Sprite avatarSprite = null, bool isVip = false)
+            => EnqueueFollowerAsRunner(userId, userId, avatarUrl, avatarSprite, isVip);
+
+        // Enqueues follower with separate runnerId, displayName, avatar url, pre-loaded sprite, and VIP status.
+        public void EnqueueFollowerAsRunner(string runnerId, string displayName, string avatarUrl, Sprite avatarSprite = null, bool isVip = false)
         {
-            if (string.IsNullOrEmpty(userId)) return;
+            if (string.IsNullOrEmpty(runnerId) && string.IsNullOrEmpty(displayName)) return;
+            string finalId = !string.IsNullOrEmpty(runnerId) ? runnerId : displayName;
+            string finalName = !string.IsNullOrEmpty(displayName) ? displayName : runnerId;
 
             AudioManager.Instance?.PlaySFX(SFXType.StreamNewFollower);
 
-            if (_activeProxy == null)
+            var entry = new FollowerQueueEntry(finalId, finalName, avatarUrl, avatarSprite, isVip);
+
+            // Cache or resolve preloaded avatar sprite across both keys.
+            if (avatarSprite != null)
             {
-                // No proxy currently waiting -> spawn roadside waiting character immediately ahead of runner
-                SpawnRoadsideProxyInternal(userId);
+                _avatarCache[finalId] = avatarSprite;
+                _avatarCache[finalName] = avatarSprite;
+            }
+            else if (_avatarCache.TryGetValue(finalId, out var cachedById))
+            {
+                entry.AvatarSprite = cachedById;
+            }
+            else if (_avatarCache.TryGetValue(finalName, out var cachedByName))
+            {
+                entry.AvatarSprite = cachedByName;
+            }
+            else if (!string.IsNullOrEmpty(avatarUrl))
+            {
+                // Initiate non-blocking download of follower's avatar.
+                DownloadFollowerAvatar(entry);
             }
             else
             {
-                // A proxy is already standing on the sidewalk -> queue this follower as the next runner
-                _followerQueue.Enqueue(userId);
+                // Create deterministic procedural avatar if no avatar URL provided.
+                Sprite procAvatar = CreateProceduralAvatar(finalName);
+                entry.AvatarSprite = procAvatar;
+                _avatarCache[finalId] = procAvatar;
+                _avatarCache[finalName] = procAvatar;
+            }
+
+            if (_activeProxy == null)
+            {
+                SpawnRoadsideProxyInternal(entry);
+            }
+            else
+            {
+                _followerQueue.Enqueue(entry);
             }
 
             UpdateNextRunnerHud();
@@ -309,6 +370,170 @@ namespace SteamRush.Features.Runner
             {
                 ResumeFromWaiting();
             }
+        }
+
+        // Initiates asynchronous download of follower avatar with proxy & procedural fallback.
+        private void DownloadFollowerAvatar(FollowerQueueEntry entry)
+        {
+            if (entry == null || string.IsNullOrEmpty(entry.AvatarUrl)) return;
+            string url = entry.AvatarUrl;
+            string uid = entry.RunnerId;
+            string name = entry.DisplayName;
+
+            if (_downloadingUrls.Contains(url)) return;
+            _downloadingUrls.Add(url);
+
+            StartCoroutine(DownloadAvatarCoroutine(name, url, sprite =>
+            {
+                _downloadingUrls.Remove(url);
+                if (sprite == null) return;
+
+                if (!string.IsNullOrEmpty(uid)) _avatarCache[uid] = sprite;
+                if (!string.IsNullOrEmpty(name)) _avatarCache[name] = sprite;
+                entry.AvatarSprite = sprite;
+
+                // If waiting at roadside proxy, update pending entry.
+                if (_pendingNextEntry != null && 
+                    (string.Equals(_pendingNextEntry.RunnerId, uid, StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(_pendingNextEntry.DisplayName, name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _pendingNextEntry.AvatarSprite = sprite;
+                }
+
+                // If handover already occurred and this follower is currently running, refresh active HUD avatar.
+                if (string.Equals(CurrentRunnerId, name, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(CurrentRunnerId, uid, StringComparison.OrdinalIgnoreCase))
+                {
+                    _currentRunnerAvatar = sprite;
+                    UpdateRunnerHud();
+                }
+            }));
+        }
+
+        // Coroutine fetching image texture with proxy transcode support and procedural fallback.
+        private System.Collections.IEnumerator DownloadAvatarCoroutine(string runnerId, string avatarUrl, Action<Sprite> onLoaded)
+        {
+            if (string.IsNullOrEmpty(avatarUrl))
+            {
+                onLoaded?.Invoke(CreateProceduralAvatar(runnerId));
+                yield break;
+            }
+
+            int backendPort = PreGameConfigManager.Instance != null && PreGameConfigManager.Instance.CurrentConfig != null 
+                ? PreGameConfigManager.Instance.CurrentConfig.backendPort 
+                : 9091;
+
+            string targetUrl = avatarUrl;
+            bool isLocalProxy = avatarUrl.StartsWith("http://localhost:", StringComparison.OrdinalIgnoreCase) ||
+                                avatarUrl.StartsWith("http://127.0.0.1:", StringComparison.OrdinalIgnoreCase);
+
+            // If not already proxied, route through local backend proxy to handle headers & WebP transcoding
+            if (!isLocalProxy && (avatarUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || avatarUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+            {
+                targetUrl = $"http://localhost:{backendPort}/api/avatar-proxy?url={UnityEngine.Networking.UnityWebRequest.EscapeURL(avatarUrl)}";
+            }
+
+            Sprite loadedSprite = null;
+
+            // Attempt 1: Fetch through avatar proxy
+            yield return StartCoroutine(FetchTextureRoutine(targetUrl, s => loadedSprite = s));
+
+            // Attempt 2: If proxy failed and original URL was external, try direct with browser User-Agent
+            if (loadedSprite == null && !isLocalProxy)
+            {
+                yield return StartCoroutine(FetchTextureRoutine(avatarUrl, s => loadedSprite = s));
+            }
+
+            // Attempt 3: If still null, generate a clean procedural avatar so the user never sees a blank void
+            if (loadedSprite == null)
+            {
+                loadedSprite = CreateProceduralAvatar(runnerId);
+            }
+
+            if (loadedSprite != null)
+            {
+                onLoaded?.Invoke(loadedSprite);
+            }
+        }
+
+        private System.Collections.IEnumerator FetchTextureRoutine(string url, Action<Sprite> onLoaded)
+        {
+            if (string.IsNullOrEmpty(url)) yield break;
+
+            using (UnityEngine.Networking.UnityWebRequest imgReq = UnityEngine.Networking.UnityWebRequest.Get(url))
+            {
+                imgReq.SetRequestHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                imgReq.timeout = 8;
+                yield return imgReq.SendWebRequest();
+
+                if (imgReq.result == UnityEngine.Networking.UnityWebRequest.Result.Success && imgReq.downloadHandler != null && imgReq.downloadHandler.data != null)
+                {
+                    byte[] data = imgReq.downloadHandler.data;
+                    if (data.Length > 0)
+                    {
+                        // True enables mipchain generation for ultra-sharp 3D world sampling
+                        Texture2D tex = new Texture2D(2, 2, TextureFormat.RGBA32, true);
+                        if (tex.LoadImage(data))
+                        {
+                            tex.filterMode = FilterMode.Trilinear;
+                            tex.anisoLevel = 16;
+                            tex.Apply(true, false);
+                            Sprite sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+                            onLoaded?.Invoke(sprite);
+                        }
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"[ChatRunnerQueueManager] Avatar fetch attempt failed for {url}: {imgReq.error}");
+                }
+            }
+        }
+
+        // Generates deterministic procedural avatar with distinct pastel background and initial letter.
+        private static Sprite CreateProceduralAvatar(string name)
+        {
+            int size = 64;
+            Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            int hash = Mathf.Abs(string.IsNullOrEmpty(name) ? 0 : name.GetHashCode());
+            Color[] palette = new Color[]
+            {
+                new Color(0.2f, 0.6f, 1f),    // Blue
+                new Color(0.9f, 0.3f, 0.4f),   // Coral Red
+                new Color(0.2f, 0.8f, 0.5f),   // Emerald Green
+                new Color(0.95f, 0.65f, 0.1f), // Amber Gold
+                new Color(0.65f, 0.35f, 0.95f),// Purple
+                new Color(0.1f, 0.75f, 0.85f)  // Cyan
+            };
+            Color baseColor = palette[hash % palette.Length];
+            Color innerColor = Color.Lerp(baseColor, Color.white, 0.35f);
+            float radius = size * 0.46f;
+            float center = size * 0.5f;
+
+            Color[] pixels = new Color[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = x - center;
+                    float dy = y - center;
+                    float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                    if (dist <= radius)
+                    {
+                        float t = dist / radius;
+                        pixels[y * size + x] = Color.Lerp(innerColor, baseColor, t);
+                    }
+                    else
+                    {
+                        pixels[y * size + x] = Color.clear;
+                    }
+                }
+            }
+            tex.SetPixels(pixels);
+            tex.Apply();
+            Sprite sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
+            sprite.name = $"ProceduralAvatar_{name}";
+            return sprite;
         }
 
         private void Update()
@@ -324,29 +549,25 @@ namespace SteamRush.Features.Runner
 
         private void UpdateRoadsideHandover()
         {
-            // 1. If no active proxy, spawn next runner if available in queue
             if (_activeProxy == null && _followerQueue.Count > 0)
             {
-                string nextRunner = _followerQueue.Dequeue();
+                var nextRunner = _followerQueue.Dequeue();
                 SpawnRoadsideProxyInternal(nextRunner);
             }
-            // Or auto replenish mock if enabled
             else if (_activeProxy == null && _followerQueue.Count == 0 && _autoReplenishMockQueue)
             {
                 float triggerDistance = Mathf.Max(0f, _legDistanceMeters - _spawnAheadMeters);
                 if (_distanceSinceLastLeg >= triggerDistance)
                 {
                     string mockRunner = "Follower_" + UnityEngine.Random.Range(100, 999);
-                    SpawnRoadsideProxyInternal(mockRunner);
+                    SpawnRoadsideProxyInternal(new FollowerQueueEntry(mockRunner, mockRunner, null, null, false));
                 }
             }
 
-            // 2. Complete handover when runner passes proxy position
             if (_activeProxy != null && _runnerTransform != null && _activeProxy.transform.position.x < _runnerTransform.position.x - 2f)
             {
                 ExecuteRoadsideHandover();
             }
-            // 3. Check empty queue hold if leg distance reached and queue is completely empty
             else if (_activeProxy == null && _distanceSinceLastLeg >= _legDistanceMeters && _followerQueue.Count == 0)
             {
                 if (_pauseWhenQueueEmpty)
@@ -360,9 +581,6 @@ namespace SteamRush.Features.Runner
             }
         }
 
-        /// <summary>
-        /// Called by RoadsideHandoverTrigger when the runner contacts the 12m trigger box.
-        /// </summary>
         public void NotifyRunnerReachedProxy()
         {
             if (_activeProxy == null || !_proxySpawnedForCurrentLeg)
@@ -373,9 +591,9 @@ namespace SteamRush.Features.Runner
             ExecuteRoadsideHandover();
         }
 
-        private void SpawnRoadsideProxyInternal(string runnerId)
+        private void SpawnRoadsideProxyInternal(FollowerQueueEntry entry)
         {
-            if (_runnerTransform == null) return;
+            if (_runnerTransform == null || entry == null) return;
 
             if (_activeProxy != null)
             {
@@ -383,106 +601,22 @@ namespace SteamRush.Features.Runner
                 _activeProxy = null;
             }
 
-            _pendingNextRunnerId = runnerId;
-
-            PickPendingNextOutfit();
+            _pendingNextEntry = entry;
+            _pendingNextRunnerId = entry.DisplayName;
+            _pendingNextOutfit = _outfitRegistry.PickNextOutfit(_runnerTransform);
             if (_pendingNextOutfit == null) return;
 
             _proxySpawnedForCurrentLeg = true;
 
-            bool isLeft = UnityEngine.Random.value > 0.5f;
-            float targetZ = isLeft ? _leftSidewalkZ : _rightSidewalkZ;
-            Quaternion spawnRot = isLeft ? Quaternion.Euler(0f, _leftSidewalkRotY, 0f) : Quaternion.Euler(0f, _rightSidewalkRotY, 0f);
-
-            Vector3 rootPos = new Vector3(_runnerTransform.position.x + _spawnAheadMeters, 0f, 0f);
-
-            if (_roadsideProxyPrefab != null)
-            {
-                _activeProxy = Instantiate(_roadsideProxyPrefab, rootPos, Quaternion.identity);
-                _activeProxy.name = $"RoadsideHandoverProxy_{_pendingNextOutfit.name}";
-            }
-            else
-            {
-                _activeProxy = new GameObject($"RoadsideHandoverProxy_{_pendingNextOutfit.name}");
-                _activeProxy.transform.position = rootPos;
-                _activeProxy.transform.rotation = Quaternion.identity;
-            }
-
-            MovingWorldObject mover = _activeProxy.GetComponent<MovingWorldObject>();
-            if (mover == null) mover = _activeProxy.AddComponent<MovingWorldObject>();
-            if (_worldSpeedManager != null) mover.Initialize(_worldSpeedManager);
-
-            BoxCollider box = _activeProxy.GetComponent<BoxCollider>();
-            if (box == null) box = _activeProxy.AddComponent<BoxCollider>();
-            box.isTrigger = true;
-            box.size = new Vector3(1.5f, 3.5f, 12f);
-            box.center = new Vector3(0f, 1.75f, 0f);
-
-            RoadsideHandoverTrigger trigger = _activeProxy.GetComponent<RoadsideHandoverTrigger>();
-            if (trigger == null) trigger = _activeProxy.AddComponent<RoadsideHandoverTrigger>();
-            trigger.Initialize(this, 12f);
-
-            Transform existingContainer = _activeProxy.transform.Find("ModelContainer");
-            GameObject modelAnchor;
-            if (existingContainer != null)
-            {
-                modelAnchor = existingContainer.gameObject;
-            }
-            else
-            {
-                modelAnchor = new GameObject("ModelAnchor");
-                modelAnchor.transform.SetParent(_activeProxy.transform, false);
-            }
-
-            modelAnchor.transform.localPosition = new Vector3(0f, _sidewalkY, targetZ);
-            modelAnchor.transform.localRotation = spawnRot;
-
-            foreach (Transform c in modelAnchor.transform)
-            {
-                Destroy(c.gameObject);
-            }
-
-            GameObject characterInstance = Instantiate(_pendingNextOutfit, modelAnchor.transform);
-            characterInstance.name = _pendingNextOutfit.name;
-            characterInstance.transform.localPosition = Vector3.zero;
-            characterInstance.transform.localRotation = Quaternion.identity;
-
-            foreach (var col in characterInstance.GetComponentsInChildren<Collider>())
-            {
-                col.enabled = false;
-            }
-
-            var anims = characterInstance.GetComponentsInChildren<Animator>();
-            foreach (var a in anims)
-            {
-                a.enabled = false;
-            }
-            ApplyNaturalStandingPose(characterInstance);
-
-            AttachNameplateToProxy(characterInstance, _pendingNextRunnerId);
-            AttachRoadsideOutline(characterInstance);
+            _activeProxy = _proxySpawner.SpawnProxy(
+                _runnerTransform,
+                _worldSpeedManager,
+                this,
+                _pendingNextOutfit,
+                _pendingNextRunnerId);
 
             UpdateNextRunnerHud();
             OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
-        }
-
-        private void AttachRoadsideOutline(GameObject proxyObj)
-        {
-            if (proxyObj == null) return;
-            var outline = proxyObj.GetComponent<CharacterVisualOutline>();
-            if (outline == null)
-            {
-                outline = proxyObj.AddComponent<CharacterVisualOutline>();
-            }
-
-            if (_roadsideOutlineMaterial == null)
-            {
-#if UNITY_EDITOR
-                _roadsideOutlineMaterial = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Materials/Roadside_Outline_Mat.mat");
-#endif
-            }
-
-            outline.ConfigureOutline(_roadsideOutlineMaterial, _roadsideOutlineColor, _roadsideOutlineWidth);
         }
 
         private void ExecuteRoadsideHandover()
@@ -491,7 +625,27 @@ namespace SteamRush.Features.Runner
             _distanceSinceLastLeg = 0f;
             _proxySpawnedForCurrentLeg = false;
 
-            SwapRunnerOutfit(_pendingNextOutfit != null ? _pendingNextOutfit.name : "");
+            // Resolve new follower avatar with cache fallback, or reset to default avatar.
+            Sprite newAvatar = _pendingNextEntry != null && _pendingNextEntry.AvatarSprite != null 
+                ? _pendingNextEntry.AvatarSprite 
+                : null;
+
+            if (newAvatar == null && _pendingNextEntry != null && !string.IsNullOrEmpty(_pendingNextEntry.RunnerId) &&
+                _avatarCache.TryGetValue(_pendingNextEntry.RunnerId, out var cachedById))
+            {
+                newAvatar = cachedById;
+            }
+
+            if (newAvatar == null && !string.IsNullOrEmpty(CurrentRunnerId) &&
+                _avatarCache.TryGetValue(CurrentRunnerId, out var cachedByName))
+            {
+                newAvatar = cachedByName;
+            }
+
+            // Crucial fix: never leave previous runner/host avatar on baton handover.
+            _currentRunnerAvatar = newAvatar != null ? newAvatar : _defaultAvatar;
+
+            _outfitRegistry.SwapRunnerOutfit(_runnerTransform, _pendingNextOutfit != null ? _pendingNextOutfit.name : "");
 
             UpdateRunnerHud();
             if (_hudManager != null)
@@ -508,121 +662,13 @@ namespace SteamRush.Features.Runner
             }
 
             OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);
-            Debug.Log($"[ChatRunnerQueueManager] Baton handover completed for: {CurrentRunnerId}!");
+            Debug.Log($"[ChatRunnerQueueManager] Baton handover completed for: {CurrentRunnerId}! New avatar: {(_currentRunnerAvatar != null ? _currentRunnerAvatar.name : "null")}");
 
-            // If queue has more followers waiting, spawn next proxy ahead immediately
             if (_followerQueue.Count > 0)
             {
-                string nextRunner = _followerQueue.Dequeue();
+                var nextRunner = _followerQueue.Dequeue();
                 SpawnRoadsideProxyInternal(nextRunner);
             }
-        }
-
-        private void SwapRunnerOutfit(string rawTargetName)
-        {
-            string targetName = CleanOutfitName(rawTargetName);
-            if (string.IsNullOrEmpty(targetName) || _runnerTransform == null) return;
-
-            foreach (Transform child in _runnerTransform)
-            {
-                if (child.name.StartsWith("Character_") && child.GetComponent<SkinnedMeshRenderer>() != null)
-                {
-                    bool isMatch = string.Equals(CleanOutfitName(child.name), targetName, StringComparison.OrdinalIgnoreCase);
-                    child.gameObject.SetActive(isMatch);
-                    if (isMatch)
-                    {
-                        _currentOutfitName = child.name;
-                    }
-                }
-            }
-
-            var runnerOutline = _runnerTransform.GetComponent<CharacterVisualOutline>();
-            if (runnerOutline != null)
-            {
-                runnerOutline.RefreshOutline();
-            }
-
-            _pendingNextOutfit = null;
-        }
-
-        private void AttachNameplateToProxy(GameObject proxyObj, string displayName)
-        {
-            if (_nameplatePrefab == null) return;
-
-            GameObject nameplate = Instantiate(_nameplatePrefab, proxyObj.transform);
-            nameplate.name = "RelayNameplate";
-            nameplate.transform.localPosition = new Vector3(0f, 2.1f, 0f);
-
-            var tmp = nameplate.GetComponentInChildren<TMPro.TMP_Text>();
-            if (tmp != null)
-            {
-                tmp.text = ViewerNameSanitizer.SanitizeDisplayName(displayName);
-                tmp.color = _nameColor;
-            }
-
-            var proxyCtrl = proxyObj.AddComponent<SteamRush.Relay.HandoverProxyController>();
-            proxyCtrl.SetNameplate(nameplate.transform, tmp);
-        }
-
-        private void ApplyNaturalStandingPose(GameObject proxy)
-        {
-            if (proxy == null) return;
-            var sL = proxy.transform.Find("Root/Hips/Spine_01/Spine_02/Spine_03/Clavicle_L/Shoulder_L");
-            var sR = proxy.transform.Find("Root/Hips/Spine_01/Spine_02/Spine_03/Clavicle_R/Shoulder_R");
-            if (sL != null)
-            {
-                sL.localRotation = Quaternion.Euler(15f, 10f, 65f);
-            }
-            if (sR != null)
-            {
-                sR.localRotation = Quaternion.Euler(15f, -10f, -65f);
-            }
-
-            var eL = proxy.transform.Find("Root/Hips/Spine_01/Spine_02/Spine_03/Clavicle_L/Shoulder_L/Elbow_L");
-            var eR = proxy.transform.Find("Root/Hips/Spine_01/Spine_02/Spine_03/Clavicle_R/Shoulder_R/Elbow_R");
-            if (eL != null) eL.localRotation = Quaternion.Euler(0f, 15f, 15f);
-            if (eR != null) eR.localRotation = Quaternion.Euler(0f, -15f, -15f);
-        }
-
-        private void PickPendingNextOutfit()
-        {
-            if (_outfitVariants == null || _outfitVariants.Count == 0)
-            {
-                AutoCollectOutfits();
-            }
-
-            if (_outfitVariants == null || _outfitVariants.Count == 0) return;
-
-            List<GameObject> candidates = _outfitVariants.FindAll(o =>
-            {
-                if (o == null) return false;
-                string clean = CleanOutfitName(o.name);
-                return !string.Equals(clean, _currentOutfitName, StringComparison.OrdinalIgnoreCase);
-            });
-
-            _pendingNextOutfit = candidates.Count > 0 ? candidates[UnityEngine.Random.Range(0, candidates.Count)] : _outfitVariants[0];
-        }
-
-        private void AutoCollectOutfits()
-        {
-            if (_runnerTransform == null) return;
-            if (_outfitVariants == null) _outfitVariants = new List<GameObject>();
-
-            foreach (Transform child in _runnerTransform)
-            {
-                if (child.name.StartsWith("Character_") && child.GetComponent<SkinnedMeshRenderer>() != null)
-                {
-                    _outfitVariants.Add(child.gameObject);
-                }
-            }
-        }
-
-        private string CleanOutfitName(string rawName)
-        {
-            if (string.IsNullOrEmpty(rawName)) return "";
-            string clean = rawName.Replace("(Clone)", "").Trim();
-            if (clean.EndsWith("_01")) clean = clean.Substring(0, clean.Length - 3);
-            return clean;
         }
 
         private void UpdateRunnerHud()
@@ -684,7 +730,9 @@ namespace SteamRush.Features.Runner
 
             if (_followerQueue.Count > 0)
             {
-                CurrentRunnerId = _followerQueue.Dequeue();
+                var entry = _followerQueue.Dequeue();
+                CurrentRunnerId = entry.DisplayName;
+                _currentRunnerAvatar = entry.AvatarSprite != null ? entry.AvatarSprite : _defaultAvatar;
             }
             UpdateRunnerHud();
             OnRunnerChanged?.Invoke(CurrentRunnerId, QueuedCount);

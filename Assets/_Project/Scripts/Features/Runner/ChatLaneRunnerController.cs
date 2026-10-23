@@ -326,12 +326,19 @@ namespace SteamRush.Features.Runner
                     break;
 
                 case "left":
-                    ChangeLane(1); // To lane +3.0 (Left)
+                    ChangeLane(-1); // Shift toward lane index 0 (Left: +3.0)
                     _commandCooldownTimer = cooldown;
                     break;
 
                 case "right":
-                    ChangeLane(-1); // To lane -3.0 (Right)
+                    ChangeLane(1); // Shift toward lane index 2 (Right: -3.0)
+                    _commandCooldownTimer = cooldown;
+                    break;
+
+                case "switch":
+                case "switch_lane":
+                case "chuyenlan":
+                    SwitchLaneAuto();
                     _commandCooldownTimer = cooldown;
                     break;
 
@@ -458,6 +465,24 @@ namespace SteamRush.Features.Runner
             }
 
             return _runnerMovement.ShiftLane(direction);
+        }
+
+        /// <summary>
+        /// Automatically switches to a different lane (0: Left, 1: Mid, 2: Right).
+        /// </summary>
+        public bool SwitchLaneAuto()
+        {
+            if (IsControlLocked || _runnerMovement == null) return false;
+            int cur = _runnerMovement.CurrentLaneIndex;
+            // Lane 0: Left, Lane 1: Mid, Lane 2: Right
+            int target = cur switch
+            {
+                0 => 1,
+                1 => Random.value > 0.5f ? 0 : 2,
+                2 => 1,
+                _ => 1
+            };
+            return SetLane(target);
         }
 
         private void TriggerFast()

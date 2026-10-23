@@ -42,7 +42,8 @@ namespace StreamRushLive.Features.Gifts.Actions
 
         public void Execute(GiftContext context)
         {
-            context.QueueManager?.EnqueueFollowerAsRunner(context.SenderName);
+            // Enqueue viewer with profile avatar
+            context.QueueManager?.EnqueueFollowerAsRunner(context.SenderName, context.ProfilePictureUrl, null, true);
             context.HudManager?.ShowStatusPopup($"Runner: [{context.SenderName}]", true);
         }
     }
@@ -57,7 +58,8 @@ namespace StreamRushLive.Features.Gifts.Actions
 
         public void Execute(GiftContext context)
         {
-            context.QueueManager?.EnqueueFollowerAsRunner(context.SenderName);
+            // Enqueue viewer with profile avatar
+            context.QueueManager?.EnqueueFollowerAsRunner(context.SenderName, context.ProfilePictureUrl);
             context.HudManager?.ShowStatusPopup($"Runner: [{context.SenderName}]", true);
         }
     }
@@ -73,13 +75,11 @@ namespace StreamRushLive.Features.Gifts.Actions
         public void Execute(GiftContext context)
         {
             int energy = context.CustomValue > 0f ? Mathf.RoundToInt(context.CustomValue) : 20;
-            if (context.Faction == FactionType.Blue)
+            if (context.FactionManager != null &&
+                (context.FactionManager.TryGetFaction(context.SenderName, out FactionType faction) ||
+                 context.FactionManager.TryGetFaction(context.SenderUserId, out faction)))
             {
-                context.FactionManager?.AddLikes(FactionType.Blue, energy);
-            }
-            else
-            {
-                context.FactionManager?.AddLikes(FactionType.Red, energy);
+                context.FactionManager.AddLikes(faction, energy);
             }
         }
     }

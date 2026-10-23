@@ -142,6 +142,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         public int jumpEnergyCost = 20;
         public float freeControlDuration = 30f;
         public float sprintBuffDuration = 30f;
+        public float memberInactivityTimeoutSeconds = 120f; // Inactivity timeout in seconds (2 minutes)
         public bool enableKeyboardControl = false; // Default: OFF (manual player control disabled)
 
         // Anti & Obstacles

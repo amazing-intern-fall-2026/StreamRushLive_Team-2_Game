@@ -83,8 +83,13 @@ namespace SteamRush.Features.UI.Views
         [SerializeField] private ScrollRect _scrollRect;
         [SerializeField] private Sprite _fallbackIcon;
 
+        [Header("Card Prefab (SOLID SRP)")]
+        [SerializeField] private GiftInfoCardView _cardPrefab;
+
         private readonly Dictionary<string, RectTransform> _cardMap = new Dictionary<string, RectTransform>();
         private readonly Dictionary<int, RectTransform> _cardIdMap = new Dictionary<int, RectTransform>();
+        private readonly Dictionary<string, GiftInfoCardView> _cardViewMap = new Dictionary<string, GiftInfoCardView>();
+        private readonly Dictionary<int, GiftInfoCardView> _cardIdViewMap = new Dictionary<int, GiftInfoCardView>();
 
         public int RowCount
         {
@@ -258,6 +263,8 @@ namespace SteamRush.Features.UI.Views
 
             _cardMap.Clear();
             _cardIdMap.Clear();
+            _cardViewMap.Clear();
+            _cardIdViewMap.Clear();
         }
 
         public List<TikTokGiftMapping> GetSortedMappings(List<TikTokGiftMapping> sourceList)
@@ -497,123 +504,68 @@ namespace SteamRush.Features.UI.Views
 
         /// <summary>
         /// Creates an individual gift card item with interactive Button support.
+        /// Uses concrete GiftInfoCard.prefab when available (SOLID SRP), with legacy procedural fallback.
         /// </summary>
         private void CreateOriginalCard(TikTokGiftMapping mapping, float cardWidth, float cardHeight)
         {
-            GameObject cardObj = new GameObject($"Card_{mapping.giftName}", typeof(RectTransform), typeof(Image), typeof(Button));
-            cardObj.transform.SetParent(_contentContainer, false);
-            RectTransform cardRt = cardObj.GetComponent<RectTransform>();
-
-            Image bg = cardObj.GetComponent<Image>();
-            // Card cell styled with dark panel from HudTheme tinted by gift category (Blue/Red/Special/Like).
-            HudTheme theme = HudTheme.Current;
-            HudCategory category = GetCategory(mapping.action);
-            Sprite flat = theme.panelFlat != null ? theme.panelFlat : theme.panelDark;
-            if (flat != null)
+            if (_cardPrefab == null)
             {
-                bg.sprite = flat;
-                bg.type = Image.Type.Sliced;
+#if UNITY_EDITOR
+                _cardPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GiftInfoCardView>("Assets/_Project/Prefabs/UI/GiftInfoCard.prefab");
+#endif
             }
-            // Outline border attached to the Body layer; base card Image kept clear for raycasts.
-            bg.color = Color.clear;
 
-            GameObject bodyObj = new GameObject("Body", typeof(RectTransform), typeof(Image));
-            bodyObj.transform.SetParent(cardObj.transform, false);
-            RectTransform bodyRt = bodyObj.GetComponent<RectTransform>();
-            bodyRt.anchorMin = Vector2.zero;
-            bodyRt.anchorMax = Vector2.one;
-            bodyRt.offsetMin = new Vector2(4f, 4f);
-            bodyRt.offsetMax = new Vector2(-4f, -4f);
-            Image bodyImg = bodyObj.GetComponent<Image>();
-            if (flat != null)
+            if (_cardPrefab != null)
             {
-                bodyImg.sprite = flat;
-                bodyImg.type = Image.Type.Sliced;
-            }
-            Color fill = theme.CategoryFill(category);
-            fill.a = 1f; // Fully opaque so rear outline color does not bleed through
-            bodyImg.color = fill;
-            bodyImg.raycastTarget = false;
-            Outline border = bodyObj.AddComponent<Outline>();
-            border.effectColor = theme.CategoryBorder(category);
-            border.effectDistance = new Vector2(4f, -4f);
-            border.useGraphicAlpha = false;
-            bodyObj.transform.SetAsFirstSibling();
+                var cardView = Instantiate(_cardPrefab, _contentContainer, false);
+                cardView.name = $"Card_{mapping.giftName}";
 
-            // 1. TikTok Gift Icon (top half of card if enabled)
-            if (_showGiftIcons)
-            {
-                GameObject iconObj = new GameObject("Icon", typeof(RectTransform), typeof(Image));
-                iconObj.transform.SetParent(cardObj.transform, false);
-                RectTransform iconRt = iconObj.GetComponent<RectTransform>();
-                iconRt.anchorMin = new Vector2(0.5f, 0.65f);
-                iconRt.anchorMax = new Vector2(0.5f, 0.65f);
-                iconRt.pivot = new Vector2(0.5f, 0.5f);
-                iconRt.anchoredPosition = Vector2.zero;
+                HudTheme theme = HudTheme.Current;
+                HudCategory category = GetCategory(mapping.action);
+                Sprite flat = theme.panelFlat != null ? theme.panelFlat : theme.panelDark;
+                Color fill = theme.CategoryFill(category);
+                Color border = theme.CategoryBorder(category);
+                Color textCol = GetTeamColor(mapping.action);
+                string desc = GetConciseDesc(mapping);
 
-                float iconSize = Mathf.Clamp(cardHeight * 0.46f, 38f, 52f);
-                iconRt.sizeDelta = new Vector2(iconSize, iconSize);
-
-                Image iconImg = iconObj.GetComponent<Image>();
-                iconImg.preserveAspect = true;
-                iconImg.raycastTarget = false; // Do not block button click events
                 Sprite resolvedIcon = mapping.giftIcon != null ? mapping.giftIcon : GetOfficialTikTokGiftIcon(mapping.giftId, mapping.giftName);
                 if (resolvedIcon != null && mapping.giftIcon == null)
                 {
                     mapping.giftIcon = resolvedIcon;
                 }
-                iconImg.sprite = resolvedIcon != null ? resolvedIcon : _fallbackIcon;
+
+                TikTokGiftMapping captured = mapping;
+                cardView.Bind(
+                    mapping,
+                    resolvedIcon != null ? resolvedIcon : _fallbackIcon,
+                    _showGiftIcons,
+                    desc,
+                    textCol,
+                    fill,
+                    border,
+                    flat,
+                    () => TriggerGiftEvent(captured));
+
+                RegisterCardMaps(mapping, cardView.RectTransform);
+                RegisterCardViewMaps(mapping, cardView);
+                return;
             }
 
-            // 2. Description Label (fills entire card if icons hidden, or bottom half if icons shown)
-            GameObject descObj = new GameObject("DescLabel", typeof(RectTransform), typeof(TextMeshProUGUI));
-            descObj.transform.SetParent(cardObj.transform, false);
-            RectTransform descRt = descObj.GetComponent<RectTransform>();
-            if (_showGiftIcons)
+            Debug.LogError("[GiftInfoPanelController] _cardPrefab is missing! Please assign GiftInfoCard.prefab in Inspector or Resources.");
+        }
+
+        private void RegisterCardViewMaps(TikTokGiftMapping mapping, GiftInfoCardView cardView)
+        {
+            if (cardView == null) return;
+            if (!string.IsNullOrEmpty(mapping.giftName))
             {
-                descRt.anchorMin = new Vector2(0.04f, 0.05f);
-                descRt.anchorMax = new Vector2(0.96f, 0.38f);
+                string key = mapping.giftName.ToLowerInvariant();
+                _cardViewMap[key] = cardView;
             }
-            else
+            if (mapping.giftId > 0)
             {
-                descRt.anchorMin = new Vector2(0.06f, 0.06f);
-                descRt.anchorMax = new Vector2(0.94f, 0.94f);
+                _cardIdViewMap[mapping.giftId] = cardView;
             }
-            descRt.offsetMin = Vector2.zero;
-            descRt.offsetMax = Vector2.zero;
-            descRt.anchoredPosition = Vector2.zero;
-
-            TextMeshProUGUI descTxt = descObj.GetComponent<TextMeshProUGUI>();
-            descTxt.text = GetConciseDesc(mapping);
-            descTxt.fontStyle = FontStyles.Bold;
-            descTxt.alignment = TextAlignmentOptions.Center;
-            descTxt.color = GetTeamColor(mapping.action);
-            descTxt.textWrappingMode = TextWrappingModes.Normal;
-            descTxt.lineSpacing = -8f;
-            descTxt.enableAutoSizing = true;
-            descTxt.fontSizeMin = 8.5f;
-            descTxt.fontSizeMax = _showGiftIcons ? 13.5f : 16f;
-            descTxt.raycastTarget = false; // Do not block button click events
-
-            // 3. Configure interactive Button for gift card
-            Button cardBtn = cardObj.GetComponent<Button>();
-            cardBtn.targetGraphic = bg;
-            ColorBlock colors = cardBtn.colors;
-            colors.normalColor = Color.white;
-            colors.highlightedColor = new Color(1.35f, 1.35f, 1.35f, 1f);
-            colors.pressedColor = new Color(0.7f, 0.7f, 0.7f, 1f);
-            colors.selectedColor = Color.white;
-            colors.fadeDuration = 0.08f;
-            cardBtn.colors = colors;
-
-            TikTokGiftMapping capturedMapping = mapping;
-            cardBtn.onClick.RemoveAllListeners();
-            cardBtn.onClick.AddListener(() =>
-            {
-                TriggerGiftEvent(capturedMapping);
-            });
-
-            RegisterCardMaps(mapping, cardRt);
         }
 
         /// <summary>
@@ -812,6 +764,17 @@ namespace SteamRush.Features.UI.Views
 
         public void HighlightGift(int giftId, string giftName)
         {
+            if (giftId > 0 && _cardIdViewMap.TryGetValue(giftId, out var byIdView) && byIdView != null)
+            {
+                byIdView.AnimateBounce();
+                return;
+            }
+            if (!string.IsNullOrEmpty(giftName) && _cardViewMap.TryGetValue(giftName.ToLowerInvariant(), out var byNameView) && byNameView != null)
+            {
+                byNameView.AnimateBounce();
+                return;
+            }
+
             RectTransform targetCard = null;
 
             if (giftId > 0 && _cardIdMap.TryGetValue(giftId, out var byId))

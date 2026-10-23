@@ -46,6 +46,10 @@ public enum SFXType
     GiftDanceMusic = 26
 }
 
+/// <summary>
+/// Centralized audio manager managing background music (BGM), sound effects (SFX), dance music, and UI feedback.
+/// Supports volume adjustment, muting, crossfading, anti-spam throttling, and dedicated audio sources.
+/// </summary>
 [DisallowMultipleComponent]
 public class AudioManager : MonoBehaviour
 {
@@ -100,6 +104,7 @@ public class AudioManager : MonoBehaviour
         }
 
         public event System.Action<bool> OnMuteStateChanged;
+        public event System.Action<float> OnVolumeChanged;
 
         public void ToggleMute()
         {
@@ -126,7 +131,10 @@ public class AudioManager : MonoBehaviour
                 {
                     AudioListener.volume = masterVolume;
                 }
+                PlayerPrefs.SetFloat("Game_Audio_MasterVolume", masterVolume);
+                PlayerPrefs.Save();
                 UpdateVolumes();
+                OnVolumeChanged?.Invoke(masterVolume);
             }
         }
 
@@ -160,6 +168,11 @@ public class AudioManager : MonoBehaviour
 
             Instance = this;
             DontDestroyOnLoad(gameObject);
+
+            if (PlayerPrefs.HasKey("Game_Audio_MasterVolume"))
+            {
+                masterVolume = Mathf.Clamp01(PlayerPrefs.GetFloat("Game_Audio_MasterVolume", 1f));
+            }
 
             if (PlayerPrefs.HasKey("Game_Audio_Muted"))
             {
@@ -208,6 +221,36 @@ public class AudioManager : MonoBehaviour
             }
         }
 
+        private AudioSource GetOrCreateSource(AudioSource currentSource, string childName, bool loop, params AudioSource[] avoidCollisions)
+        {
+            if (currentSource != null)
+            {
+                bool collides = false;
+                if (avoidCollisions != null)
+                {
+                    for (int i = 0; i < avoidCollisions.Length; i++)
+                    {
+                        if (avoidCollisions[i] != null && currentSource == avoidCollisions[i])
+                        {
+                            collides = true;
+                            break;
+                        }
+                    }
+                }
+                if (!collides) return currentSource;
+            }
+
+            var child = transform.Find(childName);
+            GameObject go = child != null ? child.gameObject : new GameObject(childName);
+            go.transform.SetParent(transform, false);
+            AudioSource src = go.GetComponent<AudioSource>();
+            if (src == null) src = go.AddComponent<AudioSource>();
+            src.loop = loop;
+            src.playOnAwake = false;
+            src.spatialBlend = 0f;
+            return src;
+        }
+
         private void SetupAudioSources()
         {
             // 1. BGM Source
@@ -221,30 +264,21 @@ public class AudioManager : MonoBehaviour
             bgmSource.volume = bgmVolume * masterVolume;
 
             // 2. Loop SFX Source (used for Shield Passive, Rain, Siren, etc.)
-            if (loopSfxSource == null)
-            {
-                loopSfxSource = gameObject.AddComponent<AudioSource>();
-            }
+            loopSfxSource = GetOrCreateSource(loopSfxSource, "LoopSfxSource", true, bgmSource);
             loopSfxSource.loop = true;
             loopSfxSource.playOnAwake = false;
             loopSfxSource.spatialBlend = 0f;
             loopSfxSource.volume = sfxVolume * masterVolume;
 
             // 3. Dance Music Source (dedicated background music when viewers trigger Gift Dance)
-            if (danceMusicSource == null)
-            {
-                danceMusicSource = gameObject.AddComponent<AudioSource>();
-            }
+            danceMusicSource = GetOrCreateSource(danceMusicSource, "DanceMusicSource", true, bgmSource, loopSfxSource);
             danceMusicSource.loop = true;
             danceMusicSource.playOnAwake = false;
             danceMusicSource.spatialBlend = 0f;
-            danceMusicSource.volume = sfxVolume * masterVolume;
+            danceMusicSource.volume = Mathf.Max(bgmVolume, sfxVolume) * masterVolume;
 
             // 4. UI Source (2D UI clicks)
-            if (uiSource == null)
-            {
-                uiSource = gameObject.AddComponent<AudioSource>();
-            }
+            uiSource = GetOrCreateSource(uiSource, "UISource", false, bgmSource, loopSfxSource, danceMusicSource);
             uiSource.loop = false;
             uiSource.playOnAwake = false;
             uiSource.spatialBlend = 0f;
@@ -472,20 +506,16 @@ public class AudioManager : MonoBehaviour
             if (_sfxLookup.TryGetValue(SFXType.GiftDanceMusic, out var entry) && entry.clip != null)
             {
                 _isDanceMusicActive = true;
-                if (danceMusicSource == null)
-                {
-                    danceMusicSource = gameObject.AddComponent<AudioSource>();
-                    danceMusicSource.loop = true;
-                    danceMusicSource.playOnAwake = false;
-                    danceMusicSource.spatialBlend = 0f;
-                }
+                danceMusicSource = GetOrCreateSource(danceMusicSource, "DanceMusicSource", true, bgmSource, loopSfxSource);
 
                 danceMusicSource.clip = entry.clip;
-                danceMusicSource.volume = sfxVolume * masterVolume * (entry.volumeMultiplier > 0f ? entry.volumeMultiplier : 1f);
+                danceMusicSource.time = 0f;
+                float multiplier = entry.volumeMultiplier > 0f ? entry.volumeMultiplier : 1f;
+                danceMusicSource.volume = Mathf.Max(bgmVolume, sfxVolume) * masterVolume * multiplier;
                 danceMusicSource.Play();
 
                 // Pause game BGM so dance music plays exclusively
-                if (bgmSource != null && bgmSource.isPlaying)
+                if (bgmSource != null && bgmSource != danceMusicSource && bgmSource.isPlaying)
                 {
                     bgmSource.Pause();
                 }
@@ -516,14 +546,14 @@ public class AudioManager : MonoBehaviour
                 _danceMusicRoutine = null;
             }
 
-            if (danceMusicSource != null && danceMusicSource.isPlaying)
+            if (danceMusicSource != null)
             {
                 danceMusicSource.Stop();
                 danceMusicSource.clip = null;
             }
 
             // Resume game BGM, or start a new track if not playing
-            if (bgmSource != null)
+            if (bgmSource != null && bgmSource != danceMusicSource)
             {
                 bgmSource.UnPause();
                 if (!bgmSource.isPlaying && bgmPlaylist != null && bgmPlaylist.Count > 0)

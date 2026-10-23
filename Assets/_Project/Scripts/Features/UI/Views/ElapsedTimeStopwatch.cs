@@ -16,6 +16,7 @@ namespace SteamRush.Features.UI.Views
 
         // Read by VictoryCeremonyController to display final clear time in victory popup.
         public string CurrentDisplayText => timeText != null ? timeText.text : "00:00";
+        public float ElapsedSeconds => _elapsedSeconds;
 
         public void SetDisplayVisible(bool isVisible)
         {
