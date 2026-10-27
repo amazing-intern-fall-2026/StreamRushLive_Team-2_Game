@@ -8,7 +8,7 @@ namespace SteamRush.MinhHuy.Typography
     // fallback chain still cannot draw. Drop on any object in a MinhHuy test scene, press Play.
     public class FontFallbackSmokeTest : MonoBehaviour
     {
-        [Tooltip("Font whose fallback chain is tested (nameplate font, Fredoka-Bold SDF).")]
+        [Tooltip("Font whose fallback chain is tested (nameplate font, Baloo2-Bold UI SDF).")]
         [SerializeField] private TMP_FontAsset fontToTest;
         [Tooltip("Optional label to preview each sample name on screen.")]
         [SerializeField] private TMP_Text previewLabel;
