@@ -369,6 +369,15 @@ namespace SteamRush.Features.UI.PreGameConfig
             var data = PreGameConfigManager.Instance?.CurrentConfig;
             string username = data != null ? data.tiktokUsername : "";
             int socketPort = data != null && data.backendSocketPort > 0 ? data.backendSocketPort : 3001;
+
+            // Checking a different channel while a Live session is running would switch the connection under the old
+            // score/progress: ask for a full reset first (the check is repeated on the fresh scene).
+            if (PreGameConfigManager.Instance != null &&
+                PreGameConfigManager.Instance.TryConfirmHostChange(username, PreGameSessionMode.None))
+            {
+                return;
+            }
+
             _liveVerifier?.VerifyLive(username, socketPort);
         }
 

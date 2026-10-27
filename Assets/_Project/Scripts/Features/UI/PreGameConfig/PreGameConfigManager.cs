@@ -54,6 +54,8 @@ namespace SteamRush.Features.UI.PreGameConfig
         private static PreGameSessionMode _pendingMode = PreGameSessionMode.None;
         public static bool IsLiveSessionActive { get; private set; } = false;
         [SerializeField] private PreGameSessionMode _activeSessionMode = PreGameSessionMode.None;
+        // Channel (normalized, no '@') the running Live session was started on. Empty outside a Live session.
+        private string _activeSessionHost = "";
         [SerializeField] private bool _openOnStart = true;
         [SerializeField] private bool _isTestModeActive = false;
         [SerializeField] private GameObject _badgeDemoRun;
@@ -214,10 +216,70 @@ namespace SteamRush.Features.UI.PreGameConfig
             return false;
         }
 
+        /// <summary>Strips whitespace and a leading '@' so channel names can be compared reliably.</summary>
+        private static string NormalizeHost(string raw)
+        {
+            return string.IsNullOrWhiteSpace(raw) ? "" : raw.Trim().TrimStart('@');
+        }
+
+        /// <summary>
+        /// True when a Live session that already has progress is running on channel A
+        /// and <paramref name="requestedHost"/> is a different channel B.
+        /// </summary>
+        public bool IsHostChange(string requestedHost)
+        {
+            if (_activeSessionMode != PreGameSessionMode.Live) return false;
+
+            string requested = NormalizeHost(requestedHost);
+            if (string.IsNullOrEmpty(requested) || string.IsNullOrEmpty(_activeSessionHost)) return false;
+            if (string.Equals(requested, _activeSessionHost, StringComparison.OrdinalIgnoreCase)) return false;
+
+            return HasGameProgress();
+        }
+
+        /// <summary>
+        /// Call BEFORE connecting to a TikTok channel. If it is a different channel than the running Live session,
+        /// shows the reset confirmation and returns true (the caller must NOT connect). Otherwise returns false.
+        /// Confirm -> saves the config, reloads the scene, then starts <paramref name="startAfterReset"/>
+        /// (None = just reopen the settings with the new channel filled in). Cancel -> the old channel keeps running.
+        /// </summary>
+        public bool TryConfirmHostChange(string requestedHost, PreGameSessionMode startAfterReset)
+        {
+            if (!IsHostChange(requestedHost)) return false;
+            if (ConfirmationModal.IsShowing) return true;
+
+            string oldHost = "@" + _activeSessionHost;
+            string newHost = "@" + NormalizeHost(requestedHost);
+
+            ConfirmationModal.Show(
+                ConfirmationModal.T("Đổi kênh TikTok?", "Switch TikTok channel?"),
+                ConfirmationModal.T(
+                    $"Đổi kênh từ {oldHost} sang {newHost} sẽ làm mới toàn bộ màn chơi (vị trí nhân vật, điểm số, quãng đường, danh sách người xem). Bạn có muốn tiếp tục?",
+                    $"Switching from {oldHost} to {newHost} will reset the whole game (runner position, score, distance, viewer list). Do you want to continue?"),
+                ConfirmationModal.T("XÁC NHẬN / RESET", "CONFIRM / RESET"),
+                ConfirmationModal.T("HỦY", "CANCEL"),
+                onConfirm: () =>
+                {
+                    // The scene reload re-reads the config from disk, so persist the new channel first.
+                    SaveConfig();
+                    if (startAfterReset == PreGameSessionMode.None) ResetGameAndOpenSettings();
+                    else ResetGameAndStartMode(startAfterReset);
+                });
+
+            return true;
+        }
+
         public void RequestSwitchMode(PreGameSessionMode target)
         {
             if (target == PreGameSessionMode.None) return;
             if (ConfirmationModal.IsShowing) return;
+
+            // Live -> Live on a different channel is not a mode change, but the old channel's progress must not leak.
+            if (target == PreGameSessionMode.Live &&
+                TryConfirmHostChange(CurrentConfig != null ? CurrentConfig.tiktokUsername : "", PreGameSessionMode.Live))
+            {
+                return;
+            }
 
             PreGameSessionMode currentMode = CurrentSessionMode;
             bool isModeChange = (currentMode != PreGameSessionMode.None && currentMode != target);
@@ -409,6 +471,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         public void StartTestMode()
         {
             _activeSessionMode = PreGameSessionMode.Offline;
+            _activeSessionHost = "";
             _isTestModeActive = true;
             IsLiveSessionActive = false;
             ApplyConfigToRuntime(connectTikTok: false);
@@ -445,6 +508,7 @@ namespace SteamRush.Features.UI.PreGameConfig
         public void StartGoLive()
         {
             _activeSessionMode = PreGameSessionMode.Live;
+            _activeSessionHost = NormalizeHost(CurrentConfig != null ? CurrentConfig.tiktokUsername : "");
             _isTestModeActive = false;
             IsLiveSessionActive = true;
             ApplyConfigToRuntime(connectTikTok: true);
