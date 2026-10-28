@@ -24,7 +24,7 @@ namespace StreamRushLive.Features.Spawning
         public int MaxConcurrentObstacles
         {
             get => _maxConcurrentObstacles;
-            set => _maxConcurrentObstacles = Mathf.Clamp(value, 1, 3);
+            set => _maxConcurrentObstacles = Mathf.Clamp(value, 1, 2);
         }
 
         public int ActiveCount
@@ -41,7 +41,7 @@ namespace StreamRushLive.Features.Spawning
             _laneOffsetLeft = leftZ;
             _laneOffsetCenter = centerZ;
             _laneOffsetRight = rightZ;
-            _maxConcurrentObstacles = maxConcurrent;
+            _maxConcurrentObstacles = Mathf.Clamp(maxConcurrent, 1, 2);
         }
 
         public float GetLaneOffsetZ(int laneIndex)
@@ -115,7 +115,7 @@ namespace StreamRushLive.Features.Spawning
         {
             if (requestedLane >= 1 && requestedLane <= 3)
             {
-                if (forceSpawn || CanSpawnObstacleOnLane(requestedLane, isUnlimitedMode))
+                if (CanSpawnObstacleOnLane(requestedLane, isUnlimitedMode))
                 {
                     return requestedLane;
                 }
@@ -134,7 +134,7 @@ namespace StreamRushLive.Features.Spawning
 
             if (availableLanes.Count == 0)
             {
-                return forceSpawn ? UnityEngine.Random.Range(1, 4) : -1;
+                return -1;
             }
 
             return availableLanes[UnityEngine.Random.Range(0, availableLanes.Count)];

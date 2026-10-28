@@ -254,8 +254,8 @@ namespace SteamRush.Features.UI.PreGameConfig
             ConfirmationModal.Show(
                 ConfirmationModal.T("Đổi kênh TikTok?", "Switch TikTok channel?"),
                 ConfirmationModal.T(
-                    $"Đổi kênh từ {oldHost} sang {newHost} sẽ làm mới toàn bộ màn chơi (vị trí nhân vật, điểm số, quãng đường, danh sách người xem). Bạn có muốn tiếp tục?",
-                    $"Switching from {oldHost} to {newHost} will reset the whole game (runner position, score, distance, viewer list). Do you want to continue?"),
+                    $"Đổi sang {newHost} sẽ làm mới lại toàn bộ màn chơi. Bạn có muốn tiếp tục?",
+                    $"Switching to {newHost} will reset the current game. Do you want to continue?"),
                 ConfirmationModal.T("XÁC NHẬN / RESET", "CONFIRM / RESET"),
                 ConfirmationModal.T("HỦY", "CANCEL"),
                 onConfirm: () =>

@@ -498,7 +498,7 @@ namespace StreamRushLive.Features.Gifts
                 }
             }
 
-            bool spawned = _obstacleSpawner.TriggerSpawnCarTier(type, -1, ignoreEnergy);
+            bool spawned = _obstacleSpawner.TriggerSpawnCarTier(type, -1, false);
             if (spawned)
             {
                 string tierName = carConfig != null ? carConfig.vehicleName : type.ToString();

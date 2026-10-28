@@ -142,8 +142,8 @@ namespace StreamRushLive.Features.Spawning
             get => _laneManager.MaxConcurrentObstacles;
             set
             {
-                maxConcurrentObstacles = value;
-                _laneManager.MaxConcurrentObstacles = value;
+                maxConcurrentObstacles = Mathf.Clamp(value, 1, 2);
+                _laneManager.MaxConcurrentObstacles = maxConcurrentObstacles;
             }
         }
 
@@ -151,6 +151,7 @@ namespace StreamRushLive.Features.Spawning
 
         private void Awake()
         {
+            maxConcurrentObstacles = Mathf.Clamp(maxConcurrentObstacles, 1, 2);
             _laneManager.Configure(laneOffsetLeft, laneOffsetCenter, laneOffsetRight, maxConcurrentObstacles);
             _tierResolver.Initialize(urbanCarPrefab, vehiclePrefabs, sedanCarPrefabs, pickupTruckPrefabs, heavyTruckPrefabs);
             _laserWarningService = new ObstacleLaserWarningService(this);
@@ -199,7 +200,7 @@ namespace StreamRushLive.Features.Spawning
         {
             if (_spawningLocked) return false;
 
-            if (!forceSpawn && !_laneManager.CanSpawnObstacle(_isUnlimitedModeActive))
+            if (!_laneManager.CanSpawnObstacle(_isUnlimitedModeActive))
             {
                 Debug.LogWarning($"[SingleObstacleSpawner] Max concurrent obstacles reached ({maxConcurrentObstacles})! Dropped spawn request for {tier}.");
                 return false;
