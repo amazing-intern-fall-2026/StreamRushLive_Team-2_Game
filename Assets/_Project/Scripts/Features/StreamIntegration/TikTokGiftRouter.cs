@@ -304,7 +304,7 @@ namespace SteamRush.Features.StreamIntegration
 
         private void ExecuteFallbackGift(TikTokGiftEvent evt, string displayName, string lowerName, FactionType faction)
         {
-            if (lowerName.Contains("dance"))
+            if (lowerName.Contains("dance") || lowerName.Contains("gg"))
             {
                 _giftManager?.TriggerGiftDance(displayName);
                 return;
@@ -371,11 +371,11 @@ namespace SteamRush.Features.StreamIntegration
             }
             else
             {
-                if (lowerName.Contains("heavy") || lowerName.Contains("truck") || evt.TotalCoins >= 50)
+                if (lowerName.Contains("heavy") || lowerName.Contains("truck") || lowerName.Contains("train") || evt.TotalCoins >= 50)
                 {
                     _giftManager?.ActivateHeavyTruckPhase(displayName);
                 }
-                else if (lowerName.Contains("pickup") || lowerName.Contains("dumbbell") || evt.TotalCoins >= 20)
+                else if (lowerName.Contains("pickup") || lowerName.Contains("dumbbell") || lowerName.Contains("ice cream") || lowerName.Contains("icecream") || evt.TotalCoins >= 20)
                 {
                     _giftManager?.ActivatePickupTruckPhase(displayName);
                 }
