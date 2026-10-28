@@ -415,7 +415,7 @@ namespace StreamRushLive.Features.Gifts
 
             if (_obstacleSpawner != null)
             {
-                if (!_obstacleSpawner.IsUnlimitedModeActive)
+                if (!_obstacleSpawner.IsAnySpecialSkillActive)
                 {
                     _obstacleSpawner.ActivateUnlimitedMode(duration);
                     _hudManager?.ShowAntiAction(sender, $"Unlimited Cars ({duration:F0}s)");
@@ -439,8 +439,11 @@ namespace StreamRushLive.Features.Gifts
             float duration = customDuration > 0f ? customDuration : _vehiclePhaseDuration;
             if (_obstacleSpawner != null)
             {
+                // Only one special skill (Animals / Train / Car Storm) may run at a time
+                if (_obstacleSpawner.IsAnySpecialSkillActive) return false;
+
+                // Phase only selects the obstacle type; the Red team spawns it by picking a lane
                 _obstacleSpawner.ActivatePickupTruckPhase(duration);
-                _obstacleSpawner.TriggerSpawnCarTier(ObstacleType.Animals, -1, true);
                 _hudManager?.ShowAntiAction(sender, $"Animals Phase ({duration:F0}s)");
                 _hudManager?.ShowStatusPopup($"[{sender}] Animals Phase!", false);
                 AudioManager.Instance?.PlaySFX(SFXType.PickupHorn, 0.9f);
@@ -459,8 +462,11 @@ namespace StreamRushLive.Features.Gifts
             float duration = customDuration > 0f ? customDuration : _vehiclePhaseDuration;
             if (_obstacleSpawner != null)
             {
+                // Only one special skill (Animals / Train / Car Storm) may run at a time
+                if (_obstacleSpawner.IsAnySpecialSkillActive) return false;
+
+                // Phase only selects the obstacle type; the Red team spawns it by picking a lane
                 _obstacleSpawner.ActivateHeavyTruckPhase(duration);
-                _obstacleSpawner.TriggerSpawnCarTier(ObstacleType.Trains, -1, true);
                 _hudManager?.ShowAntiAction(sender, $"Train Phase ({duration:F0}s)");
                 _hudManager?.ShowStatusPopup($"[{sender}] Train Phase!", false);
                 AudioManager.Instance?.PlaySFX(SFXType.HeavyTruckHorn, 1.0f);

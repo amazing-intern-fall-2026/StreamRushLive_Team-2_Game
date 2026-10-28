@@ -17,10 +17,9 @@ namespace StreamRushLive.Features.Gifts.Actions
             {
                 context.GiftManager.ActivatePickupTruckPhase(context.SenderName, context.CustomValue);
             }
-            else if (context.ObstacleSpawner != null)
+            else if (context.ObstacleSpawner != null && !context.ObstacleSpawner.IsAnySpecialSkillActive)
             {
                 context.ObstacleSpawner.ActivatePickupTruckPhase(context.CustomValue);
-                context.ObstacleSpawner.TriggerSpawnCarTier(StreamRushLive.Features.Spawning.ObstacleType.Animals, -1, true);
             }
         }
     }
@@ -39,10 +38,9 @@ namespace StreamRushLive.Features.Gifts.Actions
             {
                 context.GiftManager.ActivateHeavyTruckPhase(context.SenderName, context.CustomValue);
             }
-            else if (context.ObstacleSpawner != null)
+            else if (context.ObstacleSpawner != null && !context.ObstacleSpawner.IsAnySpecialSkillActive)
             {
                 context.ObstacleSpawner.ActivateHeavyTruckPhase(context.CustomValue);
-                context.ObstacleSpawner.TriggerSpawnCarTier(StreamRushLive.Features.Spawning.ObstacleType.Trains, -1, true);
             }
         }
     }
