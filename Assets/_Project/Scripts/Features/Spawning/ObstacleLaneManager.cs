@@ -84,18 +84,17 @@ namespace StreamRushLive.Features.Spawning
             CleanupInactive();
         }
 
-        // NOTE: isUnlimitedMode is kept for API compatibility but no longer bypasses the lane limit.
-        // Car Storm is capped by _maxConcurrentObstacles exactly like Hunting Beasts / Train.
         public bool CanSpawnObstacle(bool isUnlimitedMode)
         {
             CleanupInactive();
+            if (isUnlimitedMode) return true;
             return _activeObstacles.Count < _maxConcurrentObstacles;
         }
 
         public bool CanSpawnObstacleOnLane(int laneIndex, bool isUnlimitedMode)
         {
             CleanupInactive();
-            if (_activeObstacles.Count >= _maxConcurrentObstacles)
+            if (!isUnlimitedMode && _activeObstacles.Count >= _maxConcurrentObstacles)
             {
                 return false;
             }
@@ -119,6 +118,11 @@ namespace StreamRushLive.Features.Spawning
                 {
                     return requestedLane;
                 }
+                if (forceSpawn)
+                {
+                    DisplaceObstacleOnLane(requestedLane);
+                    return requestedLane;
+                }
                 return -1;
             }
 
@@ -132,12 +136,58 @@ namespace StreamRushLive.Features.Spawning
                 }
             }
 
-            if (availableLanes.Count == 0)
+            if (availableLanes.Count > 0)
             {
-                return -1;
+                return availableLanes[UnityEngine.Random.Range(0, availableLanes.Count)];
             }
 
-            return availableLanes[UnityEngine.Random.Range(0, availableLanes.Count)];
+            if (forceSpawn)
+            {
+                return DisplaceLowestPriorityObstacle();
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// Displaces and destroys any active obstacle or warning in the specified lane to make way for high-priority/whale spawns.
+        /// </summary>
+        public void DisplaceObstacleOnLane(int laneIndex)
+        {
+            for (int i = _activeObstacles.Count - 1; i >= 0; i--)
+            {
+                var obs = _activeObstacles[i];
+                if (obs.LaneIndex == laneIndex && obs.IsActive)
+                {
+                    if (obs.LaserInstance != null)
+                    {
+                        UnityEngine.Object.Destroy(obs.LaserInstance);
+                        obs.LaserInstance = null;
+                    }
+                    if (obs.CarInstance != null)
+                    {
+                        AudioManager.Instance?.PlaySFX(SFXType.HitCarCrash, 0.85f);
+                        UnityEngine.Object.Destroy(obs.CarInstance);
+                        obs.CarInstance = null;
+                    }
+                    obs.IsPendingSpawn = false;
+                    _activeObstacles.RemoveAt(i);
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Displaces the oldest active lower-tier obstacle to guarantee lane availability for whale gifts.
+        /// </summary>
+        public int DisplaceLowestPriorityObstacle()
+        {
+            CleanupInactive();
+            if (_activeObstacles.Count == 0) return UnityEngine.Random.Range(1, 4);
+
+            int targetLane = _activeObstacles[0].LaneIndex;
+            DisplaceObstacleOnLane(targetLane);
+            return targetLane;
         }
     }
 }

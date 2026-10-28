@@ -5,6 +5,7 @@ namespace StreamRushLive.Features.Gifts.Actions
 {
     /// <summary>
     /// Activates Pickup Truck (Hunting Beasts / Animals) Phase (30s duration).
+    /// Overrides lower-tier CarStorm, extends if Animals, queues if Train.
     /// </summary>
     public class SpawnPickupTruckGiftAction : IGiftAction
     {
@@ -17,15 +18,16 @@ namespace StreamRushLive.Features.Gifts.Actions
             {
                 context.GiftManager.ActivatePickupTruckPhase(context.SenderName, context.CustomValue);
             }
-            else if (context.ObstacleSpawner != null && !context.ObstacleSpawner.IsAnySpecialSkillActive)
+            else if (context.ObstacleSpawner != null)
             {
-                context.ObstacleSpawner.ActivatePickupTruckPhase(context.CustomValue);
+                context.ObstacleSpawner.ActivatePickupTruckPhase(context.CustomValue, context.SenderName);
             }
         }
     }
 
     /// <summary>
-    /// Activates Heavy Truck (Train) Phase (40s duration).
+    /// Activates Heavy Truck (Train) Phase (40s duration - Whale).
+    /// Overrides and crushes any lower-tier hazard (CarStorm, Animals), extends if Train.
     /// </summary>
     public class SpawnHeavyTruckGiftAction : IGiftAction
     {
@@ -38,9 +40,9 @@ namespace StreamRushLive.Features.Gifts.Actions
             {
                 context.GiftManager.ActivateHeavyTruckPhase(context.SenderName, context.CustomValue);
             }
-            else if (context.ObstacleSpawner != null && !context.ObstacleSpawner.IsAnySpecialSkillActive)
+            else if (context.ObstacleSpawner != null)
             {
-                context.ObstacleSpawner.ActivateHeavyTruckPhase(context.CustomValue);
+                context.ObstacleSpawner.ActivateHeavyTruckPhase(context.CustomValue, context.SenderName);
             }
         }
     }
