@@ -117,6 +117,9 @@ namespace StreamRushLive.Features.Spawning
         /// <summary>Indicates if a special vehicle phase is currently active.</summary>
         public bool IsVehiclePhaseActive => _activeVehiclePhase.HasValue;
 
+        /// <summary>True while Hunting Beasts, Train or Car Storm is running (only one special skill at a time).</summary>
+        public bool IsAnySpecialSkillActive => IsVehiclePhaseActive || _isUnlimitedModeActive;
+
         /// <summary>Configured phase duration.</summary>
         public float VehiclePhaseDuration => StreamRushLive.Features.Gifts.GiftManager.Instance != null 
             ? StreamRushLive.Features.Gifts.GiftManager.Instance.VehiclePhaseDuration 
@@ -275,6 +278,8 @@ namespace StreamRushLive.Features.Spawning
         /// </summary>
         public void ActivateUnlimitedMode(float customDuration = -1f)
         {
+            if (IsAnySpecialSkillActive) return;
+
             float dur = customDuration > 0f ? customDuration : unlimitedModeDuration;
             if (_unlimitedModeCoroutine != null)
             {
@@ -310,6 +315,8 @@ namespace StreamRushLive.Features.Spawning
 
         private void ActivateVehiclePhase(ObstacleType phase, float customDuration = -1f)
         {
+            if (IsAnySpecialSkillActive) return;
+
             if (_vehiclePhaseCoroutine != null)
             {
                 StopCoroutine(_vehiclePhaseCoroutine);

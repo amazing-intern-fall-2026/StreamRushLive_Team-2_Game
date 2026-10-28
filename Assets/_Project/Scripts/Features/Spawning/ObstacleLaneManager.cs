@@ -84,16 +84,18 @@ namespace StreamRushLive.Features.Spawning
             CleanupInactive();
         }
 
+        // NOTE: isUnlimitedMode is kept for API compatibility but no longer bypasses the lane limit.
+        // Car Storm is capped by _maxConcurrentObstacles exactly like Hunting Beasts / Train.
         public bool CanSpawnObstacle(bool isUnlimitedMode)
         {
             CleanupInactive();
-            return isUnlimitedMode || _activeObstacles.Count < _maxConcurrentObstacles;
+            return _activeObstacles.Count < _maxConcurrentObstacles;
         }
 
         public bool CanSpawnObstacleOnLane(int laneIndex, bool isUnlimitedMode)
         {
             CleanupInactive();
-            if (!isUnlimitedMode && _activeObstacles.Count >= _maxConcurrentObstacles)
+            if (_activeObstacles.Count >= _maxConcurrentObstacles)
             {
                 return false;
             }
