@@ -429,7 +429,6 @@ namespace StreamRushLive.Features.Gifts
         /// <summary>
         /// Activates Pickup Truck (Animals) Phase (Tier 2).
         /// Overrides Tier 1 CarStorm, extends if Tier 2, queues if Tier 3 Train is active.
-        /// Spawns Animals immediately!
         /// </summary>
         public bool ActivatePickupTruckPhase(string sender = "Red Team", float customDuration = -1f)
         {
@@ -450,7 +449,6 @@ namespace StreamRushLive.Features.Gifts
         /// <summary>
         /// Activates Train Phase (Tier 3 - Whale).
         /// Overrides and crushes lower-tier hazards, extends if Tier 3.
-        /// Spawns Train immediately with high-impact horn!
         /// </summary>
         public bool ActivateHeavyTruckPhase(string sender = "Red Team", float customDuration = -1f)
         {

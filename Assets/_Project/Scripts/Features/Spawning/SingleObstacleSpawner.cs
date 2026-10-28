@@ -310,7 +310,6 @@ namespace StreamRushLive.Features.Spawning
             {
                 _unlimitedModeRemainingTime += dur;
                 AntiUnlimitedTimerCircle.Instance?.ActivateTimer(_unlimitedModeRemainingTime);
-                TriggerSpawnCarTier(ObstacleType.Car, -1, true);
                 Debug.Log($"[SingleObstacleSpawner] Car Storm extended by {dur:F0}s (Total remaining: {_unlimitedModeRemainingTime:F0}s).");
             }
         }
@@ -397,12 +396,10 @@ namespace StreamRushLive.Features.Spawning
             if (_activeVehiclePhase == null)
             {
                 StartVehiclePhaseInternal(ObstacleType.Animals, dur);
-                TriggerSpawnCarTier(ObstacleType.Animals, -1, true);
             }
             else if (_activeVehiclePhase.Value == ObstacleType.Animals)
             {
                 _vehiclePhaseRemainingTime += dur;
-                TriggerSpawnCarTier(ObstacleType.Animals, -1, true);
                 Debug.Log($"[SingleObstacleSpawner] Animals Phase duration extended by {dur:F0}s.");
             }
             else if (_activeVehiclePhase.Value == ObstacleType.Trains)
@@ -436,12 +433,10 @@ namespace StreamRushLive.Features.Spawning
                 }
 
                 StartVehiclePhaseInternal(ObstacleType.Trains, dur);
-                TriggerSpawnCarTier(ObstacleType.Trains, -1, true);
             }
             else if (_activeVehiclePhase.Value == ObstacleType.Trains)
             {
                 _vehiclePhaseRemainingTime += dur;
-                TriggerSpawnCarTier(ObstacleType.Trains, -1, true);
                 Debug.Log($"[SingleObstacleSpawner] 👑 Train Phase duration extended by {dur:F0}s.");
             }
         }
