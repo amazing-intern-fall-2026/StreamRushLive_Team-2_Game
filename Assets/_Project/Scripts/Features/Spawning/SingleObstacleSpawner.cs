@@ -8,23 +8,17 @@ using UnityEngine;
 namespace StreamRushLive.Features.Spawning
 {
     /// <summary>
-    /// Hierarchy tiers for Red special hazards (GDD v2.0 - Whale vs Regular).
-    /// Higher tiers override and crush lower tiers, while equal tiers extend duration.
-    /// </summary>
-    public enum SpecialHazardTier
-    {
-        None = 0,
-        CarStorm = 1,      // Tier 1: Low/Normal (Unlimited Cars)
-        Animals = 2,       // Tier 2: Mid (Hunting Beasts)
-        Train = 3          // Tier 3: High/Whale (Heavy Trucks/Train)
-    }
-
-    /// <summary>
     /// Coordinates obstacle spawning workflow (laser warning, lane dispatching, vehicle activation).
     /// Delegated responsibilities:
     /// - ObstacleLaneManager: Concurrency, lane offsets, and lane occupancy tracking.
     /// - ObstacleTierResolver: Prefab resolution and collider/trigger setup.
     /// - ObstacleLaserWarningService: Warning strip instantiation, scaling, and blinking countdown.
+    /// 
+    /// Special Modes & Hazards:
+    /// - Car Storm (Unlimited Cars): Independent modifier mode (bypasses concurrency cap, rapid car spawns).
+    ///   Can run simultaneously with any Vehicle Phase.
+    /// - Vehicle Phases (Animals vs Train): Hierarchy system for viewer gifts (Train overrides Animals;
+    ///   Animals queues behind Train; matching phases extend duration).
     /// </summary>
     public class SingleObstacleSpawner : MonoBehaviour
     {
@@ -106,7 +100,7 @@ namespace StreamRushLive.Features.Spawning
         [Tooltip("Maximum concurrent active obstacles to ensure at least one open lane for runner.")]
         [SerializeField] private int maxConcurrentObstacles = 2;
 
-        [Header("Unlimited Mode (Anti Faction Gift - F7)")]
+        [Header("Unlimited Mode / Car Storm (Independent Modifier - F7)")]
         [Tooltip("Unlimited Cars mode duration in seconds.")]
         [SerializeField] private float unlimitedModeDuration = 60f;
 
@@ -116,7 +110,7 @@ namespace StreamRushLive.Features.Spawning
 
         public bool IsUnlimitedModeActive => _isUnlimitedModeActive;
 
-        [Header("Vehicle Special Phase (Anti Faction Gifts - F4/F5)")]
+        [Header("Vehicle Special Phase (Animals vs Train - F4/F5)")]
         [Tooltip("Pickup Truck / Heavy Truck Phase duration in seconds.")]
         [SerializeField] private float vehiclePhaseDuration = 60f;
 
@@ -124,14 +118,13 @@ namespace StreamRushLive.Features.Spawning
         private float _vehiclePhaseRemainingTime;
         private Coroutine _vehiclePhaseCoroutine;
 
-        private struct QueuedHazard
+        private struct QueuedVehiclePhase
         {
-            public SpecialHazardTier tier;
-            public ObstacleType obstacleType;
+            public ObstacleType phase;
             public float duration;
             public string sender;
         }
-        private readonly Queue<QueuedHazard> _hazardQueue = new Queue<QueuedHazard>();
+        private readonly Queue<QueuedVehiclePhase> _vehiclePhaseQueue = new Queue<QueuedVehiclePhase>();
 
         /// <summary>Current active special vehicle phase (null = default Sedan / Car).</summary>
         public ObstacleType? ActiveVehiclePhase => _activeVehiclePhase;
@@ -139,23 +132,8 @@ namespace StreamRushLive.Features.Spawning
         /// <summary>Indicates if a special vehicle phase is currently active.</summary>
         public bool IsVehiclePhaseActive => _activeVehiclePhase.HasValue;
 
-        /// <summary>Current active special hazard hierarchy tier (None, CarStorm, Animals, Train).</summary>
-        public SpecialHazardTier CurrentSpecialHazardTier
-        {
-            get
-            {
-                if (_activeVehiclePhase.HasValue)
-                {
-                    if (_activeVehiclePhase.Value == ObstacleType.Trains) return SpecialHazardTier.Train;
-                    if (_activeVehiclePhase.Value == ObstacleType.Animals) return SpecialHazardTier.Animals;
-                }
-                if (_isUnlimitedModeActive) return SpecialHazardTier.CarStorm;
-                return SpecialHazardTier.None;
-            }
-        }
-
         /// <summary>True while Hunting Beasts, Train or Car Storm is running.</summary>
-        public bool IsAnySpecialSkillActive => CurrentSpecialHazardTier != SpecialHazardTier.None;
+        public bool IsAnySpecialSkillActive => IsVehiclePhaseActive || _isUnlimitedModeActive;
 
         /// <summary>Configured phase duration.</summary>
         public float VehiclePhaseDuration => StreamRushLive.Features.Gifts.GiftManager.Instance != null 
@@ -218,7 +196,7 @@ namespace StreamRushLive.Features.Spawning
             if (locked)
             {
                 _laneManager.ClearPendingLasers();
-                _hazardQueue.Clear();
+                _vehiclePhaseQueue.Clear();
             }
         }
 
@@ -313,37 +291,27 @@ namespace StreamRushLive.Features.Spawning
         public bool TriggerSpawnCarFromAntiLikes(VehicleTier? tier) => TriggerSpawnObstacleFromRedEnergy((ObstacleType?)tier);
 #pragma warning restore CS0618
 
+        #region Unlimited Mode / Car Storm (Independent)
+
         /// <summary>
-        /// Activates Unlimited Cars mode (Tier 1).
-        /// If equal tier, extends duration and spawns car.
-        /// If higher tier is active, queues behind it.
+        /// Activates Unlimited Cars mode (Car Storm).
+        /// Independent from vehicle phases (Animals/Train) — can run concurrently.
+        /// If already active, stacks/extends duration.
         /// </summary>
         public void ActivateUnlimitedMode(float customDuration = -1f, string sender = "Red Team")
         {
             float dur = customDuration > 0f ? customDuration : unlimitedModeDuration;
-            SpecialHazardTier current = CurrentSpecialHazardTier;
 
-            if (current == SpecialHazardTier.None)
+            if (!_isUnlimitedModeActive)
             {
                 StartUnlimitedModeInternal(dur);
             }
-            else if (current == SpecialHazardTier.CarStorm)
+            else
             {
                 _unlimitedModeRemainingTime += dur;
                 AntiUnlimitedTimerCircle.Instance?.ActivateTimer(_unlimitedModeRemainingTime);
                 TriggerSpawnCarTier(ObstacleType.Car, -1, true);
                 Debug.Log($"[SingleObstacleSpawner] Car Storm extended by {dur:F0}s (Total remaining: {_unlimitedModeRemainingTime:F0}s).");
-            }
-            else
-            {
-                _hazardQueue.Enqueue(new QueuedHazard
-                {
-                    tier = SpecialHazardTier.CarStorm,
-                    obstacleType = ObstacleType.Car,
-                    duration = dur,
-                    sender = sender
-                });
-                Debug.Log($"[SingleObstacleSpawner] Car Storm queued behind active {current}.");
             }
         }
 
@@ -372,7 +340,7 @@ namespace StreamRushLive.Features.Spawning
         {
             _isUnlimitedModeActive = true;
             _unlimitedModeRemainingTime = duration;
-            Debug.Log($"[SingleObstacleSpawner] Unlimited Mode activated for {duration}s.");
+            Debug.Log($"[SingleObstacleSpawner] Unlimited Mode (Car Storm) activated for {duration}s.");
             AntiUnlimitedTimerCircle.Instance?.ActivateTimer(duration);
             AudioManager.Instance?.PlaySFX(SFXType.WarningSiren);
 
@@ -389,74 +357,88 @@ namespace StreamRushLive.Features.Spawning
                 _unlimitedModeRemainingTime = 0f;
                 _unlimitedModeCoroutine = null;
                 AntiUnlimitedTimerCircle.Instance?.DeactivateTimer();
-                Debug.Log("[SingleObstacleSpawner] Unlimited Mode finished.");
-                OnSpecialHazardFinished();
+                Debug.Log("[SingleObstacleSpawner] Unlimited Mode (Car Storm) finished.");
             }
         }
 
+        public void SetUnlimitedModeDebug(bool isActive)
+        {
+            if (_unlimitedModeCoroutine != null)
+            {
+                StopCoroutine(_unlimitedModeCoroutine);
+                _unlimitedModeCoroutine = null;
+            }
+
+            _isUnlimitedModeActive = isActive;
+            if (isActive)
+            {
+                AntiUnlimitedTimerCircle.Instance?.ActivateTimer(999f);
+            }
+            else
+            {
+                AntiUnlimitedTimerCircle.Instance?.DeactivateTimer();
+            }
+            Debug.Log($"[SingleObstacleSpawner] Unlimited Mode = {isActive}.");
+        }
+
+        #endregion
+
+        #region Vehicle Phase (Animals vs Train)
+
         /// <summary>
-        /// Activates Pickup Truck (Hunting Beasts) Phase (Tier 2).
-        /// Overrides Tier 1 CarStorm, extends if Tier 2, queues if Tier 3 Train is active.
+        /// Activates Pickup Truck (Hunting Beasts / Animals) Phase.
+        /// Extends duration if already in Animals phase.
+        /// Queues behind Train if Train phase is currently active.
         /// </summary>
         public void ActivatePickupTruckPhase(float customDuration = -1f, string sender = "Red Team")
         {
             float dur = customDuration > 0f ? customDuration : VehiclePhaseDuration;
-            SpecialHazardTier current = CurrentSpecialHazardTier;
 
-            if (current < SpecialHazardTier.Animals)
+            if (_activeVehiclePhase == null)
             {
-                if (_isUnlimitedModeActive)
-                {
-                    StopUnlimitedMode();
-                    Debug.Log("[SingleObstacleSpawner] Animals OVERRIDES Car Storm!");
-                }
                 StartVehiclePhaseInternal(ObstacleType.Animals, dur);
                 TriggerSpawnCarTier(ObstacleType.Animals, -1, true);
             }
-            else if (current == SpecialHazardTier.Animals)
+            else if (_activeVehiclePhase.Value == ObstacleType.Animals)
             {
                 _vehiclePhaseRemainingTime += dur;
                 TriggerSpawnCarTier(ObstacleType.Animals, -1, true);
                 Debug.Log($"[SingleObstacleSpawner] Animals Phase duration extended by {dur:F0}s.");
             }
-            else
+            else if (_activeVehiclePhase.Value == ObstacleType.Trains)
             {
-                _hazardQueue.Enqueue(new QueuedHazard
+                // Train is higher tier (Whale). Queue Animals to run after Train finishes!
+                _vehiclePhaseQueue.Enqueue(new QueuedVehiclePhase
                 {
-                    tier = SpecialHazardTier.Animals,
-                    obstacleType = ObstacleType.Animals,
+                    phase = ObstacleType.Animals,
                     duration = dur,
                     sender = sender
                 });
-                Debug.Log($"[SingleObstacleSpawner] Animals Phase queued behind active Train.");
+                Debug.Log($"[SingleObstacleSpawner] Queued Animals Phase ({dur:F0}s) behind active Train.");
             }
         }
 
         /// <summary>
-        /// Activates Heavy Truck (Train) Phase (Tier 3 - Whale).
-        /// Overrides any lower-tier hazard (CarStorm, Animals), extends if Tier 3.
+        /// Activates Heavy Truck (Train) Phase (Whale Gift).
+        /// Overrides and crushes lower-tier Animals phase immediately.
+        /// Extends duration and spawns another Train if Train phase is already active.
         /// </summary>
         public void ActivateHeavyTruckPhase(float customDuration = -1f, string sender = "Red Team")
         {
             float dur = customDuration > 0f ? customDuration : VehiclePhaseDuration;
-            SpecialHazardTier current = CurrentSpecialHazardTier;
 
-            if (current < SpecialHazardTier.Train)
+            if (_activeVehiclePhase == null || _activeVehiclePhase.Value == ObstacleType.Animals)
             {
-                if (_isUnlimitedModeActive)
-                {
-                    StopUnlimitedMode();
-                }
-                if (_activeVehiclePhase.HasValue)
+                if (_activeVehiclePhase.HasValue && _activeVehiclePhase.Value == ObstacleType.Animals)
                 {
                     StopVehiclePhase();
+                    Debug.Log("[SingleObstacleSpawner] 👑 WHALE TRAIN OVERRIDES active Animals phase!");
                 }
-                Debug.Log("[SingleObstacleSpawner] 👑 WHALE TRAIN OVERRIDES active lower-tier hazard!");
 
                 StartVehiclePhaseInternal(ObstacleType.Trains, dur);
                 TriggerSpawnCarTier(ObstacleType.Trains, -1, true);
             }
-            else if (current == SpecialHazardTier.Train)
+            else if (_activeVehiclePhase.Value == ObstacleType.Trains)
             {
                 _vehiclePhaseRemainingTime += dur;
                 TriggerSpawnCarTier(ObstacleType.Trains, -1, true);
@@ -506,50 +488,28 @@ namespace StreamRushLive.Features.Spawning
                 _vehiclePhaseRemainingTime = 0f;
                 _vehiclePhaseCoroutine = null;
                 Debug.Log($"[SingleObstacleSpawner] Vehicle Phase {phase} ended. Returning to default Sedan.");
-                OnSpecialHazardFinished();
+                OnVehiclePhaseFinished();
             }
         }
 
-        private void OnSpecialHazardFinished()
+        private void OnVehiclePhaseFinished()
         {
-            if (_hazardQueue.Count > 0)
+            if (_vehiclePhaseQueue.Count > 0)
             {
-                var next = _hazardQueue.Dequeue();
-                Debug.Log($"[SingleObstacleSpawner] Dequeued hazard: {next.tier} ({next.duration:F0}s) from {next.sender}.");
-                switch (next.tier)
+                var next = _vehiclePhaseQueue.Dequeue();
+                Debug.Log($"[SingleObstacleSpawner] Dequeued vehicle phase: {next.phase} ({next.duration:F0}s) from {next.sender}.");
+                if (next.phase == ObstacleType.Trains)
                 {
-                    case SpecialHazardTier.Train:
-                        ActivateHeavyTruckPhase(next.duration, next.sender);
-                        break;
-                    case SpecialHazardTier.Animals:
-                        ActivatePickupTruckPhase(next.duration, next.sender);
-                        break;
-                    case SpecialHazardTier.CarStorm:
-                        ActivateUnlimitedMode(next.duration, next.sender);
-                        break;
+                    ActivateHeavyTruckPhase(next.duration, next.sender);
+                }
+                else
+                {
+                    ActivatePickupTruckPhase(next.duration, next.sender);
                 }
             }
         }
 
-        public void SetUnlimitedModeDebug(bool isActive)
-        {
-            if (_unlimitedModeCoroutine != null)
-            {
-                StopCoroutine(_unlimitedModeCoroutine);
-                _unlimitedModeCoroutine = null;
-            }
-
-            _isUnlimitedModeActive = isActive;
-            if (isActive)
-            {
-                AntiUnlimitedTimerCircle.Instance?.ActivateTimer(999f);
-            }
-            else
-            {
-                AntiUnlimitedTimerCircle.Instance?.DeactivateTimer();
-            }
-            Debug.Log($"[SingleObstacleSpawner] Unlimited Mode = {isActive}.");
-        }
+        #endregion
 
         public bool IsRainHazardActive()
         {
