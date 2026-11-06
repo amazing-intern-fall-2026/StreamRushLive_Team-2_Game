@@ -39,8 +39,18 @@ namespace SteamRush.Features.StreamIntegration
         [Tooltip("Energy threshold for Red team to auto-spawn obstacle vehicles (Full bar = RedMaxValue). Default = 1000.")]
         [SerializeField] private int _antiCarThreshold = 1000;
 
+        [Tooltip("Minimum cooldown in seconds between vehicle auto-spawns when Red energy is full.")]
+        [SerializeField] private float _autoSpawnCooldown = 2.0f;
+
+        private float _lastAutoSpawnSuccessTime = -999f;
         private float _lastAutoSpawnAttemptTime;
         private const float AUTO_SPAWN_RETRY_INTERVAL = 0.5f;
+
+        public float AutoSpawnCooldown
+        {
+            get => _autoSpawnCooldown;
+            set => _autoSpawnCooldown = Mathf.Max(0.5f, value);
+        }
 
         public bool AutoSpawnOnFullEnergy
         {
@@ -449,7 +459,7 @@ namespace SteamRush.Features.StreamIntegration
         private void CheckAntiCarThreshold()
         {
             bool isFull = _redTeamPool != null ? _redTeamPool.IsFull : (_antiLikes >= GetAntiEnergyMax());
-            if (isFull)
+            if (isFull && Time.time - _lastAutoSpawnSuccessTime >= _autoSpawnCooldown)
             {
                 TryAutoSpawnCarFromFullEnergy();
             }
@@ -462,6 +472,11 @@ namespace SteamRush.Features.StreamIntegration
         public bool TryAutoSpawnCarFromFullEnergy()
         {
             if (!_autoSpawnOnFullEnergy) return false;
+
+            if (Time.time - _lastAutoSpawnSuccessTime < _autoSpawnCooldown)
+            {
+                return false;
+            }
 
             int maxThreshold = GetAntiEnergyMax();
             bool isFull = _redTeamPool != null ? _redTeamPool.IsFull : (_antiLikes >= maxThreshold);
@@ -488,6 +503,8 @@ namespace SteamRush.Features.StreamIntegration
                 // Lanes currently occupied or max concurrent limit reached, will retry next frame
                 return false;
             }
+
+            _lastAutoSpawnSuccessTime = Time.time;
 
             // Successfully spawned! Deduct the required energy cost for this vehicle
             if (_redTeamPool != null)

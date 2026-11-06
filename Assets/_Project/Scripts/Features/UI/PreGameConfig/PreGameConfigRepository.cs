@@ -170,6 +170,27 @@ namespace SteamRush.Features.UI.PreGameConfig
                 {
                     g.giftId = 5487;
                 }
+                else if (g.action == GiftActionType.Red_SpawnPickup && (g.giftName == "Dumbbell" || g.giftId == 5585 || g.description == "Animal"))
+                {
+                    g.giftId = 5827;
+                    g.giftName = "Ice Cream";
+                    g.description = "Hunting Beasts";
+                    g.featureName = "Spawn Hunting Beasts";
+                }
+                else if (g.action == GiftActionType.Red_SpawnHeavyTruck && (g.giftName == "Lion" || g.giftId == 6001 || g.giftId == 6223))
+                {
+                    g.giftId = 6037;
+                    g.giftName = "Dance";
+                    g.description = "Train";
+                    g.featureName = "Spawn Train";
+                }
+                else if (g.action == GiftActionType.Special_GiftDance && (g.giftName == "Dance" || g.giftId == 6037))
+                {
+                    g.giftId = 6064;
+                    g.giftName = "GG";
+                    g.description = "Dance";
+                    g.featureName = "Dance";
+                }
             }
 
             foreach (var g in def.gifts)

@@ -415,15 +415,11 @@ namespace StreamRushLive.Features.Gifts
 
             if (_obstacleSpawner != null)
             {
-                if (!_obstacleSpawner.IsUnlimitedModeActive)
-                {
-                    _obstacleSpawner.ActivateUnlimitedMode(duration);
-                    _hudManager?.ShowAntiAction(sender, $"Unlimited Cars ({duration:F0}s)");
-                    _hudManager?.ShowStatusPopup($"[{sender}] CAR STORM!", false);
-                    Debug.Log($"[GiftManager] {sender} -> Activated Unlimited Cars ({duration:F0}s).");
-                    return true;
-                }
-                return false;
+                _obstacleSpawner.ActivateUnlimitedMode(duration, sender);
+                _hudManager?.ShowAntiAction(sender, $"Unlimited Cars ({duration:F0}s)");
+                _hudManager?.ShowStatusPopup($"[{sender}] CAR STORM!", false);
+                Debug.Log($"[GiftManager] {sender} -> Activated Unlimited Cars ({duration:F0}s).");
+                return true;
             }
 
             Debug.LogWarning("[GiftManager] SingleObstacleSpawner not found to activate Unlimited Cars!");
@@ -431,7 +427,8 @@ namespace StreamRushLive.Features.Gifts
         }
 
         /// <summary>
-        /// Activates Pickup Truck Phase and spawns an Animals obstacle immediately.
+        /// Activates Pickup Truck (Animals) Phase (Tier 2).
+        /// Overrides Tier 1 CarStorm, extends if Tier 2, queues if Tier 3 Train is active.
         /// </summary>
         public bool ActivatePickupTruckPhase(string sender = "Red Team", float customDuration = -1f)
         {
@@ -439,8 +436,7 @@ namespace StreamRushLive.Features.Gifts
             float duration = customDuration > 0f ? customDuration : _vehiclePhaseDuration;
             if (_obstacleSpawner != null)
             {
-                _obstacleSpawner.ActivatePickupTruckPhase(duration);
-                _obstacleSpawner.TriggerSpawnCarTier(ObstacleType.Animals, -1, true);
+                _obstacleSpawner.ActivatePickupTruckPhase(duration, sender);
                 _hudManager?.ShowAntiAction(sender, $"Animals Phase ({duration:F0}s)");
                 _hudManager?.ShowStatusPopup($"[{sender}] Animals Phase!", false);
                 AudioManager.Instance?.PlaySFX(SFXType.PickupHorn, 0.9f);
@@ -451,7 +447,8 @@ namespace StreamRushLive.Features.Gifts
         }
 
         /// <summary>
-        /// Activates Train Phase and spawns a Train obstacle immediately.
+        /// Activates Train Phase (Tier 3 - Whale).
+        /// Overrides and crushes lower-tier hazards, extends if Tier 3.
         /// </summary>
         public bool ActivateHeavyTruckPhase(string sender = "Red Team", float customDuration = -1f)
         {
@@ -459,10 +456,9 @@ namespace StreamRushLive.Features.Gifts
             float duration = customDuration > 0f ? customDuration : _vehiclePhaseDuration;
             if (_obstacleSpawner != null)
             {
-                _obstacleSpawner.ActivateHeavyTruckPhase(duration);
-                _obstacleSpawner.TriggerSpawnCarTier(ObstacleType.Trains, -1, true);
-                _hudManager?.ShowAntiAction(sender, $"Train Phase ({duration:F0}s)");
-                _hudManager?.ShowStatusPopup($"[{sender}] Train Phase!", false);
+                _obstacleSpawner.ActivateHeavyTruckPhase(duration, sender);
+                _hudManager?.ShowAntiAction(sender, $"👑 Train Phase ({duration:F0}s)");
+                _hudManager?.ShowStatusPopup($"👑 [{sender}] TRAIN CRUSH!", false);
                 AudioManager.Instance?.PlaySFX(SFXType.HeavyTruckHorn, 1.0f);
                 return true;
             }
@@ -492,7 +488,7 @@ namespace StreamRushLive.Features.Gifts
                 }
             }
 
-            bool spawned = _obstacleSpawner.TriggerSpawnCarTier(type, -1, ignoreEnergy);
+            bool spawned = _obstacleSpawner.TriggerSpawnCarTier(type, -1, false);
             if (spawned)
             {
                 string tierName = carConfig != null ? carConfig.vehicleName : type.ToString();

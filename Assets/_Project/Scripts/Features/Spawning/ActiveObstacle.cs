@@ -23,9 +23,10 @@ namespace StreamRushLive.Features.Spawning
                 if (LaserInstance != null) return true;
                 if (CarInstance != null)
                 {
-                    // Vehicle remains an active obstacle until passing behind player
+                    // Vehicle remains an active obstacle until its rear completely passes behind the player
+                    // (trains/trucks are up to 7.5m long; center must reach playerX - 6.0f to guarantee clearance)
                     float playerX = PlayerRef != null ? PlayerRef.position.x : 0f;
-                    return CarInstance.transform.position.x > playerX - 1.5f;
+                    return CarInstance.transform.position.x > playerX - 6.0f;
                 }
                 return false;
             }

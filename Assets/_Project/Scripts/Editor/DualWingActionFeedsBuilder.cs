@@ -41,7 +41,7 @@ namespace SteamRush.EditorTools
             }
 
             Sprite pillSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/_Project/Textures/Generated/UI_BannerPill.png");
-            TMP_FontAsset fontAsset = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/_Project/Fonts/Fredoka-Bold SDF.asset");
+            TMP_FontAsset fontAsset = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/_Project/Fonts/Baloo2-Bold UI SDF.asset");
 
             // ==========================================
             // 1. FAN ACTION FEED (LEFT WING)

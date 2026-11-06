@@ -261,11 +261,11 @@ namespace SteamRush.Features.UI.PreGameConfig
                     new PreGameGiftItemConfig("Speed Boost (Turbo)", 5269, "TikTok", "Turbo Speed", GiftActionType.Blue_SpeedBoost, true, 30f),
                     new PreGameGiftItemConfig("Freedom Charm", 6104, "Cap", "Freedom Charm", GiftActionType.Blue_FreeControl, true, 30f),
                     new PreGameGiftItemConfig("Blue Energy", 5338, "Donut", "Blue Energy", GiftActionType.Blue_EnergyBottle, true, 300f),
-                    new PreGameGiftItemConfig("Spawn Hunting Beasts", 5585, "Dumbbell", "Hunting Beasts", GiftActionType.Red_SpawnPickup, true, 60f),
-                    new PreGameGiftItemConfig("Spawn Train", 6223, "Lion", "Train", GiftActionType.Red_SpawnHeavyTruck, true, 60f),
+                    new PreGameGiftItemConfig("Spawn Hunting Beasts", 5827, "Ice Cream", "Hunting Beasts", GiftActionType.Red_SpawnPickup, true, 60f),
+                    new PreGameGiftItemConfig("Spawn Train", 6037, "Dance", "Train", GiftActionType.Red_SpawnHeavyTruck, true, 60f),
                     new PreGameGiftItemConfig("Car Storm (Unlimited)", 5509, "Sunglasses", "Car Storm", GiftActionType.Red_UnlimitedCars, true, 60f),
                     new PreGameGiftItemConfig("Red Energy", 5586, "Chili", "Red Energy", GiftActionType.Red_EnergyBottle, true, 500f),
-                    new PreGameGiftItemConfig("Dance", 6037, "Dance", "Dance", GiftActionType.Special_GiftDance, true, 5f),
+                    new PreGameGiftItemConfig("Dance", 6064, "GG", "Dance", GiftActionType.Special_GiftDance, true, 5f),
                     new PreGameGiftItemConfig("Rain Storm Hazard", 0, "Rain", "Rain Storm", GiftActionType.Special_RainHazard, true, 60f),
                     new PreGameGiftItemConfig("Next Runner", 0, "Follow", "Next Runner", GiftActionType.Follow_Runner, true, 0f)
                 }

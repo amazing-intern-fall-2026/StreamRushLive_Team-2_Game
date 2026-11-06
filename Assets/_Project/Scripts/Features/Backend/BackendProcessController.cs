@@ -24,19 +24,65 @@ namespace SteamRush.Features.Backend
 
         public void TerminateProcess()
         {
+            Process process = _runningBackendProcess;
+
+            if (process == null)
+            {
+                return;
+            }
+
             try
             {
-                if (_runningBackendProcess != null && !_runningBackendProcess.HasExited)
+                if (process.HasExited)
                 {
-                    _runningBackendProcess.Kill();
                     _runningBackendProcess = null;
+                    process.Dispose();
+                    return;
+                }
+
+                int processId = process.Id;
+
+                // Stop only the tracked backend process and its child processes.
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "taskkill.exe",
+                    Arguments = $"/PID {processId} /T /F",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using (Process killer = Process.Start(psi))
+                {
+                    killer?.WaitForExit(5000);
+                }
+
+                // Fallback: terminate only the tracked root process.
+                if (!process.HasExited)
+                {
+                    process.Kill();
+                    process.WaitForExit(2000);
+                }
+
+                if (process.HasExited)
+                {
+                    _runningBackendProcess = null;
+                    process.Dispose();
+                }
+                else
+                {
+                    Debug.LogWarning(
+                        $"[BackendProcessController] Could not stop tracked process PID {processId}."
+                    );
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[BackendProcessController] Terminate error: {ex.Message}");
+                Debug.LogWarning(
+                    $"[BackendProcessController] Terminate error: {ex.Message}"
+                );
             }
         }
+
 
         public void StartBackend(
             string backendDir,
@@ -183,41 +229,48 @@ namespace SteamRush.Features.Backend
             StartCoroutine(StopBackendCoroutine(httpPort, socketPort, portChecker, onComplete));
         }
 
-        private IEnumerator StopBackendCoroutine(int httpPort, int socketPort, BackendPortChecker portChecker, Action<bool, string> onComplete)
+
+        private IEnumerator StopBackendCoroutine(
+            int httpPort,
+            int socketPort,
+            BackendPortChecker portChecker,
+            Action<bool, string> onComplete)
         {
+            // Stop only the process tree started and tracked by this controller.
             TerminateProcess();
-            KillProcessOnPort(httpPort);
-            KillProcessOnPort(socketPort);
 
             yield return new WaitForSecondsRealtime(1.0f);
 
             bool socketOpen = BackendPortChecker.ProbeTcpPort(socketPort, 400);
+            bool httpOpen = BackendPortChecker.ProbeTcpPort(httpPort, 400);
 
-            if (!socketOpen)
+            if (!socketOpen && !httpOpen)
             {
-                onComplete?.Invoke(true, "Backend stopped and ports released successfully.");
+                onComplete?.Invoke(
+                    true,
+                    "Backend stopped and ports released successfully."
+                );
             }
             else
             {
-                onComplete?.Invoke(false, "Stop command executed, but port is still occupied.");
-            }
-        }
+                string occupiedPorts = "";
 
-        private void KillProcessOnPort(int port)
-        {
-            try
-            {
-                var psi = new ProcessStartInfo("cmd.exe", $"/c for /f \"tokens=5\" %a in ('netstat -aon ^| findstr :{port}') do taskkill /F /PID %a")
+                if (httpOpen)
                 {
-                    CreateNoWindow = true,
-                    UseShellExecute = false
-                };
-                using (var p = Process.Start(psi))
-                {
-                    p?.WaitForExit(3000);
+                    occupiedPorts += $" HTTP: {httpPort}";
                 }
+
+                if (socketOpen)
+                {
+                    occupiedPorts += $" Socket: {socketPort}";
+                }
+
+                onComplete?.Invoke(
+                    false,
+                    $"Stop requested, but these ports are still occupied:{occupiedPorts}. " +
+                    "No unrelated processes were terminated."
+                );
             }
-            catch { }
         }
 
         private string EnsureRunBatFile(string backendDir, int httpPort, int socketPort)
